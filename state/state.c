@@ -4,6 +4,7 @@
 #include "../ble/ble.h"
 #include "../led/led.h"
 #include "../usb/usb_hid.h"
+#include "sleep.h"
 #include "state.h"
 
 typedef struct {
@@ -23,6 +24,7 @@ static const state_led_entry_t state_led_table[] = {
   [STATE_BLE_CONNECTED] = { -1,              0,   0,   0   }, // 消灯
   [STATE_USB_CONNECTED] = { -1,              0,   0,   0   }, // 消灯
   [STATE_BOOTLOADER]    = { -1,              255, 255, 255 }, // 白
+  [STATE_DEEP_SLEEP]    = { -1,              0,   0,   0   }, // 消灯
 };
 // clang-format on
 
@@ -113,8 +115,9 @@ void state_refresh_runtime(void) {
 void state_set_system(state_system_t new_state) {
   const state_led_entry_t *entry = &state_led_table[new_state];
 
-  if (entry->required_from >= 0 &&
-      current_state != (state_system_t)entry->required_from) {
+  if (current_state == new_state ||
+      (entry->required_from >= 0 &&
+       current_state != (state_system_t)entry->required_from)) {
     return;
   }
 
@@ -128,6 +131,9 @@ void state_set_system(state_system_t new_state) {
     return;
   case STATE_BOOTLOADER:
     reset_usb_boot(0, 0);
+    return;
+  case STATE_DEEP_SLEEP:
+    enter_dormant();
     return;
   default:
     return;

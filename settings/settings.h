@@ -2,7 +2,7 @@
 #define PWMK_SETTINGS_H
 
 // ディープスリープタイムアウト時間(10分)
-#define DEEP_SLEEP_TIMEOUT_US ((int64_t)10 * 60 * 1000 * 1000)
+#define DEEP_SLEEP_TIMEOUT_US ((int64_t)10 * 60 * 1000 * 1000/120)
 
 #define LED_BRIGHTNESS 16 // LEDの明るさの最大値 (1-255)
 

@@ -12,7 +12,6 @@
 #include "settings/keymap.h"
 #include "settings/settings.h"
 #include "settings/users.h"
-#include "state/sleep.h"
 #include "state/state.h"
 #include "usb/usb_hid.h"
 
@@ -36,7 +35,7 @@ static absolute_time_t last_activity_time;
  * @param worker ワーカー
  */
 static void pwmk_worker_process(async_context_t *context,
-                                  async_at_time_worker_t *worker) {
+                                async_at_time_worker_t *worker) {
   // キーマトリクス処理を実行
   matrix_process();
 
@@ -104,7 +103,7 @@ static void pwmk_worker_process(async_context_t *context,
   // ディープスリープチェック
   if (absolute_time_diff_us(last_activity_time, get_absolute_time()) >
       DEEP_SLEEP_TIMEOUT_US) {
-    enter_dormant();
+    state_set_system(STATE_DEEP_SLEEP);
   }
 
   // 1ms後に再スケジュール
