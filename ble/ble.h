@@ -1,5 +1,5 @@
-#ifndef PICOMK_BLE_H
-#define PICOMK_BLE_H
+#ifndef PWMK_BLE_H
+#define PWMK_BLE_H
 
 #include "../hid/hid.h"
 
@@ -10,4 +10,4 @@ bool ble_is_connected(void);
 bool ble_is_enabled(void);
 void ble_request_can_send(void);
 
-#endif // PICOMK_BLE_H
+#endif // PWMK_BLE_H

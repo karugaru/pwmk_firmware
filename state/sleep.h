@@ -1,6 +1,6 @@
-#ifndef PICOMK_SLEEP_H
-#define PICOMK_SLEEP_H
+#ifndef PWMK_SLEEP_H
+#define PWMK_SLEEP_H
 
 void enter_dormant(void);
 
-#endif // PICOMK_SLEEP_H
+#endif // PWMK_SLEEP_H

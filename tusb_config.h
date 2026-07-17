@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef PICOMK_TUSB_CONFIG_H
-#define PICOMK_TUSB_CONFIG_H
+#ifndef PWMK_TUSB_CONFIG_H
+#define PWMK_TUSB_CONFIG_H
 
 // デバイス側で使用するRHPort番号
 #ifndef BOARD_TUD_RHPORT
@@ -71,4 +71,4 @@
 // HIDバッファサイズ
 #define CFG_TUD_HID_EP_BUFSIZE 32
 
-#endif // PICOMK_TUSB_CONFIG_H
+#endif // PWMK_TUSB_CONFIG_H

@@ -1,5 +1,5 @@
-#ifndef PICOMK_MATRIX_SCAN_H
-#define PICOMK_MATRIX_SCAN_H
+#ifndef PWMK_MATRIX_SCAN_H
+#define PWMK_MATRIX_SCAN_H
 
 #include "hardware/gpio.h"
 #include "hardware/timer.h"
@@ -9,4 +9,4 @@
 void matrix_init(void);
 void matrix_process(void);
 
-#endif // PICOMK_MATRIX_SCAN_H
+#endif // PWMK_MATRIX_SCAN_H

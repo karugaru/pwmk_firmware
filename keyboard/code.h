@@ -1,5 +1,5 @@
-#ifndef PICOMK_CODE_H
-#define PICOMK_CODE_H
+#ifndef PWMK_CODE_H
+#define PWMK_CODE_H
 
 #include <pico/stdlib.h>
 
@@ -354,4 +354,4 @@ mouse_button_code_t code_icodes_to_mouse_button(icode_t ic);
 #define RIGHT_ALT(X) APPLY_MOD(X, KMC_RIGHT_ALT)
 #define RIGHT_GUI(X) APPLY_MOD(X, KMC_RIGHT_GUI)
 
-#endif // PICOMK_CODE_H
+#endif // PWMK_CODE_H
