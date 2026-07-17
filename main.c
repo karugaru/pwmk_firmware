@@ -26,7 +26,7 @@
 #define DEBUG_PRINT(...)
 #endif
 
-static async_at_time_worker_t picomk_worker;
+static async_at_time_worker_t pwmk_worker;
 static absolute_time_t last_activity_time;
 
 /**
@@ -35,7 +35,7 @@ static absolute_time_t last_activity_time;
  * @param context async_context
  * @param worker ワーカー
  */
-static void picomk_worker_process(async_context_t *context,
+static void pwmk_worker_process(async_context_t *context,
                                   async_at_time_worker_t *worker) {
   // キーマトリクス処理を実行
   matrix_process();
@@ -122,7 +122,7 @@ int main() {
 #if DEBUG_MAIN
   sleep_ms(2000); // UARTデバッグ用: 接続待ち
 #endif
-  DEBUG_PRINT("picomk v1 start\n");
+  DEBUG_PRINT("pwmk v1 start\n");
 
   // LEDの初期化
   led_init(GPIO_LED_PIN, LED_BRIGHTNESS);
@@ -160,9 +160,9 @@ int main() {
   last_activity_time = get_absolute_time();
 
   // 定期処理ワーカーをasync_contextに登録
-  picomk_worker.do_work = picomk_worker_process;
+  pwmk_worker.do_work = pwmk_worker_process;
   async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(),
-                                         &picomk_worker, 1);
+                                         &pwmk_worker, 1);
 
   // メインループ
   while (true) {

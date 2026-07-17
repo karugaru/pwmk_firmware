@@ -1,5 +1,5 @@
-#ifndef PICOMK_KEYMAP_H
-#define PICOMK_KEYMAP_H
+#ifndef PWMK_KEYMAP_H
+#define PWMK_KEYMAP_H
 
 #include "../keyboard/code.h"
 #include "board.h"
@@ -36,4 +36,4 @@ icode_t icode_lookup(uint8_t row, uint8_t col);
 }
 // clang-format on
 
-#endif // PICOMK_KEYMAP_H
+#endif // PWMK_KEYMAP_H

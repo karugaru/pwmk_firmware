@@ -1,5 +1,5 @@
-#ifndef PICOMK_BOARD_H
-#define PICOMK_BOARD_H
+#ifndef PWMK_BOARD_H
+#define PWMK_BOARD_H
 #include <pico/stdlib.h>
 
 //--------------------------------
@@ -46,4 +46,4 @@ extern const uint8_t rows_pins[ROWS];
 extern const uint8_t cols_pins[COLS];
 extern const uint8_t layout[ROWS * COLS][2];
 
-#endif // PICOMK_BOARD_H
+#endif // PWMK_BOARD_H

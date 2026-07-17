@@ -1,5 +1,5 @@
-#ifndef PICOMK_SETTINGS_H
-#define PICOMK_SETTINGS_H
+#ifndef PWMK_SETTINGS_H
+#define PWMK_SETTINGS_H
 
 // ディープスリープタイムアウト時間(10分)
 #define DEEP_SLEEP_TIMEOUT_US ((int64_t)10 * 60 * 1000 * 1000)
@@ -30,4 +30,4 @@
 
 void settings_init(void);
 
-#endif // PICOMK_SETTINGS_H
+#endif // PWMK_SETTINGS_H
