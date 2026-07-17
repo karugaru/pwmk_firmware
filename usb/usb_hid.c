@@ -22,6 +22,11 @@ void usb_hid_init(void) {
 }
 
 /**
+ * @brief USB HIDデバイスの終了処理を行う。
+ */
+void usb_hid_deinit(void) { tud_deinit(BOARD_TUD_RHPORT); }
+
+/**
  * @brief USB HIDのデバイスのタスク処理を行う。
  *        メインループから定期的に呼び出す必要がある。
  */
