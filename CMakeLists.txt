@@ -53,6 +53,7 @@ target_link_libraries(pwmk
     pico_btstack_cyw43
     pico_cyw43_arch_none
     hardware_i2c
+    hardware_rosc
     hardware_xosc
     hardware_watchdog
     tinyusb_device

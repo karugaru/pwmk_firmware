@@ -1,6 +1,7 @@
 #include <hardware/clocks.h>
 #include <hardware/pll.h>
 #include <hardware/regs/io_bank0.h>
+#include <hardware/rosc.h>
 #include <hardware/watchdog.h>
 #include <hardware/xosc.h>
 #include <pico/stdlib.h>
@@ -85,6 +86,8 @@ void enter_dormant(void) {
   // PLLを無効化
   pll_deinit(pll_sys);
   pll_deinit(pll_usb);
+  // ROSCを無効化
+  rosc_disable();
 
   // どのキー押下でも復帰できるよう、マトリクス列のLOWエッジを有効化
   matrix_enable_dormant_wakeup();
@@ -96,6 +99,10 @@ void enter_dormant(void) {
   xosc_dormant();
 
   // --- 復帰後 ---
+
+  // クロックを復帰
+  rosc_restart();
+
   // IRQをクリア
   matrix_acknowledge_dormant_wakeup();
   gpio_acknowledge_irq(GPIO_DR_PIN, GPIO_IRQ_EDGE_RISE);
