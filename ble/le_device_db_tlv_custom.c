@@ -1,4 +1,5 @@
 #include "le_device_db_tlv_custom.h"
+#include "../settings/settings.h"
 #include "ble/core.h"
 #include "ble/le_device_db.h"
 #include "ble/le_device_db_tlv.h"
@@ -123,6 +124,18 @@ static uint32_t le_device_db_entry_tag(int slot) {
  */
 static uint32_t le_device_db_selected_slot_tag(void) {
   return le_device_db_tag('B', 'S', 'L', 0);
+}
+
+/**
+ * @brief 現在選択中スロットを永続化する設定かを返す。
+ * @return 永続化する場合は true。
+ */
+static bool le_device_db_should_persist_selected_slot(void) {
+#if BLE_PERSIST_SELECTED_SLOT
+  return true;
+#else
+  return false;
+#endif
 }
 
 /**
@@ -257,6 +270,10 @@ static void le_device_db_delete_entry(int slot) {
 static bool le_device_db_save_selected_slot(void) {
   uint8_t value;
 
+  if (!le_device_db_should_persist_selected_slot()) {
+    return true;
+  }
+
   if (!le_device_db_tlv_ready()) {
     return false;
   }
@@ -276,6 +293,10 @@ static void le_device_db_load_selected_slot(void) {
 
   // TLVに値がない場合も slot 0 を既定値として扱う。
   le_device_db_state.selected_slot = 0;
+  if (!le_device_db_should_persist_selected_slot()) {
+    return;
+  }
+
   if (!le_device_db_tlv_ready()) {
     return;
   }
