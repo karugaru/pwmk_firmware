@@ -13,7 +13,7 @@
 #endif
 
 static hid_state_t hid_state = {0};
-static int8_t pointing_device_mouse_key = -1;
+static int8_t pointing_device_mouse_keys = -1;
 static bool mouse_move_key_pressed[6] = {false};
 
 typedef enum {
@@ -25,6 +25,11 @@ typedef enum {
   MOUSE_WHEEL_DOWN,
 } mouse_move_key_index_t;
 
+/**
+ * @brief マウス移動キーコードをインデックスに変換する
+ * @param icode マウス移動キーコード
+ * @return インデックス、対応するキーコードがない場合は-1
+ */
 static int8_t mouse_move_icode_to_index(icode_t icode) {
   switch (icode) {
   case IMC_MOUSE_MOVE_UP:
@@ -44,6 +49,12 @@ static int8_t mouse_move_icode_to_index(icode_t icode) {
   }
 }
 
+/**
+ * @brief マウス移動量が閾値を超えたかを判定する
+ * @param value マウス移動量
+ * @param threshold 閾値
+ * @return 超えた場合はtrue、超えていない場合はfalse
+ */
 static bool reached_threshold(int16_t value, int16_t threshold) {
   return value >= threshold || value <= -threshold;
 }
@@ -65,12 +76,148 @@ static bool event_has_mouse_move_event() {
 }
 
 /**
+ * @brief 特殊キーコードの処理
+ * @param icode キーコード
+ * @param pressed 押下状態
+ * @return 処理された場合はtrue、処理されなかった場合はfalse
+ */
+static bool event_process_standard_special(
+    icode_t icode, bool pressed) { // ISC_BOOTが押されたらブートモードでリセット
+  if (icode == ISC_BOOT && pressed) {
+    state_set_system(STATE_BOOTLOADER);
+    return true;
+  }
+
+  // 接続モード切替コードの処理
+  if (pressed) {
+    connection_preference_t new_pref;
+    bool handled = true;
+
+    switch (icode) {
+    case ISC_CONN_TOGGLE:
+      new_pref = (state_get_connection_preference() == CONN_PREF_USB)
+                     ? CONN_PREF_BLE
+                     : CONN_PREF_USB;
+      break;
+    case ISC_CONN_USB:
+      new_pref = CONN_PREF_USB;
+      break;
+    case ISC_CONN_BLE:
+      new_pref = CONN_PREF_BLE;
+      break;
+    default:
+      handled = false;
+      break;
+    }
+
+    if (handled) {
+      state_switch_connection_preference(new_pref);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * @brief 標準キーコードの処理
+ * @param icode キーコード
+ * @param pressed 押下状態
+ * @return 処理された場合はtrue、処理されなかった場合はfalse
+ */
+static bool event_process_standard_key(icode_t icode, bool pressed) {
+  if (icode >= ICODE_STANDARD_START && icode <= ICODE_STANDARD_END) {
+    keyboard_modifiered_code_t keycode = (keyboard_modifiered_code_t)icode;
+    bool state_changed = false;
+    if (pressed) {
+      state_changed = event_apply_press_keyboard_key(keycode);
+    } else {
+      state_changed = event_apply_release_keyboard_key(keycode);
+    }
+
+    if (state_changed) {
+      hid_state.has_keyboard_event = true;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief コンシューマキーコードの処理
+ * @param icode キーコード
+ * @param pressed 押下状態
+ * @return 処理された場合はtrue、処理されなかった場合はfalse
+ */
+static bool event_process_standard_consumer(icode_t icode, bool pressed) {
+  if (icode >= ICODE_CONSUMER_START && icode <= ICODE_CONSUMER_END) {
+    consumer_code_t keycode = code_icodes_to_consumer(icode);
+
+    bool state_changed = false;
+    if (pressed) {
+      state_changed = event_apply_press_consumer_key(keycode);
+    } else {
+      state_changed = event_apply_release_consumer_key(keycode);
+    }
+
+    if (state_changed) {
+      hid_state.has_consumer_event = true;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief ポインティングデバイスキーコードの処理
+ * @param icode キーコード
+ * @param pressed 押下状態
+ * @return 処理された場合はtrue、処理されなかった場合はfalse
+ */
+static bool event_process_standard_pointing(icode_t icode, bool pressed) {
+  if (icode >= ICODE_MOUSE_BUTTON_START && icode <= ICODE_MOUSE_BUTTON_END) {
+    if (pointing_device_mouse_keys < 0) {
+      return true;
+    }
+
+    mouse_button_code_t state_button =
+        hid_state.mouse[pointing_device_mouse_keys].buttons;
+
+    mouse_button_code_t mouse_button = code_icodes_to_mouse_button(icode);
+    if (pressed) {
+      state_button |= mouse_button;
+    } else {
+      state_button &= ~mouse_button;
+    }
+
+    event_accumulate_mouse(pointing_device_mouse_keys, state_button, 0, 0, 0);
+    return true;
+  }
+
+  // マウス移動キーコードの場合
+  if (icode >= ICODE_MOUSE_MOVE_START && icode <= ICODE_MOUSE_MOVE_END) {
+    if (pointing_device_mouse_keys < 0) {
+      return true;
+    }
+
+    int8_t index = mouse_move_icode_to_index(icode);
+    if (index >= 0) {
+      mouse_move_key_pressed[index] = pressed;
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
  * @brief イベント処理の初期化
  */
 void event_init(void) {
   int8_t id = hid_request_pointing_device_id(&hid_state);
   if (id >= 0) {
-    pointing_device_mouse_key = id;
+    pointing_device_mouse_keys = id;
   }
 }
 
@@ -235,104 +382,16 @@ void event_accumulate_mouse(uint8_t device_id, mouse_button_code_t buttons,
  * @param pressed 押された(true)か離された(false)か
  */
 void event_process_standard(icode_t icode, bool pressed) {
-
-  // ISC_BOOTが押されたらブートモードでリセット
-  if (icode == ISC_BOOT && pressed) {
-    state_set_system(STATE_BOOTLOADER);
+  if (event_process_standard_special(icode, pressed)) {
     return;
   }
-
-  // 接続モード切替コードの処理
-  if (pressed) {
-    connection_preference_t new_pref;
-    bool handled = true;
-
-    switch (icode) {
-    case ISC_CONN_TOGGLE:
-      new_pref = (state_get_connection_preference() == CONN_PREF_USB)
-                     ? CONN_PREF_BLE
-                     : CONN_PREF_USB;
-      break;
-    case ISC_CONN_USB:
-      new_pref = CONN_PREF_USB;
-      break;
-    case ISC_CONN_BLE:
-      new_pref = CONN_PREF_BLE;
-      break;
-    default:
-      handled = false;
-      break;
-    }
-
-    if (handled) {
-      state_switch_connection_preference(new_pref);
-      return;
-    }
-  }
-
-  // 標準キーコードの場合
-  if (icode >= ICODE_STANDARD_START && icode <= ICODE_STANDARD_END) {
-    keyboard_modifiered_code_t keycode = (keyboard_modifiered_code_t)icode;
-    bool state_changed = false;
-    if (pressed) {
-      state_changed = event_apply_press_keyboard_key(keycode);
-    } else {
-      state_changed = event_apply_release_keyboard_key(keycode);
-    }
-
-    if (state_changed) {
-      hid_state.has_keyboard_event = true;
-    }
+  if (event_process_standard_key(icode, pressed)) {
     return;
   }
-
-  // コンシューマキーコードの場合
-  if (icode >= ICODE_CONSUMER_START && icode <= ICODE_CONSUMER_END) {
-    consumer_code_t keycode = code_icodes_to_consumer(icode);
-
-    bool state_changed = false;
-    if (pressed) {
-      state_changed = event_apply_press_consumer_key(keycode);
-    } else {
-      state_changed = event_apply_release_consumer_key(keycode);
-    }
-
-    if (state_changed) {
-      hid_state.has_consumer_event = true;
-    }
+  if (event_process_standard_consumer(icode, pressed)) {
     return;
   }
-
-  // マウスボタンキーコードの場合
-  if (icode >= ICODE_MOUSE_BUTTON_START && icode <= ICODE_MOUSE_BUTTON_END) {
-    if (pointing_device_mouse_key < 0) {
-      // マウスキーが割り当てられていない
-      return;
-    }
-    mouse_button_code_t state_button =
-        hid_state.mouse[pointing_device_mouse_key].buttons;
-
-    mouse_button_code_t mouse_button = code_icodes_to_mouse_button(icode);
-    if (pressed) {
-      state_button |= mouse_button;
-    } else {
-      state_button &= ~mouse_button;
-    }
-
-    event_accumulate_mouse(pointing_device_mouse_key, state_button, 0, 0, 0);
-    return;
-  }
-
-  // マウス移動キーコードの場合
-  if (icode >= ICODE_MOUSE_MOVE_START && icode <= ICODE_MOUSE_MOVE_END) {
-    if (pointing_device_mouse_key < 0) {
-      return;
-    }
-
-    int8_t index = mouse_move_icode_to_index(icode);
-    if (index >= 0) {
-      mouse_move_key_pressed[index] = pressed;
-    }
+  if (event_process_standard_pointing(icode, pressed)) {
     return;
   }
 }
@@ -341,7 +400,7 @@ void event_process_standard(icode_t icode, bool pressed) {
  * @brief 定期的なイベント処理を行う。
  */
 void event_process_periodic(void) {
-  if (pointing_device_mouse_key >= 0) {
+  if (pointing_device_mouse_keys >= 0) {
     int8_t dx = 0;
     int8_t dy = 0;
     int8_t dw = 0;
@@ -367,8 +426,8 @@ void event_process_periodic(void) {
 
     if (dx != 0 || dy != 0 || dw != 0) {
       mouse_button_code_t buttons =
-          hid_state.mouse[pointing_device_mouse_key].buttons;
-      event_accumulate_mouse(pointing_device_mouse_key, buttons, dx, dy, dw);
+          hid_state.mouse[pointing_device_mouse_keys].buttons;
+      event_accumulate_mouse(pointing_device_mouse_keys, buttons, dx, dy, dw);
     }
   }
 
