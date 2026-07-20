@@ -7,6 +7,20 @@
 #include "sleep.h"
 #include "state.h"
 
+#ifndef PWMK_ENABLE_USB
+#define PWMK_ENABLE_USB 1
+#endif
+
+#ifndef PWMK_ENABLE_BLE
+#define PWMK_ENABLE_BLE 1
+#endif
+
+#if PWMK_ENABLE_BLE
+#define STATE_INIT_COMPLETE_REQUIRED_FROM STATE_BLE_INIT
+#else
+#define STATE_INIT_COMPLETE_REQUIRED_FROM STATE_SYS_INIT
+#endif
+
 typedef struct {
   int8_t required_from; // 遷移元の状態。-1の場合はどの状態からでも遷移可能。
   uint8_t r, g, b;
@@ -18,7 +32,7 @@ static const state_led_entry_t state_led_table[] = {
   [STATE_BOOTING]       = { STATE_RESET,     255, 127, 0   }, // オレンジ
   [STATE_SYS_INIT]      = { STATE_BOOTING,   255, 255, 0   }, // 黄色
   [STATE_BLE_INIT]      = { STATE_SYS_INIT,  0,   0,   255 }, // 青
-  [STATE_INIT_COMPLETE] = { STATE_BLE_INIT,  255, 255, 255 }, // 白
+  [STATE_INIT_COMPLETE] = { STATE_INIT_COMPLETE_REQUIRED_FROM, 255, 255, 255 }, // 白
   [STATE_USB_WAITING]   = { -1,              255, 0,   0   }, // 赤
   [STATE_BLE_WAITING]   = { -1,              0,   255, 255 }, // 水色
   [STATE_BLE_CONNECTED] = { -1,              0,   0,   0   }, // 消灯
@@ -54,13 +68,21 @@ static state_system_t state_resolve_runtime(void) {
     return STATE_USB_CONNECTED;
   } else if (ble_connected) {
     return STATE_BLE_CONNECTED;
-  } else if (conn_pref == CONN_PREF_BLE) {
+  }
+
+#if PWMK_ENABLE_USB && PWMK_ENABLE_BLE
+  if (conn_pref == CONN_PREF_BLE) {
     return STATE_BLE_WAITING;
   } else if (conn_pref == CONN_PREF_USB) {
     return STATE_USB_WAITING;
-  } else {
-    return STATE_INIT_COMPLETE;
   }
+#elif PWMK_ENABLE_BLE
+  return STATE_BLE_WAITING;
+#elif PWMK_ENABLE_USB
+  return STATE_USB_WAITING;
+#endif
+
+  return STATE_INIT_COMPLETE;
 }
 
 /**

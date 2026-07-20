@@ -2,6 +2,7 @@
 #define PWMK_PERIPHERAL_H
 
 #include <pico/stdlib.h>
+#include <stdio.h>
 
 bool peripheral_init(void);
 bool peripheral_require_event_processing(void);

@@ -5,8 +5,11 @@
 #include <hardware/sync.h>
 #include <hardware/watchdog.h>
 #include <hardware/xosc.h>
-#include <pico/cyw43_arch.h>
 #include <pico/stdlib.h>
+
+#if PWMK_ENABLE_BLE
+#include <pico/cyw43_arch.h>
+#endif
 
 #include "../ble/ble.h"
 #include "../led/led.h"
@@ -22,6 +25,14 @@
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
 #define DEBUG_PRINT(...)
+#endif
+
+#ifndef PWMK_ENABLE_USB
+#define PWMK_ENABLE_USB 1
+#endif
+
+#ifndef PWMK_ENABLE_BLE
+#define PWMK_ENABLE_BLE 1
 #endif
 
 /**
@@ -73,11 +84,15 @@ void enter_dormant(void) {
   led_put_rgb(0, 0, 0);
 
   // BLEを無効化
+#if PWMK_ENABLE_BLE
   ble_power_set(false);
   gpio_put(CYW43_PIN_WL_REG_ON, false);
+#endif
 
   // USBを無効化
+#if PWMK_ENABLE_USB
   usb_hid_deinit();
+#endif
 
   // stdio をフラッシュ
   stdio_flush();

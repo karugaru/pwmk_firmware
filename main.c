@@ -1,6 +1,9 @@
 #include <hardware/i2c.h>
-#include <pico/cyw43_arch.h>
 #include <pico/stdlib.h>
+
+#if PWMK_ENABLE_BLE
+#include <pico/cyw43_arch.h>
+#endif
 
 #include "ble/ble.h"
 #include "keyboard/code.h"
@@ -25,18 +28,24 @@
 #define DEBUG_PRINT(...)
 #endif
 
+#ifndef PWMK_ENABLE_USB
+#define PWMK_ENABLE_USB 1
+#endif
+
+#ifndef PWMK_ENABLE_BLE
+#define PWMK_ENABLE_BLE 1
+#endif
+
+#if PWMK_ENABLE_BLE
 static async_at_time_worker_t pwmk_worker;
+#endif
 static absolute_time_t last_activity_time;
 static bool requested_deep_sleep;
 
 /**
- * @brief async_contextの1ms定期ワーカーコールバック。
- *        事実上のメインループ処理。
- * @param context async_context
- * @param worker ワーカー
+ * @brief 1ms周期で実行する事実上のメインループ処理。
  */
-static void pwmk_worker_process(async_context_t *context,
-                                async_at_time_worker_t *worker) {
+static void pwmk_process_tick(void) {
   // キーマトリクス処理を実行
   matrix_process();
 
@@ -50,6 +59,7 @@ static void pwmk_worker_process(async_context_t *context,
   bool ble_connected = ble_is_connected();
 
   // USB優先時、USB接続状態に応じてBLEを動的に制御
+#if PWMK_ENABLE_USB && PWMK_ENABLE_BLE
   if (connection_pref == CONN_PREF_USB) {
     if (usb_active && ble_enabled) {
       ble_power_set(false); // USB接続中はBLEをOFFにして省電力
@@ -57,6 +67,7 @@ static void pwmk_worker_process(async_context_t *context,
       ble_power_set(true); // USB未接続時はBLEをONにしてフォールバック
     }
   }
+#endif
 
   // トランスポートの決定
   bool use_ble, use_usb;
@@ -69,14 +80,18 @@ static void pwmk_worker_process(async_context_t *context,
   }
 
   // USB定期処理
+#if PWMK_ENABLE_USB
   if (!use_ble) {
     usb_hid_task();
   }
+#endif
 
   // BLE定期処理
+#if PWMK_ENABLE_BLE
   if (ble_enabled) {
     ble_poll();
   }
+#endif
 
   bool has_activity = false;
 
@@ -106,10 +121,18 @@ static void pwmk_worker_process(async_context_t *context,
       DEEP_SLEEP_TIMEOUT_US) {
     requested_deep_sleep = true;
   }
+}
 
-  // 1ms後に再スケジュール
+/**
+ * @brief CYW43のasync_context向け1ms定期ワーカー。
+ */
+#if PWMK_ENABLE_BLE
+static void pwmk_worker_process(async_context_t *context,
+                                async_at_time_worker_t *worker) {
+  pwmk_process_tick();
   async_context_add_at_time_worker_in_ms(context, worker, 1);
 }
+#endif
 
 /**
  * @brief メイン関数 エントリーポイント
@@ -138,6 +161,7 @@ int main() {
   event_init();
 
   // BLEの初期化
+#if PWMK_ENABLE_BLE
   if (cyw43_arch_init()) {
     DEBUG_PRINT("failed to initialise cyw43_arch\n");
     return -1;
@@ -145,12 +169,15 @@ int main() {
   ble_setup();
   ble_power_set(true);
   state_set_system(STATE_BLE_INIT);
+#endif
 
   // マトリクス以外の周辺機器の初期化
   peripheral_init();
 
   // USB HIDの初期化
+#if PWMK_ENABLE_USB
   usb_hid_init();
+#endif
 
   // 初期化完了
   state_set_system(STATE_INIT_COMPLETE);
@@ -160,19 +187,29 @@ int main() {
   last_activity_time = get_absolute_time();
 
   // 定期処理ワーカーをasync_contextに登録
+#if PWMK_ENABLE_BLE
   pwmk_worker.do_work = pwmk_worker_process;
   async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(),
                                          &pwmk_worker, 1);
+#endif
 
   // メインループ
   requested_deep_sleep = false;
   while (true) {
+#if PWMK_ENABLE_BLE
     async_context_poll(cyw43_arch_async_context());
     if (requested_deep_sleep) {
       state_set_system(STATE_DEEP_SLEEP);
     }
     async_context_wait_for_work_until(cyw43_arch_async_context(),
                                       at_the_end_of_time);
+#else
+    pwmk_process_tick();
+    if (requested_deep_sleep) {
+      state_set_system(STATE_DEEP_SLEEP);
+    }
+    sleep_ms(1);
+#endif
   }
 
   state_set_system(STATE_RESET);
