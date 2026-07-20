@@ -5,6 +5,7 @@
 #include <hardware/sync.h>
 #include <hardware/watchdog.h>
 #include <hardware/xosc.h>
+#include <pico/cyw43_arch.h>
 #include <pico/stdlib.h>
 
 #include "../ble/ble.h"
@@ -73,6 +74,7 @@ void enter_dormant(void) {
 
   // BLEを無効化
   ble_power_set(false);
+  gpio_put(CYW43_PIN_WL_REG_ON, false);
 
   // USBを無効化
   usb_hid_deinit();
@@ -108,7 +110,7 @@ void enter_dormant(void) {
 
   // --- 復帰後 ---
 
-  // クロックを復帰
+  // ROSCを復帰
   rosc_restart();
 
   // IRQをクリア
