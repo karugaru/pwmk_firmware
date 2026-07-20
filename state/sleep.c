@@ -2,6 +2,7 @@
 #include <hardware/pll.h>
 #include <hardware/regs/io_bank0.h>
 #include <hardware/rosc.h>
+#include <hardware/sync.h>
 #include <hardware/watchdog.h>
 #include <hardware/xosc.h>
 #include <pico/stdlib.h>
@@ -9,6 +10,7 @@
 #include "../ble/ble.h"
 #include "../led/led.h"
 #include "../settings/board.h"
+#include "../usb/usb_hid.h"
 #include "sleep.h"
 
 #ifndef DEBUG_MAIN
@@ -63,11 +65,17 @@ static void matrix_acknowledge_dormant_wakeup(void) {
 void enter_dormant(void) {
   DEBUG_PRINT("entering dormant mode\n");
 
+  // 割り込みを無効化
+  disable_interrupts();
+
   // LEDを消灯
   led_put_rgb(0, 0, 0);
 
   // BLEを無効化
   ble_power_set(false);
+
+  // USBを無効化
+  usb_hid_deinit();
 
   // stdio をフラッシュ
   stdio_flush();
