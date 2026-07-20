@@ -1,13 +1,17 @@
 #include <hardware/clocks.h>
 #include <hardware/pll.h>
 #include <hardware/regs/io_bank0.h>
+#include <hardware/rosc.h>
+#include <hardware/sync.h>
 #include <hardware/watchdog.h>
 #include <hardware/xosc.h>
+#include <pico/cyw43_arch.h>
 #include <pico/stdlib.h>
 
 #include "../ble/ble.h"
 #include "../led/led.h"
 #include "../settings/board.h"
+#include "../usb/usb_hid.h"
 #include "sleep.h"
 
 #ifndef DEBUG_MAIN
@@ -62,11 +66,18 @@ static void matrix_acknowledge_dormant_wakeup(void) {
 void enter_dormant(void) {
   DEBUG_PRINT("entering dormant mode\n");
 
+  // 割り込みを無効化
+  disable_interrupts();
+
   // LEDを消灯
   led_put_rgb(0, 0, 0);
 
   // BLEを無効化
   ble_power_set(false);
+  gpio_put(CYW43_PIN_WL_REG_ON, false);
+
+  // USBを無効化
+  usb_hid_deinit();
 
   // stdio をフラッシュ
   stdio_flush();
@@ -85,6 +96,8 @@ void enter_dormant(void) {
   // PLLを無効化
   pll_deinit(pll_sys);
   pll_deinit(pll_usb);
+  // ROSCを無効化
+  rosc_disable();
 
   // どのキー押下でも復帰できるよう、マトリクス列のLOWエッジを有効化
   matrix_enable_dormant_wakeup();
@@ -96,6 +109,10 @@ void enter_dormant(void) {
   xosc_dormant();
 
   // --- 復帰後 ---
+
+  // ROSCを復帰
+  rosc_restart();
+
   // IRQをクリア
   matrix_acknowledge_dormant_wakeup();
   gpio_acknowledge_irq(GPIO_DR_PIN, GPIO_IRQ_EDGE_RISE);

@@ -12,6 +12,7 @@ typedef enum {
   STATE_BLE_CONNECTED,
   STATE_USB_CONNECTED,
   STATE_BOOTLOADER,
+  STATE_DEEP_SLEEP,
 } state_system_t;
 
 typedef enum {

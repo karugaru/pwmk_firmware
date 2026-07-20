@@ -12,7 +12,6 @@
 #include "settings/keymap.h"
 #include "settings/settings.h"
 #include "settings/users.h"
-#include "state/sleep.h"
 #include "state/state.h"
 #include "usb/usb_hid.h"
 
@@ -28,6 +27,7 @@
 
 static async_at_time_worker_t pwmk_worker;
 static absolute_time_t last_activity_time;
+static bool requested_deep_sleep;
 
 /**
  * @brief async_contextの1ms定期ワーカーコールバック。
@@ -36,7 +36,7 @@ static absolute_time_t last_activity_time;
  * @param worker ワーカー
  */
 static void pwmk_worker_process(async_context_t *context,
-                                  async_at_time_worker_t *worker) {
+                                async_at_time_worker_t *worker) {
   // キーマトリクス処理を実行
   matrix_process();
 
@@ -104,7 +104,7 @@ static void pwmk_worker_process(async_context_t *context,
   // ディープスリープチェック
   if (absolute_time_diff_us(last_activity_time, get_absolute_time()) >
       DEEP_SLEEP_TIMEOUT_US) {
-    enter_dormant();
+    requested_deep_sleep = true;
   }
 
   // 1ms後に再スケジュール
@@ -165,8 +165,12 @@ int main() {
                                          &pwmk_worker, 1);
 
   // メインループ
+  requested_deep_sleep = false;
   while (true) {
     async_context_poll(cyw43_arch_async_context());
+    if (requested_deep_sleep) {
+      state_set_system(STATE_DEEP_SLEEP);
+    }
     async_context_wait_for_work_until(cyw43_arch_async_context(),
                                       at_the_end_of_time);
   }
