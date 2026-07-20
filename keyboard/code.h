@@ -277,6 +277,11 @@ typedef enum {
   ISC_CONN_TOGGLE, // USB/BLE接続切り替え
   ISC_CONN_USB,    // USB接続モード
   ISC_CONN_BLE,    // BLE接続モード
+  ISC_BLE_UNPAIR,  // 選択中のBLEスロットのペアリング解除
+  ISC_BLE_SLOT_1,  // BLEスロット1に切り替え
+  ISC_BLE_SLOT_2,  // BLEスロット2に切り替え
+  ISC_BLE_SLOT_3,  // BLEスロット3に切り替え
+  ISC_BLE_SLOT_4,  // BLEスロット4に切り替え
   IUC_RANGE_MIN = 0x00018000,
   IUC_RANGE_MAX = 0x0001FFFF,
   IC_RANGE_MAX = 0xFFFFFFFF,
@@ -293,7 +298,7 @@ typedef enum {
 #define ICODE_MOUSE_MOVE_START IMC_MOUSE_MOVE_UP
 #define ICODE_MOUSE_MOVE_END IMC_MOUSE_WHEEL_DOWN
 #define ICODE_SPECIAL_START ISC_BOOT
-#define ICODE_SPECIAL_END ISC_CONN_BLE
+#define ICODE_SPECIAL_END ISC_BLE_SLOT_4
 #define ICODE_USER_START (IUC_RANGE_MIN + 1)
 
 typedef uint8_t keyboard_code_t;
