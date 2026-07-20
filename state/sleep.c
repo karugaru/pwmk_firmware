@@ -6,6 +6,7 @@
 #include <hardware/watchdog.h>
 #include <hardware/xosc.h>
 #include <pico/stdlib.h>
+#include <stdio.h>
 
 #if PWMK_ENABLE_BLE
 #include <pico/cyw43_arch.h>
