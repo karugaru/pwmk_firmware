@@ -15,6 +15,7 @@ TARGET = "pwmk"
 APT_CACHER_NG_CONTAINER = "pwmk-apt-cacher-ng"
 APT_CACHER_NG_NETWORK = "pwmk-build-test-network"
 APT_CACHER_NG_CACHE_VOLUME = "pwmk-apt-cacher-ng-cache"
+PICO_SDK_CACHE_VOLUME = "pwmk-pico-sdk-cache"
 APT_PROXY_URL = f"http://{APT_CACHER_NG_CONTAINER}:3142"
 
 
@@ -188,6 +189,8 @@ def run_build_test() -> None:
         APT_CACHER_NG_NETWORK,
         "-v",
         f"{mount_source}:/workspace",
+        "-v",
+        f"{PICO_SDK_CACHE_VOLUME}:/root/.pwmk",
         "-w",
         "/workspace",
         IMAGE,
