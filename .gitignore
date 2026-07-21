@@ -2,3 +2,4 @@ log/
 build/
 TODO.md
 tmp/
+__pycache__/

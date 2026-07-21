@@ -22,8 +22,14 @@
 
 ## ビルド手順
 
-- ビルドするにはこのリポジトリをクローンし、vscodeの拡張機能の[Raspberry Pi Pico](https://marketplace.visualstudio.com/items?itemName=raspberry-pi.raspberry-pi-pico)を使用する必要があります。
-- [ビルド手順.md](docs/ビルド手順.md)を参照してください。
+- VS Code拡張を使用する方法と、CLIでビルドする方法の2種類があります。
+- 手順一覧については [ビルド手順.md](docs/ビルド手順.md) を参照してください。
+- VS Code版は [ビルド手順_VSCode.md](docs/ビルド手順_VSCode.md)、CLI版は [ビルド手順_CLI.md](docs/ビルド手順_CLI.md) に分かれています。
+
+## ビルドテスト
+
+- CLI ビルドの検証用スクリプトとして [tools/test_build.py](tools/test_build.py) を用意しています。
+- 手順は [ビルドテスト手順.md](docs/ビルドテスト手順.md) を参照してください。
 
 ## 使い方
 
