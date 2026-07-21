@@ -2,17 +2,23 @@ from __future__ import annotations
 
 import argparse
 import os
-import platform
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 
-DEFAULT_SDK_TAG = "2.3.0"  # pico-sdk の git タグの既定値
-DEFAULT_PICOTOOL_TAG = "2.3.0"  # picotool の git タグの既定値
+from pwmk_common import (
+    capture_output,
+    completed_process,
+    ensure_command,
+    ensure_directory,
+    ensure_linux,
+    repo_root,
+    run,
+)
+
+DEFAULT_SDK_TAG = "2.3.0"
+DEFAULT_PICOTOOL_TAG = "2.3.0"
 PICO_SDK_REPOSITORY_URL = "https://github.com/raspberrypi/pico-sdk.git"
 PICOTOOL_REPOSITORY_URL = "https://github.com/raspberrypi/picotool.git"
-# ビルドに必要なパッケージ
 APT_PACKAGES = [
     "build-essential",
     "ca-certificates",
@@ -25,60 +31,16 @@ APT_PACKAGES = [
 ]
 
 
-def cache_root() -> Path:
+def add_build_subcommand(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     """
-    外部依存物のキャッシュルートディレクトリを返す。
+    build サブコマンドを登録する。
 
-    :return: キャッシュルートディレクトリ
-    """
-
-    return Path.home() / ".pwmk"
-
-
-def sanitized_tag(tag: str) -> str:
-    """
-    キャッシュディレクトリ名に使えるようタグ文字列をサニタイズする。
-
-    :param tag: サニタイズ対象のタグ文字列
-    :return: サニタイズ済み文字列
+    :param subparsers: サブコマンド登録先
     """
 
-    return "".join(
-        character if character.isalnum() or character in ("-", "_", ".") else "_"
-        for character in tag
-    )
-
-
-def sdk_cache_dir(sdk_tag: str) -> Path:
-    """
-    pico-sdk を git から取得する際のキャッシュディレクトリを返す。
-
-    :param sdk_tag: SDK の git タグ
-    :return: SDK キャッシュディレクトリの Path オブジェクト
-    """
-
-    return cache_root() / f"pico-sdk-{sanitized_tag(sdk_tag)}"
-
-
-def picotool_cache_dir(picotool_tag: str) -> Path:
-    """
-    picotool を導入するキャッシュディレクトリを返す。
-
-    :param picotool_tag: picotool の git タグ
-    :return: picotool キャッシュディレクトリの Path オブジェクト
-    """
-
-    return cache_root() / f"picotool-{sanitized_tag(picotool_tag)}"
-
-
-def parse_args() -> argparse.Namespace:
-    """
-    引数を解析する。
-
-    :return: 解析結果の argparse.Namespace オブジェクト
-    """
-
-    parser = argparse.ArgumentParser(description="PWMK ファームウェアをビルドする。")
+    parser = subparsers.add_parser("build", help="PWMK ファームウェアをビルドする。")
     parser.add_argument(
         "--build-dir",
         default="build/cli",
@@ -134,98 +96,53 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="ビルド依存関係の自動インストールをスキップする。",
     )
+    parser.set_defaults(handler=handle_build_command)
 
-    return parser.parse_args()
 
-
-def repo_root() -> Path:
+def cache_root() -> Path:
     """
-    リポジトリのルートディレクトリを返す。
+    外部依存物のキャッシュルートディレクトリを返す。
 
-    :return: リポジトリのルートディレクトリの Path オブジェクト
-    """
-
-    return Path(__file__).resolve().parents[1]
-
-
-def run(
-    command: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None
-) -> None:
-    """
-    指定されたコマンドを実行する。
-
-    :param command: 実行するコマンドのリスト
-    :param cwd: コマンドを実行するカレントディレクトリ
-    :param env: コマンド実行時の環境変数
-    :raises subprocess.CalledProcessError: コマンドの実行が失敗した場合
+    :return: キャッシュルートディレクトリ
     """
 
-    printable = " ".join(command)
-    print(f"+ {printable}")
-    subprocess.run(command, cwd=cwd, env=env, check=True)
+    return Path.home() / ".pwmk"
 
 
-def capture_output(
-    command: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None
-) -> str:
+def sanitized_tag(tag: str) -> str:
     """
-    指定されたコマンドを実行し、標準出力を文字列として返す。
+    キャッシュディレクトリ名に使えるようタグ文字列をサニタイズする。
 
-    :param command: 実行するコマンドのリスト
-    :param cwd: コマンドを実行するカレントディレクトリ
-    :param env: コマンド実行時の環境変数
-    :return: 標準出力
+    :param tag: サニタイズ対象のタグ文字列
+    :return: サニタイズ済み文字列
     """
 
-    printable = " ".join(command)
-    print(f"+ {printable}")
-    result = subprocess.run(
-        command,
-        cwd=cwd,
-        env=env,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout.strip()
-
-
-def completed_process(command: list[str]) -> subprocess.CompletedProcess[str]:
-    """
-    指定されたコマンドを実行し、CompletedProcess オブジェクトを返す。
-
-    :param command: 実行するコマンドのリスト
-    :return: subprocess.CompletedProcess オブジェクト
-    """
-
-    return subprocess.run(
-        command,
-        check=False,
-        capture_output=True,
-        text=True,
+    return "".join(
+        character if character.isalnum() or character in ("-", "_", ".") else "_"
+        for character in tag
     )
 
 
-def ensure_command(name: str) -> None:
+def sdk_cache_dir(sdk_tag: str) -> Path:
     """
-    指定されたコマンドが存在することを確認する。存在しない場合は SystemExit を発生させる。
+    pico-sdk を git から取得する際のキャッシュディレクトリを返す。
 
-    :param name: 確認するコマンドの名前
-    :raises SystemExit: コマンドが存在しない場合
-    """
-
-    if shutil.which(name) is None:
-        raise SystemExit(f"次の必要なコマンドが見つかりません: {name}")
-
-
-def ensure_directory(path: Path) -> None:
-    """
-    指定されたディレクトリが存在することを確認し、存在しなければ作成する。
-
-    :param path: 作成対象ディレクトリ
+    :param sdk_tag: SDK の git タグ
+    :return: SDK キャッシュディレクトリの Path オブジェクト
     """
 
-    path.mkdir(parents=True, exist_ok=True)
+    return cache_root() / f"pico-sdk-{sanitized_tag(sdk_tag)}"
+
+
+def picotool_cache_dir(picotool_tag: str) -> Path:
+    """
+    picotool を導入するキャッシュディレクトリを返す。
+
+    :param picotool_tag: picotool の git タグ
+    :return: picotool キャッシュディレクトリの Path オブジェクト
+    """
+
+    return cache_root() / f"picotool-{sanitized_tag(picotool_tag)}"
 
 
 def package_is_installed(package_name: str) -> bool:
@@ -327,6 +244,21 @@ def resolve_remote_ref(
     raise SystemExit(f"指定された git ref が見つかりません: {ref_name}")
 
 
+def current_git_head(repo_dir: Path, *, env: dict[str, str]) -> str:
+    """
+    現在 checkout されている revision 識別子を返す。
+
+    :param repo_dir: 対象リポジトリ
+    :param env: 実行環境変数
+    :return: commit hash またはローカルパス識別子
+    """
+
+    if not (repo_dir / ".git").exists():
+        return f"path:{repo_dir.resolve()}"
+
+    return capture_output(["git", "rev-parse", "HEAD"], cwd=repo_dir, env=env)
+
+
 def clone_or_update_repo(
     repository_url: str,
     destination: Path,
@@ -344,8 +276,7 @@ def clone_or_update_repo(
     :return: 利用可能なリポジトリディレクトリ
     """
 
-    parent = destination.parent
-    ensure_directory(parent)
+    ensure_directory(destination.parent)
 
     desired_revision = resolve_remote_ref(repository_url, ref_name, env=env)
     git_dir = destination / ".git"
@@ -373,7 +304,9 @@ def clone_or_update_repo(
         return destination
 
     run(
-        ["git", "remote", "set-url", "origin", repository_url], cwd=destination, env=env
+        ["git", "remote", "set-url", "origin", repository_url],
+        cwd=destination,
+        env=env,
     )
     if current_git_head(destination, env=env) != desired_revision:
         shutil.rmtree(destination)
@@ -498,21 +431,6 @@ def ensure_picotool_source_dir(
     )
 
 
-def current_git_head(repo_dir: Path, *, env: dict[str, str]) -> str:
-    """
-    現在 checkout されている revision 識別子を返す。
-
-    :param repo_dir: 対象リポジトリ
-    :param env: 実行環境変数
-    :return: commit hash またはローカルパス識別子
-    """
-
-    if not (repo_dir / ".git").exists():
-        return f"path:{repo_dir.resolve()}"
-
-    return capture_output(["git", "rev-parse", "HEAD"], cwd=repo_dir, env=env)
-
-
 def picotool_build_dir(picotool_tag: str) -> Path:
     """
     picotool のビルドディレクトリを返す。
@@ -567,13 +485,7 @@ def ensure_picotool(
     build_dir = picotool_build_dir(args.picotool_tag).resolve()
     stamp_path = picotool_stamp_path(args.picotool_tag).resolve()
 
-    run(
-        [
-            "cmake",
-            "--version",
-        ],
-        env=env,
-    )
+    run(["cmake", "--version"], env=env)
 
     sdk_dir = ensure_sdk_source_dir(args, env=env)
     picotool_src_dir = ensure_picotool_source_dir(args, env=env)
@@ -619,7 +531,7 @@ def ensure_picotool(
     return config_dir
 
 
-def build(args: argparse.Namespace) -> None:
+def run_build(args: argparse.Namespace) -> None:
     """
     ビルドを実行する。
 
@@ -673,20 +585,14 @@ def build(args: argparse.Namespace) -> None:
     )
 
 
-def main() -> int:
+def handle_build_command(args: argparse.Namespace) -> int:
     """
-    メイン関数。
+    build サブコマンドを実行する。
 
+    :param args: コマンドライン引数
     :return: 終了ステータスコード
     """
-    args = parse_args()
 
-    if platform.system() != "Linux":
-        raise SystemExit("このスクリプトはLinux 環境で実行してください。")
-
-    build(args)
+    ensure_linux()
+    run_build(args)
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

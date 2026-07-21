@@ -146,7 +146,8 @@ def shell_command() -> str:
 
     build_script_args = [
         "python3",
-        "tools/build.py",
+        "tools/pwmk.py",
+        "build",
         "--build-dir",
         BUILD_DIR,
         "--sdk-tag",
