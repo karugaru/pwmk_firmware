@@ -6,7 +6,6 @@ import shutil
 from pathlib import Path
 
 from pwmk_common import (
-    capture_output,
     completed_process,
     ensure_command,
     ensure_directory,
@@ -95,6 +94,13 @@ def add_build_subcommand(
         "--skip-deps",
         action="store_true",
         help="ビルド依存関係の自動インストールをスキップする。",
+    )
+    parser.add_argument(
+        "--delete-cached-repos",
+        action="store_true",
+        help=(
+            "自動取得した pico-sdk / picotool のキャッシュを削除してからビルドする。"
+        ),
     )
     parser.set_defaults(handler=handle_build_command)
 
@@ -203,63 +209,7 @@ def install_dependencies() -> None:
     )
 
 
-def resolve_remote_ref(
-    repository_url: str,
-    ref_name: str,
-    *,
-    env: dict[str, str],
-) -> str:
-    """
-    リモート上の ref が指す commit hash を返す。
-
-    :param repository_url: 対象リポジトリ URL
-    :param ref_name: 解決したい ref 名
-    :param env: 実行環境変数
-    :return: ref が指す commit hash
-    :raises SystemExit: ref が見つからない場合
-    """
-
-    output = capture_output(
-        ["git", "ls-remote", repository_url, ref_name, f"refs/tags/{ref_name}"],
-        env=env,
-    )
-    for line in output.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-
-        revision, _, resolved_ref = stripped.partition("\t")
-        if resolved_ref == f"refs/tags/{ref_name}^{{}}":
-            return revision
-        if resolved_ref in {
-            ref_name,
-            f"refs/heads/{ref_name}",
-            f"refs/tags/{ref_name}",
-        }:
-            fallback_revision = revision
-
-    if "fallback_revision" in locals():
-        return fallback_revision
-
-    raise SystemExit(f"指定された git ref が見つかりません: {ref_name}")
-
-
-def current_git_head(repo_dir: Path, *, env: dict[str, str]) -> str:
-    """
-    現在 checkout されている revision 識別子を返す。
-
-    :param repo_dir: 対象リポジトリ
-    :param env: 実行環境変数
-    :return: commit hash またはローカルパス識別子
-    """
-
-    if not (repo_dir / ".git").exists():
-        return f"path:{repo_dir.resolve()}"
-
-    return capture_output(["git", "rev-parse", "HEAD"], cwd=repo_dir, env=env)
-
-
-def clone_or_update_repo(
+def clone_repo_if_needed(
     repository_url: str,
     destination: Path,
     ref_name: str,
@@ -267,7 +217,7 @@ def clone_or_update_repo(
     env: dict[str, str],
 ) -> Path:
     """
-    リポジトリを clone または更新して指定 ref に揃える。
+    リポジトリが未取得の場合だけ clone する。
 
     :param repository_url: clone 元 URL
     :param destination: clone 先ディレクトリ
@@ -278,48 +228,25 @@ def clone_or_update_repo(
 
     ensure_directory(destination.parent)
 
-    desired_revision = resolve_remote_ref(repository_url, ref_name, env=env)
-    git_dir = destination / ".git"
-    if not git_dir.exists():
-        if destination.exists():
-            shutil.rmtree(destination)
-        run(
-            [
-                "git",
-                "clone",
-                "--branch",
-                ref_name,
-                "--depth",
-                "1",
-                repository_url,
-                str(destination),
-            ],
-            env=env,
-        )
-        run(
-            ["git", "submodule", "update", "--init", "--recursive"],
-            cwd=destination,
-            env=env,
-        )
+    if destination.exists():
+        if not (destination / ".git").exists():
+            raise SystemExit(
+                f"キャッシュディレクトリが git リポジトリではありません: {destination}"
+            )
         return destination
 
     run(
-        ["git", "remote", "set-url", "origin", repository_url],
-        cwd=destination,
-        env=env,
-    )
-    if current_git_head(destination, env=env) != desired_revision:
-        shutil.rmtree(destination)
-        return clone_or_update_repo(
-            repository_url,
-            destination,
+        [
+            "git",
+            "clone",
+            "--branch",
             ref_name,
-            env=env,
-        )
-
-    run(
-        ["git", "submodule", "update", "--init", "--recursive"],
-        cwd=destination,
+            "--depth",
+            "1",
+            "--recursive",
+            repository_url,
+            str(destination),
+        ],
         env=env,
     )
     return destination
@@ -393,7 +320,7 @@ def ensure_sdk_source_dir(args: argparse.Namespace, *, env: dict[str, str]) -> P
             raise SystemExit(f"指定された pico-sdk が見つかりません: {source_dir}")
         return source_dir
 
-    return clone_or_update_repo(
+    return clone_repo_if_needed(
         PICO_SDK_REPOSITORY_URL,
         source_dir,
         args.sdk_tag,
@@ -423,7 +350,7 @@ def ensure_picotool_source_dir(
         )
         return source_dir
 
-    return clone_or_update_repo(
+    return clone_repo_if_needed(
         PICOTOOL_REPOSITORY_URL,
         source_dir,
         args.picotool_tag,
@@ -453,17 +380,6 @@ def picotool_install_dir(picotool_tag: str) -> Path:
     return picotool_cache_dir(picotool_tag) / "install"
 
 
-def picotool_stamp_path(picotool_tag: str) -> Path:
-    """
-    picotool のビルド内容を表すスタンプファイルのパスを返す。
-
-    :param picotool_tag: picotool の git タグ
-    :return: スタンプファイルのパス
-    """
-
-    return picotool_cache_dir(picotool_tag) / "install" / ".build-stamp"
-
-
 def ensure_picotool(
     args: argparse.Namespace,
     *,
@@ -483,19 +399,14 @@ def ensure_picotool(
     config_dir = picotool_config_dir(args.picotool_tag).resolve()
     install_dir = picotool_install_dir(args.picotool_tag).resolve()
     build_dir = picotool_build_dir(args.picotool_tag).resolve()
-    stamp_path = picotool_stamp_path(args.picotool_tag).resolve()
 
     run(["cmake", "--version"], env=env)
 
     sdk_dir = ensure_sdk_source_dir(args, env=env)
     picotool_src_dir = ensure_picotool_source_dir(args, env=env)
-    source_head = current_git_head(picotool_src_dir, env=env)
-    sdk_head = current_git_head(sdk_dir, env=env)
-    stamp_value = f"picotool={source_head}\npico-sdk={sdk_head}\n"
 
-    if picotool_is_installed(args.picotool_tag) and stamp_path.exists():
-        if stamp_path.read_text(encoding="utf-8") == stamp_value:
-            return config_dir
+    if picotool_is_installed(args.picotool_tag):
+        return config_dir
 
     if build_dir.exists():
         shutil.rmtree(build_dir)
@@ -527,8 +438,25 @@ def ensure_picotool(
     if not picotool_is_installed(args.picotool_tag):
         raise SystemExit("picotool の導入に失敗しました。")
 
-    stamp_path.write_text(stamp_value, encoding="utf-8")
     return config_dir
+
+
+def delete_cached_repos(args: argparse.Namespace) -> None:
+    """
+    自動取得した SDK / picotool キャッシュを削除する。
+
+    :param args: コマンドライン引数
+    """
+
+    if args.sdk_path is None:
+        sdk_dir = sdk_cache_dir(args.sdk_tag)
+        if sdk_dir.exists():
+            shutil.rmtree(sdk_dir)
+
+    if args.picotool_path is None:
+        picotool_dir = picotool_cache_dir(args.picotool_tag)
+        if picotool_dir.exists():
+            shutil.rmtree(picotool_dir)
 
 
 def run_build(args: argparse.Namespace) -> None:
@@ -554,6 +482,9 @@ def run_build(args: argparse.Namespace) -> None:
     ensure_command("git")
 
     env = os.environ.copy()
+    if args.delete_cached_repos:
+        delete_cached_repos(args)
+
     sdk_dir = ensure_sdk_source_dir(args, env=env)
     picotool_dir = ensure_picotool(args, env=env)
 
