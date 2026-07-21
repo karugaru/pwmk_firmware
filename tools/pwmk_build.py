@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from pwmk_common import (
     completed_process,
@@ -27,6 +29,92 @@ APT_PACKAGES = [
     "libnewlib-arm-none-eabi",
     "libstdc++-arm-none-eabi-newlib",
     "ninja-build",
+]
+DNF_PACKAGES = [
+    "ca-certificates",
+    "cmake",
+    "gcc",
+    "gcc-c++",
+    "git",
+    "make",
+    "ninja-build",
+    "arm-none-eabi-gcc-cs",
+    "arm-none-eabi-gcc-cs-c++",
+    "arm-none-eabi-newlib",
+]
+PACMAN_PACKAGES = [
+    "base-devel",
+    "ca-certificates",
+    "cmake",
+    "git",
+    "ninja",
+    "arm-none-eabi-gcc",
+    "arm-none-eabi-newlib",
+]
+
+
+@dataclass(frozen=True)
+class PackageManager:
+    """
+    依存パッケージ導入に使うパッケージマネージャー定義。
+
+    :param name: 識別名
+    :param command: パッケージマネージャー実行コマンド
+    :param query_command: パッケージ導入済み確認コマンドを組み立てる関数
+    :param install_command: パッケージ導入コマンドを組み立てる関数
+    :param packages: 導入対象パッケージ一覧
+    :param update_command: 必要なら導入前に実行する更新コマンド
+    """
+
+    name: str
+    command: str
+    query_command: Callable[[str], list[str]]
+    install_command: Callable[[list[str]], list[str]]
+    packages: list[str]
+    update_command: list[str] | None = None
+
+
+PACKAGE_MANAGERS = [
+    PackageManager(
+        name="apt",
+        command="apt-get",
+        query_command=lambda package_name: [
+            "dpkg-query",
+            "-W",
+            "-f=${Status}",
+            package_name,
+        ],
+        install_command=lambda packages: [
+            "apt-get",
+            "install",
+            "-y",
+            "--no-install-recommends",
+            *packages,
+        ],
+        packages=APT_PACKAGES,
+        update_command=["apt-get", "update"],
+    ),
+    PackageManager(
+        name="dnf",
+        command="dnf",
+        query_command=lambda package_name: ["rpm", "-q", package_name],
+        install_command=lambda packages: ["dnf", "install", "-y", *packages],
+        packages=DNF_PACKAGES,
+    ),
+    PackageManager(
+        name="pacman",
+        command="pacman",
+        query_command=lambda package_name: ["pacman", "-Q", package_name],
+        install_command=lambda packages: [
+            "pacman",
+            "-S",
+            "--noconfirm",
+            "--needed",
+            *packages,
+        ],
+        packages=PACMAN_PACKAGES,
+        update_command=["pacman", "-Sy", "--noconfirm"],
+    ),
 ]
 
 
@@ -151,16 +239,59 @@ def picotool_cache_dir(picotool_tag: str) -> Path:
     return cache_root() / f"picotool-{sanitized_tag(picotool_tag)}"
 
 
-def package_is_installed(package_name: str) -> bool:
+def detected_package_manager() -> PackageManager:
+    """
+    利用可能なパッケージマネージャーを検出して返す。
+
+    :return: 利用可能なパッケージマネージャー定義
+    :raises SystemExit: 対応するパッケージマネージャーが見つからない場合
+    """
+
+    for package_manager in PACKAGE_MANAGERS:
+        if shutil.which(package_manager.command) is not None:
+            return package_manager
+
+    raise SystemExit(
+        "対応するパッケージマネージャーが見つかりません。apt-get、dnf、pacman のいずれかが必要です。"
+    )
+
+
+def package_is_installed(package_manager: PackageManager, package_name: str) -> bool:
     """
     指定されたパッケージがインストールされているかどうかを確認する。
 
+    :param package_manager: 利用するパッケージマネージャー定義
     :param package_name: 確認するパッケージの名前
     :return: パッケージがインストールされている場合は True、それ以外の場合は False
     """
 
-    result = completed_process(["dpkg-query", "-W", "-f=${Status}", package_name])
-    return result.returncode == 0 and "install ok installed" in result.stdout
+    result = completed_process(package_manager.query_command(package_name))
+    if package_manager.name == "apt":
+        return result.returncode == 0 and "install ok installed" in result.stdout
+
+    return result.returncode == 0
+
+
+def linux_os_release() -> dict[str, str]:
+    """
+    /etc/os-release の内容をキーと値の辞書として返す。
+
+    :return: os-release の内容
+    """
+
+    os_release_path = Path("/etc/os-release")
+    if not os_release_path.exists():
+        return {}
+
+    entries: dict[str, str] = {}
+    for line in os_release_path.read_text(encoding="utf-8").splitlines():
+        if not line or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        entries[key] = value.strip().strip('"').strip("'")
+
+    return entries
 
 
 def privileged_prefix() -> list[str]:
@@ -179,34 +310,48 @@ def privileged_prefix() -> list[str]:
     return ["sudo"]
 
 
+def prepare_dnf_repositories(prefix: list[str]) -> None:
+    """
+    AlmaLinux で必要な追加リポジトリを有効化する。
+
+    :param prefix: root 権限コマンドのプレフィックス
+    """
+
+    os_release = linux_os_release()
+    if os_release.get("ID") != "almalinux":
+        return
+
+    run(prefix + ["dnf", "install", "-y", "epel-release", "dnf-plugins-core"])
+    run(prefix + ["dnf", "config-manager", "--set-enabled", "crb"])
+
+
 def install_dependencies() -> None:
     """
     ビルドに必要な依存パッケージを導入する。すでに導入済みのパッケージはスキップされる。
     """
 
-    ensure_command("apt-get")
-    ensure_command("dpkg-query")
+    package_manager = detected_package_manager()
+    ensure_command(package_manager.command)
+    if package_manager.name == "apt":
+        ensure_command("dpkg-query")
+    elif package_manager.name == "dnf":
+        ensure_command("rpm")
+
+    prefix = privileged_prefix()
+    if package_manager.name == "dnf":
+        prepare_dnf_repositories(prefix)
 
     missing_packages = [
         package_name
-        for package_name in APT_PACKAGES
-        if not package_is_installed(package_name)
+        for package_name in package_manager.packages
+        if not package_is_installed(package_manager, package_name)
     ]
     if not missing_packages:
         return
 
-    prefix = privileged_prefix()
-    run(prefix + ["apt-get", "update"])
-    run(
-        prefix
-        + [
-            "apt-get",
-            "install",
-            "-y",
-            "--no-install-recommends",
-            *missing_packages,
-        ]
-    )
+    if package_manager.update_command is not None:
+        run(prefix + package_manager.update_command)
+    run(prefix + package_manager.install_command(missing_packages))
 
 
 def clone_repo_if_needed(

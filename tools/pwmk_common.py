@@ -40,7 +40,7 @@ def run(
     """
 
     printable = " ".join(command)
-    print(f"+ {printable}")
+    print(f"\n+ {printable}", flush=True)
     subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
@@ -57,7 +57,7 @@ def capture_output(
     """
 
     printable = " ".join(command)
-    print(f"+ {printable}")
+    print(f"\n+ {printable}", flush=True)
     result = subprocess.run(
         command,
         cwd=cwd,
