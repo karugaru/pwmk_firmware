@@ -7,10 +7,15 @@ import sys
 from pathlib import Path
 
 IMAGE = "ubuntu:24.04"
+APT_CACHER_NG_IMAGE = "sameersbn/apt-cacher-ng:latest"
 SDK_TAG = "2.3.0"
 BUILD_DIR = "/tmp/pwmk-build-test"
 BUILD_TYPE = "Release"
 TARGET = "pwmk"
+APT_CACHER_NG_CONTAINER = "pwmk-apt-cacher-ng"
+APT_CACHER_NG_NETWORK = "pwmk-build-test-network"
+APT_CACHER_NG_CACHE_VOLUME = "pwmk-apt-cacher-ng-cache"
+APT_PROXY_URL = f"http://{APT_CACHER_NG_CONTAINER}:3142"
 
 
 def repo_root() -> Path:
@@ -73,6 +78,64 @@ def docker_command_prefix() -> list[str]:
     )
 
 
+def ensure_network(docker: list[str], network_name: str) -> None:
+    """
+    指定された Docker ネットワークが存在することを確認し、存在しない場合は作成する。
+
+    :param docker: Docker コマンドのプレフィックス
+    :param network_name: 確認または作成するネットワーク名
+    """
+
+    if completed_process(docker + ["network", "inspect", network_name]).returncode == 0:
+        return
+
+    subprocess.run(docker + ["network", "create", network_name], check=True)
+
+
+def ensure_apt_cacher_ng(docker: list[str]) -> None:
+    """
+    apt-cacher-ng コンテナが利用可能であることを確認する。存在しない場合は作成し、停止中なら起動する。
+
+    :param docker: Docker コマンドのプレフィックス
+    """
+
+    ensure_network(docker, APT_CACHER_NG_NETWORK)
+
+    inspect = completed_process(
+        docker
+        + [
+            "container",
+            "inspect",
+            "-f",
+            "{{.State.Running}}",
+            APT_CACHER_NG_CONTAINER,
+        ]
+    )
+    if inspect.returncode == 0:
+        if inspect.stdout.strip() == "true":
+            return
+
+        subprocess.run(docker + ["start", APT_CACHER_NG_CONTAINER], check=True)
+        return
+
+    command = docker + [
+        "run",
+        "-d",
+        "--restart",
+        "unless-stopped",
+        "--name",
+        APT_CACHER_NG_CONTAINER,
+        "--network",
+        APT_CACHER_NG_NETWORK,
+        "-v",
+        f"{APT_CACHER_NG_CACHE_VOLUME}:/var/cache/apt-cacher-ng",
+        APT_CACHER_NG_IMAGE,
+    ]
+
+    print(f"+ {' '.join(command)}")
+    subprocess.run(command, check=True)
+
+
 def shell_command() -> str:
     """
     Docker コンテナ内で実行するシェルコマンドを返す。依存導入とビルドを行う。
@@ -96,6 +159,9 @@ def shell_command() -> str:
     build_command = " ".join(build_script_args)
 
     return (
+        "printf 'Acquire::http::Proxy \""
+        + APT_PROXY_URL
+        + "\";\\n' > /etc/apt/apt.conf.d/01proxy && "
         "apt-get update && "
         "apt-get install -y --no-install-recommends python3 && "
         f"{build_command}"
@@ -110,12 +176,16 @@ def run_build_test() -> None:
     """
 
     docker = docker_command_prefix()
+    ensure_apt_cacher_ng(docker)
+
     workspace = repo_root()
     mount_source = str(workspace.resolve())
 
     command = docker + [
         "run",
         "--rm",
+        "--network",
+        APT_CACHER_NG_NETWORK,
         "-v",
         f"{mount_source}:/workspace",
         "-w",
