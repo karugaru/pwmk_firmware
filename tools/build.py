@@ -22,6 +22,21 @@ APT_PACKAGES = [
 ]
 
 
+def sdk_cache_dir(sdk_tag: str) -> Path:
+    """
+    pico-sdk を git から取得する際のキャッシュディレクトリを返す。
+
+    :param sdk_tag: SDK の git タグ
+    :return: SDK キャッシュディレクトリの Path オブジェクト
+    """
+
+    sanitized_tag = "".join(
+        character if character.isalnum() or character in ("-", "_", ".") else "_"
+        for character in sdk_tag
+    )
+    return Path.home() / ".pwmk" / f"pico-sdk-{sanitized_tag}"
+
+
 def parse_args() -> argparse.Namespace:
     """
     引数を解析する。
@@ -231,7 +246,8 @@ def build(args: argparse.Namespace) -> None:
     if args.sdk_path:
         cmake_args.append(f"-DPICO_SDK_PATH={Path(args.sdk_path).resolve()}")
     else:
-        sdk_fetch_dir = build_dir / "pico-sdk"
+        sdk_fetch_dir = sdk_cache_dir(args.sdk_tag)
+        sdk_fetch_dir.parent.mkdir(parents=True, exist_ok=True)
         cmake_args.extend(
             [
                 "-DPICO_SDK_FETCH_FROM_GIT=ON",

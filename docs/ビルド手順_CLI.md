@@ -33,8 +33,7 @@ python3 tools/build.py --clean
 
 root でない通常ユーザーで依存導入も自動化する場合は、`sudo` が使える必要があります。すでに依存が入っている環境では、そのままビルドだけ実行されます。
 
-`pico-sdk` は既定で git から自動取得され、[build/cli](../build/cli) 配下に配置されます。
-
+`pico-sdk` は既定で git から自動取得され、`$HOME/.pwmk/pico-sdk-<sdk-tag>` 配下に配置されます。
 BLE と USB は既存の CMake オプションをそのまま利用できます。
 
 - USBとBLEの両方を有効にする: 既定値のまま実行します。
