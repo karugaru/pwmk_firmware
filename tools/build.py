@@ -160,13 +160,7 @@ def privileged_prefix() -> list[str]:
         return []
 
     ensure_command("sudo")
-    result = completed_process(["sudo", "-n", "true"])
-    if result.returncode != 0:
-        raise SystemExit(
-            "自動依存導入には、パスワードなし sudo または root 権限が必要です。sudo で再実行するか、必要なパッケージを手動で導入してください。"
-        )
-
-    return ["sudo", "-n"]
+    return ["sudo"]
 
 
 def install_dependencies() -> None:
