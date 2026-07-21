@@ -26,6 +26,10 @@
 #ifndef PWMK_TUSB_CONFIG_H
 #define PWMK_TUSB_CONFIG_H
 
+#ifndef PWMK_ENABLE_USB
+#define PWMK_ENABLE_USB 1
+#endif
+
 // デバイス側で使用するRHPort番号
 #ifndef BOARD_TUD_RHPORT
 #define BOARD_TUD_RHPORT 0
@@ -34,6 +38,10 @@
 // デバイス側で使用する最大USBスピードを指定
 #ifndef BOARD_TUD_MAX_SPEED
 #define BOARD_TUD_MAX_SPEED OPT_MODE_DEFAULT_SPEED
+#endif
+
+#ifndef CFG_TUSB_RHPORT0_MODE
+#define CFG_TUSB_RHPORT0_MODE (OPT_MODE_DEVICE | BOARD_TUD_MAX_SPEED)
 #endif
 
 // 共通設定
@@ -62,8 +70,16 @@
 #endif
 
 // クラス設定
+#if PWMK_ENABLE_USB
 #define CFG_TUD_HID 1
 #define CFG_TUD_CDC 0
+#else
+#define CFG_TUD_HID 0
+#define CFG_TUD_CDC 1
+#define CFG_TUD_CDC_EP_BUFSIZE 64
+#define CFG_TUD_CDC_RX_BUFSIZE 64
+#define CFG_TUD_CDC_TX_BUFSIZE 64
+#endif
 #define CFG_TUD_MSC 0
 #define CFG_TUD_MIDI 0
 #define CFG_TUD_VENDOR 0

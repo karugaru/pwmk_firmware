@@ -15,6 +15,9 @@
 
 #define USE_PINNACLE 1 // Pinnacleトラックパッドの使用有無
 
+// BLE接続スロットを再起動後も維持するかどうか
+#define BLE_PERSIST_SELECTED_SLOT 1
+
 #if USE_PINNACLE
 
 #include "../pinnacle/pinnacle.h"

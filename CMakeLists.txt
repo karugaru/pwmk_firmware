@@ -25,6 +25,9 @@ endif()
 # ====================================================================================
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
+option(PWMK_ENABLE_USB "Build USB HID transport" ON)
+option(PWMK_ENABLE_BLE "Build BLE transport" ON)
+
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
@@ -33,15 +36,46 @@ project(pwmk C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Override BTstack's default LE device DB implementation with our local one.
-get_target_property(PICO_BTSTACK_BLE_SOURCES pico_btstack_ble INTERFACE_SOURCES)
-if (PICO_BTSTACK_BLE_SOURCES)
-    list(REMOVE_ITEM PICO_BTSTACK_BLE_SOURCES "${PICO_BTSTACK_PATH}/src/ble/le_device_db_tlv.c")
-    set_property(TARGET pico_btstack_ble PROPERTY INTERFACE_SOURCES "${PICO_BTSTACK_BLE_SOURCES}")
+if (PWMK_ENABLE_USB)
+    set(PWMK_ENABLE_USB_VALUE 1)
+    set(PWMK_STDIO_USB_VALUE 0)
+else()
+    set(PWMK_ENABLE_USB_VALUE 0)
+    set(PWMK_STDIO_USB_VALUE 1)
+endif()
+
+if (PWMK_ENABLE_BLE)
+    set(PWMK_ENABLE_BLE_VALUE 1)
+
+    # Override BTstack's default LE device DB implementation with our local one.
+    get_target_property(PICO_BTSTACK_BLE_SOURCES pico_btstack_ble INTERFACE_SOURCES)
+    if (PICO_BTSTACK_BLE_SOURCES)
+        list(REMOVE_ITEM PICO_BTSTACK_BLE_SOURCES "${PICO_BTSTACK_PATH}/src/ble/le_device_db_tlv.c")
+        set_property(TARGET pico_btstack_ble PROPERTY INTERFACE_SOURCES "${PICO_BTSTACK_BLE_SOURCES}")
+    endif()
+else()
+    set(PWMK_ENABLE_BLE_VALUE 0)
 endif()
 
 # Add executable. Default name is the project name, version 0.1
-file(GLOB SRC_FILES CONFIGURE_DEPENDS *.c ble/*.c pinnacle/*.c keyboard/*.c led/*.c settings/*.c hid/*.c state/*.c peripheral/*.c usb/*.c)
+file(GLOB SRC_FILES CONFIGURE_DEPENDS *.c pinnacle/*.c keyboard/*.c led/*.c settings/*.c hid/*.c state/*.c peripheral/*.c)
+
+if (PWMK_ENABLE_BLE)
+    file(GLOB BLE_SRC_FILES CONFIGURE_DEPENDS ble/*.c)
+    list(REMOVE_ITEM BLE_SRC_FILES "${CMAKE_CURRENT_LIST_DIR}/ble/ble_stub.c")
+    list(APPEND SRC_FILES ${BLE_SRC_FILES})
+else()
+    list(APPEND SRC_FILES ble/ble_stub.c)
+endif()
+
+if (PWMK_ENABLE_USB)
+    file(GLOB USB_SRC_FILES CONFIGURE_DEPENDS usb/*.c)
+    list(REMOVE_ITEM USB_SRC_FILES "${CMAKE_CURRENT_LIST_DIR}/usb/usb_hid_stub.c")
+    list(APPEND SRC_FILES ${USB_SRC_FILES})
+else()
+    list(APPEND SRC_FILES usb/usb_hid_stub.c)
+endif()
+
 add_executable(pwmk ${SRC_FILES})
 
 pico_generate_pio_header(pwmk ${CMAKE_CURRENT_LIST_DIR}/led/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/led)
@@ -49,30 +83,45 @@ pico_generate_pio_header(pwmk ${CMAKE_CURRENT_LIST_DIR}/led/ws2812.pio OUTPUT_DI
 # pull in common dependencies
 target_link_libraries(pwmk
     pico_stdlib
-    pico_btstack_ble
-    pico_btstack_cyw43
-    pico_cyw43_arch_none
     hardware_i2c
+    hardware_pio
     hardware_rosc
     hardware_xosc
     hardware_watchdog
-    tinyusb_device
-    pico_unique_id
 )
 
-pico_enable_stdio_usb(pwmk 0)
+if (PWMK_ENABLE_BLE)
+    target_link_libraries(pwmk
+        pico_btstack_ble
+        pico_btstack_cyw43
+        pico_cyw43_arch_none
+    )
+endif()
+
+if (PWMK_ENABLE_USB)
+    target_link_libraries(pwmk
+        tinyusb_device
+        pico_unique_id
+    )
+endif()
+
+pico_enable_stdio_usb(pwmk ${PWMK_STDIO_USB_VALUE})
 pico_enable_stdio_uart(pwmk 1)
 
-# btstack
 target_include_directories(pwmk PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     )
-pico_btstack_make_gatt_header(pwmk PRIVATE "${CMAKE_CURRENT_LIST_DIR}/ble/pwmk.gatt")
+
+if (PWMK_ENABLE_BLE)
+    pico_btstack_make_gatt_header(pwmk PRIVATE "${CMAKE_CURRENT_LIST_DIR}/ble/pwmk.gatt")
+endif()
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(pwmk)
 
 target_compile_definitions(pwmk PRIVATE
+    PWMK_ENABLE_USB=${PWMK_ENABLE_USB_VALUE}
+    PWMK_ENABLE_BLE=${PWMK_ENABLE_BLE_VALUE}
     #WANT_HCI_DUMP=1 # This enables btstack debug
     DEBUG_MAIN=0
     DEBUG_BLE=0
