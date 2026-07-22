@@ -4,9 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 import platform
 import shutil
-import subprocess
 from typing import Annotated, TextIO
 
+from python_on_whales import DockerClient
+from python_on_whales.exceptions import DockerException
 import typer
 
 APT_CACHER_NG_IMAGE = "sameersbn/apt-cacher-ng:latest"
@@ -42,6 +43,17 @@ class BuildTestTarget:
     image: str
     bootstrap_command: str
     use_apt_proxy: bool = False
+
+
+@dataclass(frozen=True)
+class ResolvedDockerClient:
+    """
+    実行可能な DockerClient と、その起動コマンド列を保持する。
+
+    :param client: python-on-whales の DockerClient
+    """
+
+    client: DockerClient
 
 
 APT_DIRECT_BOOTSTRAP_COMMAND = (
@@ -138,7 +150,9 @@ def validate_targets(targets: list[str] | None) -> list[str] | None:
     if not targets:
         return targets
 
-    invalid_targets = [target for target in targets if target not in BUILD_TEST_TARGETS_BY_NAME]
+    invalid_targets = [
+        target for target in targets if target not in BUILD_TEST_TARGETS_BY_NAME
+    ]
     if invalid_targets:
         valid_targets = ", ".join(sorted(BUILD_TEST_TARGETS_BY_NAME))
         invalid = ", ".join(invalid_targets)
@@ -237,34 +251,6 @@ def summary_log_path() -> Path:
     return ensure_logs_directory() / "test_build_summary.log"
 
 
-def write_log_header(log_handle: TextIO, command: list[str]) -> None:
-    """
-    ログ先頭に実行コマンドを書き込む。
-
-    :param log_handle: 書き込み先ログハンドル
-    :param command: 実行コマンド
-    """
-
-    log_handle.write(f"$ {' '.join(command)}\n\n")
-    log_handle.flush()
-
-
-def completed_process(command: list[str]) -> subprocess.CompletedProcess[str]:
-    """
-    指定されたコマンドを実行し、CompletedProcess オブジェクトを返す。
-
-    :param command: 実行するコマンドのリスト
-    :return: subprocess.CompletedProcess オブジェクト
-    """
-
-    return subprocess.run(
-        command,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-
-
 def ensure_command(name: str) -> None:
     """
     指定されたコマンドが存在することを確認する。存在しない場合は SystemExit を発生させる。
@@ -277,29 +263,77 @@ def ensure_command(name: str) -> None:
         raise SystemExit(f"次の必要なコマンドが見つかりません: {name}")
 
 
-def docker_command_prefix() -> list[str]:
+def append_setup_error_log(context: str, error: DockerException) -> None:
     """
-    Docker コマンドのプレフィックスを返す。通常は ["docker"] だが、sudo が必要な場合は ["sudo", "-n", "docker"] となる。
+    Docker セットアップ処理の失敗内容だけをログへ追記する。
 
-    :return: Docker コマンドのリスト
+    :param context: どの処理で失敗したかを表す文字列
+    :param error: 送出された Docker 例外
+    """
+
+    with setup_log_path().open("a", encoding="utf-8") as log_handle:
+        log_handle.write(f"context: {context}\n")
+        log_docker_exception(log_handle, error)
+        log_handle.write("\n")
+
+
+def log_docker_exception(log_handle: TextIO, error: DockerException) -> None:
+    """
+    python-on-whales が返した Docker 実行エラー詳細をログへ書き込む。
+
+    :param log_handle: 書き込み先ログハンドル
+    :param error: 送出された Docker 例外
+    """
+
+    log_handle.write(f"docker command: {' '.join(error.docker_command)}\n")
+    log_handle.write(f"return code: {error.return_code}\n")
+    if error.stdout:
+        log_handle.write("\n[stdout]\n")
+        log_handle.write(error.stdout)
+        if not error.stdout.endswith("\n"):
+            log_handle.write("\n")
+    if error.stderr:
+        log_handle.write("\n[stderr]\n")
+        log_handle.write(error.stderr)
+        if not error.stderr.endswith("\n"):
+            log_handle.write("\n")
+    log_handle.flush()
+
+
+def docker_client() -> ResolvedDockerClient:
+    """
+    利用可能な Docker クライアントを返す。sudo が必要な環境では sudo 経由の client_call を使用する。
+
+    :return: 利用可能な DockerClient
     """
 
     ensure_command("docker")
-    direct = ["docker"]
-    if completed_process(direct + ["version"]).returncode == 0:
-        return direct
+    direct_call = ["docker"]
+    direct = DockerClient(client_call=direct_call, client_type="docker")
+    try:
+        direct.version()
+        return ResolvedDockerClient(client=direct)
+    except DockerException:
+        pass
 
     if shutil.which("sudo") is not None:
-        sudo_direct = ["sudo", "-n", "docker"]
-        if completed_process(sudo_direct + ["version"]).returncode == 0:
-            return sudo_direct
+        sudo_call = ["sudo", "-n", "docker"]
+        sudo_direct = DockerClient(
+            client_call=sudo_call,
+            client_type="docker",
+        )
+        try:
+            sudo_direct.version()
+            return ResolvedDockerClient(client=sudo_direct)
+        except DockerException:
+            pass
 
     raise SystemExit(
         "Docker にアクセスできません。Docker の権限または sudo の設定を確認してください。"
     )
 
 
-def ensure_network(docker: list[str], network_name: str) -> None:
+def ensure_network(docker: ResolvedDockerClient, network_name: str) -> None:
     """
     指定された Docker ネットワークが存在することを確認し、存在しない場合は作成する。
 
@@ -307,22 +341,17 @@ def ensure_network(docker: list[str], network_name: str) -> None:
     :param network_name: 確認または作成するネットワーク名
     """
 
-    if completed_process(docker + ["network", "inspect", network_name]).returncode == 0:
+    if docker.client.network.exists(network_name):
         return
 
-    with setup_log_path().open("a", encoding="utf-8") as log_handle:
-        command = docker + ["network", "create", network_name]
-        write_log_header(log_handle, command)
-        subprocess.run(
-            command,
-            check=True,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
+    try:
+        docker.client.network.create(network_name)
+    except DockerException as error:
+        append_setup_error_log(f"docker.network.create network={network_name}", error)
+        raise
 
 
-def ensure_apt_cacher_ng(docker: list[str]) -> None:
+def ensure_apt_cacher_ng(docker: ResolvedDockerClient) -> None:
     """
     apt-cacher-ng コンテナが利用可能であることを確認する。存在しない場合は作成し、停止中なら起動する。
 
@@ -331,55 +360,39 @@ def ensure_apt_cacher_ng(docker: list[str]) -> None:
 
     ensure_network(docker, APT_CACHER_NG_NETWORK)
 
-    inspect = completed_process(
-        docker
-        + [
-            "container",
-            "inspect",
-            "-f",
-            "{{.State.Running}}",
-            APT_CACHER_NG_CONTAINER,
-        ]
-    )
-    if inspect.returncode == 0:
-        if inspect.stdout.strip() == "true":
+    if docker.client.container.exists(APT_CACHER_NG_CONTAINER):
+        container = docker.client.container.inspect(APT_CACHER_NG_CONTAINER)
+        if container.state.running:
             return
 
-        with setup_log_path().open("a", encoding="utf-8") as log_handle:
-            command = docker + ["start", APT_CACHER_NG_CONTAINER]
-            write_log_header(log_handle, command)
-            subprocess.run(
-                command,
-                check=True,
-                stdout=log_handle,
-                stderr=subprocess.STDOUT,
-                text=True,
+        try:
+            docker.client.start(container)
+        except DockerException as error:
+            append_setup_error_log(
+                f"docker.container.start container={APT_CACHER_NG_CONTAINER}",
+                error,
             )
+            raise
         return
 
-    command = docker + [
-        "run",
-        "-d",
-        "--restart",
-        "unless-stopped",
-        "--name",
-        APT_CACHER_NG_CONTAINER,
-        "--network",
-        APT_CACHER_NG_NETWORK,
-        "-v",
-        f"{APT_CACHER_NG_CACHE_VOLUME}:/var/cache/apt-cacher-ng",
-        APT_CACHER_NG_IMAGE,
-    ]
-
-    with setup_log_path().open("a", encoding="utf-8") as log_handle:
-        write_log_header(log_handle, command)
-        subprocess.run(
-            command,
-            check=True,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            text=True,
+    try:
+        container = docker.client.create(
+            APT_CACHER_NG_IMAGE,
+            name=APT_CACHER_NG_CONTAINER,
+            restart="unless-stopped",
+            volumes=[(APT_CACHER_NG_CACHE_VOLUME, "/var/cache/apt-cacher-ng")],
         )
+        docker.client.network.connect(APT_CACHER_NG_NETWORK, container)
+        docker.client.start(container)
+    except DockerException as error:
+        append_setup_error_log(
+            (
+                "docker.container.create "
+                f"container={APT_CACHER_NG_CONTAINER} image={APT_CACHER_NG_IMAGE}"
+            ),
+            error,
+        )
+        raise
 
 
 def shell_command(target: BuildTestTarget) -> str:
@@ -416,7 +429,7 @@ def shell_command(target: BuildTestTarget) -> str:
     return f"{target.bootstrap_command} && {sync_command} && {build_command}"
 
 
-def run_build_test_target(docker: list[str], target: BuildTestTarget) -> int:
+def run_build_test_target(docker: ResolvedDockerClient, target: BuildTestTarget) -> int:
     """
     単一ディストリビューション向けに Docker コンテナ内でビルドテストを実行する。
 
@@ -428,49 +441,40 @@ def run_build_test_target(docker: list[str], target: BuildTestTarget) -> int:
     workspace = repo_root()
     mount_source = str(workspace.resolve())
 
-    command = docker + [
-        "run",
-        "--rm",
-        "-v",
-        f"{mount_source}:/workspace",
-        "-v",
-        f"{pwmk_cache_volume(target)}:/root/.pwmk",
-        "-w",
-        "/workspace",
-    ]
-
-    if target.use_apt_proxy:
-        command.extend(
-            [
-                "--network",
-                APT_CACHER_NG_NETWORK,
-            ]
-        )
-
-    command.extend(
-        [
-            target.image,
-            "bash",
-            "-lc",
-            shell_command(target),
-        ]
-    )
-
     log_path = target_log_path(target)
     print(f"[{target.name}] 実行中... ログ: {log_path}")
+    container = None
     with log_path.open("w", encoding="utf-8") as log_handle:
-        write_log_header(log_handle, command)
-        result = subprocess.run(
-            command,
-            check=False,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        log_handle.write(f"\nexit code: {result.returncode}\n")
+        try:
+            container = docker.client.create(
+                target.image,
+                ["bash", "-lc", shell_command(target)],
+                volumes=[
+                    (mount_source, "/workspace"),
+                    (pwmk_cache_volume(target), "/root/.pwmk"),
+                ],
+                workdir="/workspace",
+            )
+            if target.use_apt_proxy:
+                docker.client.network.connect(APT_CACHER_NG_NETWORK, container)
+            docker.client.start(container)
+            for _, content in docker.client.logs(container, follow=True, stream=True):
+                if isinstance(content, bytes):
+                    log_handle.write(content.decode("utf-8", errors="replace"))
+                else:
+                    log_handle.write(str(content))
+            exit_code = docker.client.wait(container)
+        except DockerException as error:
+            log_docker_exception(log_handle, error)
+            exit_code = error.return_code or 1
+        finally:
+            if container is not None and docker.client.container.exists(container):
+                docker.client.remove(container, force=True)
 
-    print(f"[{target.name}] 完了 exit code={result.returncode}")
-    return result.returncode
+        log_handle.write(f"\nexit code: {exit_code}\n")
+
+    print(f"[{target.name}] 完了 exit code={exit_code}")
+    return exit_code
 
 
 def run_build_tests(targets: list[BuildTestTarget], no_proxy: bool) -> int:
@@ -482,7 +486,7 @@ def run_build_tests(targets: list[BuildTestTarget], no_proxy: bool) -> int:
     :return: すべて成功した場合は 0、それ以外は 1
     """
 
-    docker = docker_command_prefix()
+    docker = docker_client()
     ensure_logs_directory()
     if any(target.use_apt_proxy for target in targets) and not no_proxy:
         ensure_apt_cacher_ng(docker)
