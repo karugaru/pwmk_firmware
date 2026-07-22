@@ -39,37 +39,40 @@ class BuildTestTarget:
     use_apt_proxy: bool = False
 
 
-APT_BOOTSTRAP_COMMAND = (
+APT_DIRECT_BOOTSTRAP_COMMAND = (
+    "apt-get update && " "apt-get install -y --no-install-recommends python3"
+)
+
+APT_PROXY_BOOTSTRAP_COMMAND = (
     "printf 'Acquire::http::Proxy \""
     + APT_PROXY_URL
     + "\";\\n' > /etc/apt/apt.conf.d/01proxy && "
-    "apt-get update && "
-    "apt-get install -y --no-install-recommends python3"
+    + APT_DIRECT_BOOTSTRAP_COMMAND
 )
 
 BUILD_TEST_TARGETS = [
     BuildTestTarget(
         name="ubuntu_24_04",
         image="ubuntu:24.04",
-        bootstrap_command=APT_BOOTSTRAP_COMMAND,
+        bootstrap_command=APT_PROXY_BOOTSTRAP_COMMAND,
         use_apt_proxy=True,
     ),
     BuildTestTarget(
         name="ubuntu_26_04",
         image="ubuntu:26.04",
-        bootstrap_command=APT_BOOTSTRAP_COMMAND,
+        bootstrap_command=APT_PROXY_BOOTSTRAP_COMMAND,
         use_apt_proxy=True,
     ),
     BuildTestTarget(
         name="debian_11_11",
         image="debian:11.11",
-        bootstrap_command=APT_BOOTSTRAP_COMMAND,
+        bootstrap_command=APT_PROXY_BOOTSTRAP_COMMAND,
         use_apt_proxy=True,
     ),
     BuildTestTarget(
         name="debian_12_15",
         image="debian:12.15",
-        bootstrap_command=APT_BOOTSTRAP_COMMAND,
+        bootstrap_command=APT_PROXY_BOOTSTRAP_COMMAND,
         use_apt_proxy=True,
     ),
     BuildTestTarget(
@@ -117,6 +120,11 @@ def parse_args() -> argparse.Namespace:
         nargs="*",
         choices=sorted(BUILD_TEST_TARGETS_BY_NAME),
         help="テスト対象ディストリビューション名。省略時は全件実行する。",
+    )
+    parser.add_argument(
+        "--no-proxy",
+        action="store_true",
+        help="APT プロキシを使用せずにブートストラップを実行する。",
     )
     return parser.parse_args()
 
@@ -438,22 +446,30 @@ def run_build_test_target(docker: list[str], target: BuildTestTarget) -> int:
     return result.returncode
 
 
-def run_build_tests(targets: list[BuildTestTarget]) -> int:
+def run_build_tests(targets: list[BuildTestTarget], no_proxy: bool) -> int:
     """
     指定された対象ディストリビューションで Docker ビルドテストを実行し、結果を集計する。
 
     :param targets: 実行対象ディストリビューション一覧
+    :param no_proxy: APT プロキシを使用せずにブートストラップを実行するかどうか
     :return: すべて成功した場合は 0、それ以外は 1
     """
 
     docker = docker_command_prefix()
     ensure_logs_directory()
-    if any(target.use_apt_proxy for target in targets):
+    if any(target.use_apt_proxy for target in targets) and not no_proxy:
         ensure_apt_cacher_ng(docker)
 
     failed_targets: list[str] = []
     summary_lines: list[str] = []
     for target in targets:
+        if target.use_apt_proxy and no_proxy:
+            target = BuildTestTarget(
+                name=target.name,
+                image=target.image,
+                bootstrap_command=APT_DIRECT_BOOTSTRAP_COMMAND,
+                use_apt_proxy=False,
+            )
         exit_code = run_build_test_target(docker, target)
         summary_lines.append(f"{target.name}: exit code {exit_code}")
         if exit_code != 0:
@@ -485,7 +501,7 @@ def main() -> int:
     if platform.system() != "Linux":
         raise SystemExit("このスクリプトはLinux 環境で実行してください。")
 
-    return run_build_tests(selected_targets(args))
+    return run_build_tests(selected_targets(args), args.no_proxy)
 
 
 if __name__ == "__main__":
