@@ -1,0 +1,9 @@
+[project]
+name = "pwmk-firmware-tools"
+version = "0.1.0"
+description = "Build and test helper scripts for pwmk_firmware"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+package = false

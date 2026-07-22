@@ -3,3 +3,4 @@ build/
 TODO.md
 tmp/
 __pycache__/
+.venv/

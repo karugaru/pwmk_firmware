@@ -20,6 +20,11 @@ APT_CACHER_NG_CACHE_VOLUME = "pwmk-apt-cacher-ng-cache"
 PWMK_CACHE_VOLUME_PREFIX = "pwmk-pico-sdk-cache"
 APT_PROXY_URL = f"http://{APT_CACHER_NG_CONTAINER}:3142"
 LOG_DIR = "tools/log"
+CONTAINER_PROJECT_ENVIRONMENT = "/tmp/pwmk-build-test-venv"
+UV_INSTALL_COMMAND = (
+    "curl -LsSf https://astral.sh/uv/install.sh | "
+    'env UV_UNMANAGED_INSTALL="/usr/local/bin" sh'
+)
 
 
 @dataclass(frozen=True)
@@ -29,7 +34,7 @@ class BuildTestTarget:
 
     :param name: 表示用の対象名
     :param image: 利用する Docker イメージ
-    :param bootstrap_command: コンテナ内で python3 を用意するための初期化コマンド
+    :param bootstrap_command: コンテナ内で uv を用意するための初期化コマンド
     :param use_apt_proxy: apt-cacher-ng を利用するかどうか
     """
 
@@ -40,7 +45,9 @@ class BuildTestTarget:
 
 
 APT_DIRECT_BOOTSTRAP_COMMAND = (
-    "apt-get update && " "apt-get install -y --no-install-recommends python3"
+    "apt-get update && "
+    "apt-get install -y --no-install-recommends ca-certificates curl && "
+    f"{UV_INSTALL_COMMAND}"
 )
 
 APT_PROXY_BOOTSTRAP_COMMAND = (
@@ -78,27 +85,37 @@ BUILD_TEST_TARGETS = [
     BuildTestTarget(
         name="alma_9_8",
         image="almalinux:9.8",
-        bootstrap_command="dnf install -y python3",
+        bootstrap_command=(
+            "dnf install -y ca-certificates curl-minimal && " f"{UV_INSTALL_COMMAND}"
+        ),
     ),
     BuildTestTarget(
         name="alma_10_2",
         image="almalinux:10.2",
-        bootstrap_command="dnf install -y python3",
+        bootstrap_command=(
+            "dnf install -y ca-certificates curl && " f"{UV_INSTALL_COMMAND}"
+        ),
     ),
     BuildTestTarget(
         name="fedora_43",
         image="fedora:43",
-        bootstrap_command="dnf install -y python3",
+        bootstrap_command=(
+            "dnf install -y ca-certificates curl && " f"{UV_INSTALL_COMMAND}"
+        ),
     ),
     BuildTestTarget(
         name="fedora_44",
         image="fedora:44",
-        bootstrap_command="dnf install -y python3",
+        bootstrap_command=(
+            "dnf install -y ca-certificates curl && " f"{UV_INSTALL_COMMAND}"
+        ),
     ),
     BuildTestTarget(
         name="arch_latest",
         image="archlinux:latest",
-        bootstrap_command="pacman -Sy --noconfirm python",
+        bootstrap_command=(
+            "pacman -Sy --noconfirm ca-certificates curl && " f"{UV_INSTALL_COMMAND}"
+        ),
     ),
 ]
 
@@ -364,14 +381,20 @@ def ensure_apt_cacher_ng(docker: list[str]) -> None:
 
 def shell_command(target: BuildTestTarget) -> str:
     """
-    Docker コンテナ内で実行するシェルコマンドを返す。依存導入とビルドを行う。
+    Docker コンテナ内で実行するシェルコマンドを返す。uv 導入後に依存同期とビルドを行う。
 
     :param target: ビルドテスト対象のディストリビューション定義
     :return: 実行するシェルコマンドの文字列
     """
 
+    project_environment_prefix = (
+        f'env UV_PROJECT_ENVIRONMENT="{CONTAINER_PROJECT_ENVIRONMENT}"'
+    )
+
     build_script_args = [
-        "python3",
+        project_environment_prefix,
+        "uv",
+        "run",
         "tools/pwmk.py",
         "build",
         "--build-dir",
@@ -386,7 +409,8 @@ def shell_command(target: BuildTestTarget) -> str:
     ]
     build_command = " ".join(build_script_args)
 
-    return f"{target.bootstrap_command} && {build_command}"
+    sync_command = f"{project_environment_prefix} uv sync --frozen"
+    return f"{target.bootstrap_command} && {sync_command} && {build_command}"
 
 
 def run_build_test_target(docker: list[str], target: BuildTestTarget) -> int:
