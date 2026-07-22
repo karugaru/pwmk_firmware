@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import argparse
 import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 
 from pwmk_common import (
     completed_process,
@@ -50,6 +49,39 @@ PACMAN_PACKAGES = [
     "arm-none-eabi-gcc",
     "arm-none-eabi-newlib",
 ]
+
+
+@dataclass(frozen=True)
+class BuildCommandArgs:
+    """
+    build サブコマンドの入力値を保持する。
+
+    :param build_dir: ビルド成果物の出力ディレクトリ
+    :param sdk_tag: pico-sdk を取得する git タグ
+    :param sdk_path: 既存 pico-sdk のパス
+    :param picotool_tag: picotool を取得する git タグ
+    :param picotool_path: 既存 picotool のパス
+    :param enable_usb: PWMK_ENABLE_USB の設定値
+    :param enable_ble: PWMK_ENABLE_BLE の設定値
+    :param build_type: CMAKE_BUILD_TYPE の設定値
+    :param target: cmake --build に渡すターゲット
+    :param clean: ビルド前に出力ディレクトリを削除するかどうか
+    :param skip_deps: 依存関係の自動インストールをスキップするかどうか
+    :param delete_cached_repos: 依存キャッシュを削除してからビルドするかどうか
+    """
+
+    build_dir: str = "build/cli"
+    sdk_tag: str = DEFAULT_SDK_TAG
+    sdk_path: Path | None = None
+    picotool_tag: str = DEFAULT_PICOTOOL_TAG
+    picotool_path: Path | None = None
+    enable_usb: Literal["ON", "OFF"] = "ON"
+    enable_ble: Literal["ON", "OFF"] = "ON"
+    build_type: str = "Release"
+    target: str = "pwmk"
+    clean: bool = False
+    skip_deps: bool = False
+    delete_cached_repos: bool = False
 
 
 @dataclass(frozen=True)
@@ -365,7 +397,7 @@ def picotool_is_installed(picotool_tag: str) -> bool:
     ).exists()
 
 
-def sdk_source_dir(args: argparse.Namespace) -> Path:
+def sdk_source_dir(args: BuildCommandArgs) -> Path:
     """
     picotool ビルド時に参照する pico-sdk のソースディレクトリを返す。
 
@@ -374,12 +406,12 @@ def sdk_source_dir(args: argparse.Namespace) -> Path:
     """
 
     if args.sdk_path:
-        return Path(args.sdk_path).resolve()
+        return args.sdk_path.resolve()
 
     return sdk_cache_dir(args.sdk_tag) / "src"
 
 
-def picotool_source_dir(args: argparse.Namespace) -> Path:
+def picotool_source_dir(args: BuildCommandArgs) -> Path:
     """
     picotool ソースディレクトリを返す。
 
@@ -388,12 +420,12 @@ def picotool_source_dir(args: argparse.Namespace) -> Path:
     """
 
     if args.picotool_path:
-        return Path(args.picotool_path).resolve()
+        return args.picotool_path.resolve()
 
     return picotool_cache_dir(args.picotool_tag) / "src"
 
 
-def ensure_sdk_source_dir(args: argparse.Namespace, *, env: dict[str, str]) -> Path:
+def ensure_sdk_source_dir(args: BuildCommandArgs, *, env: dict[str, str]) -> Path:
     """
     pico-sdk ソースを確保する。
 
@@ -417,7 +449,7 @@ def ensure_sdk_source_dir(args: argparse.Namespace, *, env: dict[str, str]) -> P
 
 
 def ensure_picotool_source_dir(
-    args: argparse.Namespace, *, env: dict[str, str]
+    args: BuildCommandArgs, *, env: dict[str, str]
 ) -> Path:
     """
     picotool ソースを確保する。
@@ -469,7 +501,7 @@ def picotool_install_dir(picotool_tag: str) -> Path:
 
 
 def ensure_picotool(
-    args: argparse.Namespace,
+    args: BuildCommandArgs,
     *,
     env: dict[str, str],
 ) -> Path:
@@ -529,7 +561,7 @@ def ensure_picotool(
     return config_dir
 
 
-def delete_cached_repos(args: argparse.Namespace) -> None:
+def delete_cached_repos(args: BuildCommandArgs) -> None:
     """
     自動取得した SDK / picotool キャッシュを削除する。
 
@@ -547,7 +579,7 @@ def delete_cached_repos(args: argparse.Namespace) -> None:
             shutil.rmtree(picotool_dir)
 
 
-def prepare_build_environment(args: argparse.Namespace) -> BuildPreparation:
+def prepare_build_environment(args: BuildCommandArgs) -> BuildPreparation:
     """
     ビルド前準備を実行し、ビルド本体に必要なパスと環境変数を返す。
 

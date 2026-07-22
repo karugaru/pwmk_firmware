@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import argparse
 from dataclasses import dataclass
+from pathlib import Path
 import platform
 import shutil
 import subprocess
-import sys
-from typing import TextIO
-from pathlib import Path
+from typing import Annotated, TextIO
+
+import typer
 
 APT_CACHER_NG_IMAGE = "sameersbn/apt-cacher-ng:latest"
 SDK_TAG = "2.3.0"
@@ -121,43 +121,46 @@ BUILD_TEST_TARGETS = [
 
 BUILD_TEST_TARGETS_BY_NAME = {target.name: target for target in BUILD_TEST_TARGETS}
 
+app = typer.Typer(
+    help="Docker 上で指定ディストリビューションのビルドテストを実行する。",
+    add_completion=False,
+)
 
-def parse_args() -> argparse.Namespace:
+
+def validate_targets(targets: list[str] | None) -> list[str] | None:
     """
-    コマンドライン引数を解析する。
+    指定された対象名がサポート対象かどうかを検証する。
 
-    :return: 解析済み引数
+    :param targets: 検証対象の名前一覧
+    :return: 検証済みの名前一覧
     """
 
-    parser = argparse.ArgumentParser(
-        description="Docker 上で指定ディストリビューションのビルドテストを実行する。"
-    )
-    parser.add_argument(
-        "targets",
-        nargs="*",
-        choices=sorted(BUILD_TEST_TARGETS_BY_NAME),
-        help="テスト対象ディストリビューション名。省略時は全件実行する。",
-    )
-    parser.add_argument(
-        "--no-proxy",
-        action="store_true",
-        help="APT プロキシを使用せずにブートストラップを実行する。",
-    )
-    return parser.parse_args()
+    if not targets:
+        return targets
+
+    invalid_targets = [target for target in targets if target not in BUILD_TEST_TARGETS_BY_NAME]
+    if invalid_targets:
+        valid_targets = ", ".join(sorted(BUILD_TEST_TARGETS_BY_NAME))
+        invalid = ", ".join(invalid_targets)
+        raise typer.BadParameter(
+            f"未対応の対象です: {invalid}. 指定可能: {valid_targets}"
+        )
+
+    return targets
 
 
-def selected_targets(args: argparse.Namespace) -> list[BuildTestTarget]:
+def selected_targets(target_names: list[str] | None) -> list[BuildTestTarget]:
     """
     コマンドライン引数に応じたテスト対象一覧を返す。
 
-    :param args: 解析済み引数
+    :param target_names: 対象ディストリビューション名一覧
     :return: 実行対象ディストリビューション一覧
     """
 
-    if not args.targets:
+    if not target_names:
         return BUILD_TEST_TARGETS
 
-    return [BUILD_TEST_TARGETS_BY_NAME[target_name] for target_name in args.targets]
+    return [BUILD_TEST_TARGETS_BY_NAME[target_name] for target_name in target_names]
 
 
 def repo_root() -> Path:
@@ -513,20 +516,32 @@ def run_build_tests(targets: list[BuildTestTarget], no_proxy: bool) -> int:
     return 1
 
 
-def main() -> int:
+@app.command()
+def run_command(
+    targets: Annotated[
+        list[str] | None,
+        typer.Argument(
+            help="テスト対象ディストリビューション名。省略時は全件実行する。",
+            callback=validate_targets,
+        ),
+    ] = None,
+    use_proxy: Annotated[
+        bool,
+        typer.Option(
+            "--use-proxy/--no-proxy",
+            help="APT プロキシを使用してブートストラップを実行する。",
+        ),
+    ] = True,
+) -> int:
     """
-    メイン関数。
-
-    :return: 0
-    :raises SystemExit: Linux 環境でない場合
+    ビルドテスト CLI コマンド。
     """
 
-    args = parse_args()
     if platform.system() != "Linux":
         raise SystemExit("このスクリプトはLinux 環境で実行してください。")
 
-    return run_build_tests(selected_targets(args), args.no_proxy)
+    return run_build_tests(selected_targets(targets), not use_proxy)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    app(prog_name="test_build")
