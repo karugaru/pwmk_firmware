@@ -61,8 +61,6 @@ class BuildCommandArgs:
     :param sdk_path: 既存 pico-sdk のパス
     :param picotool_tag: picotool を取得する git タグ
     :param picotool_path: 既存 picotool のパス
-    :param enable_usb: PWMK_ENABLE_USB の設定値
-    :param enable_ble: PWMK_ENABLE_BLE の設定値
     :param build_type: CMAKE_BUILD_TYPE の設定値
     :param target: cmake --build に渡すターゲット
     :param clean: ビルド前に出力ディレクトリを削除するかどうか
@@ -75,8 +73,6 @@ class BuildCommandArgs:
     sdk_path: Path | None = None
     picotool_tag: str = DEFAULT_PICOTOOL_TAG
     picotool_path: Path | None = None
-    enable_usb: Literal["ON", "OFF"] = "ON"
-    enable_ble: Literal["ON", "OFF"] = "ON"
     build_type: str = "Release"
     target: str = "pwmk"
     clean: bool = False

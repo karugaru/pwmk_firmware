@@ -15,6 +15,7 @@ void event_accumulate_mouse(uint8_t device_id, mouse_button_code_t buttons,
                             int8_t x, int8_t y, int8_t w);
 
 void event_process_standard(icode_t icode, bool pressed);
+bool event_process_user_callback(icode_t *icode, bool pressed);
 void event_process_periodic(void);
 bool event_has_event(void);
 

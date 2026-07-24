@@ -14,7 +14,6 @@
 #include "settings/board.h"
 #include "settings/keymap.h"
 #include "settings/settings.h"
-#include "settings/users.h"
 #include "state/state.h"
 #include "usb/usb_hid.h"
 

@@ -15,6 +15,7 @@ SDK_TAG = "2.3.0"
 BUILD_DIR = "/tmp/pwmk-build-test"
 BUILD_TYPE = "Release"
 TARGET = "pwmk"
+PROFILE = "remopicon_v1"
 APT_CACHER_NG_CONTAINER = "pwmk-apt-cacher-ng"
 APT_CACHER_NG_NETWORK = "pwmk-build-test-network"
 APT_CACHER_NG_CACHE_VOLUME = "pwmk-apt-cacher-ng-cache"
@@ -413,6 +414,8 @@ def shell_command(target: BuildTestTarget) -> str:
         "run",
         "tools/pwmk.py",
         "build",
+        "--profile",
+        PROFILE,
         "--build-dir",
         BUILD_DIR,
         "--sdk-tag",
@@ -421,7 +424,6 @@ def shell_command(target: BuildTestTarget) -> str:
         BUILD_TYPE,
         "--target",
         TARGET,
-        "--clean",
     ]
     build_command = " ".join(build_script_args)
 

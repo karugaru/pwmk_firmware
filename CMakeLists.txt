@@ -6,6 +6,19 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+execute_process(
+    COMMAND uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    COMMAND_ECHO STDOUT
+    RESULT_VARIABLE PWMK_GENERATE_RESULT
+)
+
+if (NOT PWMK_GENERATE_RESULT EQUAL 0)
+    message(FATAL_ERROR "pwmk generate failed with exit code ${PWMK_GENERATE_RESULT}")
+endif()
+
+include(${CMAKE_BINARY_DIR}/generated/profile/profile.cmake)
+
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
@@ -23,8 +36,6 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-
-set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 option(PWMK_ENABLE_USB "Build USB HID transport" ON)
 option(PWMK_ENABLE_BLE "Build BLE transport" ON)
@@ -66,10 +77,16 @@ file(GLOB SRC_FILES CONFIGURE_DEPENDS
     ${PWMK_SOURCE_DIR}/pinnacle/*.c
     ${PWMK_SOURCE_DIR}/keyboard/*.c
     ${PWMK_SOURCE_DIR}/led/*.c
-    ${PWMK_SOURCE_DIR}/settings/*.c
     ${PWMK_SOURCE_DIR}/hid/*.c
     ${PWMK_SOURCE_DIR}/state/*.c
     ${PWMK_SOURCE_DIR}/peripheral/*.c
+)
+
+file(GLOB SETTINGS_SRCS CONFIGURE_DEPENDS "${PWMK_PROFILE_SETTINGS_DIR}/*.c")
+
+list(APPEND SRC_FILES
+    ${SETTINGS_SRCS}
+    ${PWMK_PROFILE_USERS_C}
 )
 
 if (PWMK_ENABLE_BLE)
@@ -123,6 +140,7 @@ pico_enable_stdio_uart(pwmk 1)
 target_include_directories(pwmk PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${PWMK_SOURCE_DIR}
+    ${PWMK_PROFILE_GENERATED_SRC_DIR}
     )
 
 if (PWMK_ENABLE_BLE)

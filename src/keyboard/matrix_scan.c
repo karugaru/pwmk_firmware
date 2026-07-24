@@ -5,7 +5,6 @@
 #include "settings/board.h"
 #include "settings/keymap.h"
 #include "settings/settings.h"
-#include "settings/users.h"
 
 #ifndef DEBUG_MATRIX_SCAN
 #define DEBUG_MATRIX_SCAN 0
@@ -117,7 +116,7 @@ void matrix_process(void) {
 #endif
 
         // ユーザー定義イベントコールバックを呼び出し
-        bool process_subsequent = users_event_callback(&icode, pressed);
+        bool process_subsequent = event_process_user_callback(&icode, pressed);
         // 標準のイベント処理を呼び出し
         if (process_subsequent) {
           event_process_standard(icode, pressed);

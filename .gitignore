@@ -4,3 +4,4 @@ TODO.md
 tmp/
 __pycache__/
 .venv*/
+users/.current_profile

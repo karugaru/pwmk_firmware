@@ -23,8 +23,10 @@
 ## ビルド手順
 
 - VS Code拡張を使用する方法と、CLIでビルドする方法の2種類があります。
+- どちらの方法でも、ビルド前に `uv run tools/pwmk.py profile <profile>` でプロファイルを選択します。
 - 手順一覧については [ビルド手順.md](docs/ビルド手順.md) を参照してください。
 - VS Code版は [ビルド手順_VSCode.md](docs/ビルド手順_VSCode.md)、CLI版は [ビルド手順_CLI.md](docs/ビルド手順_CLI.md) に分かれています。
+- プロファイルについての詳細は [内部処理_プロファイルシステム.md](docs/内部処理_プロファイルシステム.md) を参照してください。
 
 ## ビルドテスト
 
@@ -34,8 +36,9 @@
 ## 使い方
 
 - まだ開発中のため、ドキュメントは不完全です。詳しい使用方法はソースコードを直接参照してください。
-- 物理ボードに対する設定は[settings/board.h](settings/board.h)で行います。
-- キーマップの定義は、[settings/keymap.h](settings/keymap.h)で行います。使用できるキーコードは[keyboard/code.h](keyboard/code.h)に定義されています。
-- マウスキーやトラックパッドなどの設定は[settings/settings.h](settings/settings.h)で行います。
-- その他固有の設定は[main.c](main.c)を参照してください。
-- デフォルトの設定（及び実装）では、キーマトリクスとトラックパッド(cirque pinnable)とフルカラーLED（WS2812B）を使用する前提となっています。
+- 設定は `users/<profile>/profile.yaml` と `users/<profile>/users.c` で管理します。
+- ボード設定、キーマップ、USB/BLE の有効化、マウスキーやトラックパッドの設定は `users/<profile>/profile.yaml` で行います。
+- ユーザ定義のイベント処理は `users/<profile>/users.c` で行います。
+- 使用できるキーコードは [src/keyboard/code.h](src/keyboard/code.h) に定義されています。
+- 現行の標準プロファイルは `users/remopicon_v1` です。
+- `remopicon_v1`では、キーマトリクス、トラックパッド Cirque Pinnacle、フルカラー LED WS2812B を使用する前提です。
