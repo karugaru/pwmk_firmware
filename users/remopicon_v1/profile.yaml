@@ -11,54 +11,34 @@ board:
   gpio_dr_pin: 6
   gpio_led_pin: 16
   pin_settle_time_us: 1
+  # prettier-ignore
   layout:
-    - [0, 0]
-    - [0, 1]
-    - [0, 2]
-    - [0, 3]
-    - [0, 4]
-    - [1, 0]
-    - [1, 1]
-    - [1, 2]
-    - [1, 3]
-    - [1, 4]
-    - [2, 0]
-    - [2, 1]
-    - [2, 2]
-    - [2, 3]
-    - [2, 4]
-    - [3, 0]
-    - [3, 1]
-    - [3, 2]
-    - [3, 3]
-    - [3, 4]
-    - [4, 0]
+    [
+      [0, 0], [0, 1], [0, 2],
+      [0, 3], [0, 4], [1, 0],
+      [1, 1], [1, 2], [1, 3],
+      [1, 4], [2, 0], [2, 1],
+
+      [2, 2], [2, 3], [2, 4],
+      [3, 0], [3, 1], [3, 2],
+      [3, 3], [3, 4], [4, 0],
+    ]
 
 keymap:
   user_keycodes:
     IUC_BLACKSCREEN: LEFT_ALT(LEFT_CTRL(IKC_F10))
+  # prettier-ignore
   keymap:
-    - ISC_BOOT
-    - IKC_SPACE
-    - IUC_BLACKSCREEN
-    - IMKC_LEFT_CONTROL
-    - IMKC_LEFT_SHIFT
-    - IMKC_LEFT_ALT
-    - IKC_NOOP
-    - IKC_NOOP
-    - IMKC_LEFT_GUI
-    - IMC_MOUSE_LEFT
-    - IMC_MOUSE_MIDDLE
-    - IMC_MOUSE_RIGHT
-    - ICC_REWIND
-    - IKC_UP_ARROW
-    - ICC_FAST_FORWARD
-    - IKC_LEFT_ARROW
-    - ICC_PLAY_PAUSE
-    - IKC_RIGHT_ARROW
-    - ICC_PREV_TRACK
-    - IKC_DOWN_ARROW
-    - ICC_NEXT_TRACK
+    [
+      "ISC_BOOT",          "IKC_SPACE",        "IUC_BLACKSCREEN",
+      "IMKC_LEFT_CONTROL", "IMKC_LEFT_SHIFT",  "IMKC_LEFT_ALT",
+      "IKC_NOOP",          "IKC_NOOP",         "IMKC_LEFT_GUI",
+      "IMC_MOUSE_LEFT",    "IMC_MOUSE_MIDDLE", "IMC_MOUSE_RIGHT",
+
+      "ICC_REWIND",        "IKC_UP_ARROW",     "ICC_FAST_FORWARD",
+      "IKC_LEFT_ARROW",    "ICC_PLAY_PAUSE",   "IKC_RIGHT_ARROW",
+      "ICC_PREV_TRACK",    "IKC_DOWN_ARROW",   "ICC_NEXT_TRACK",
+    ]
 
 settings:
   deep_sleep_timeout_seconds: 300
