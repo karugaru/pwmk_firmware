@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware-build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache uv and PWMK assets
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.pwmk
+          key: ${{ runner.os }}-pwmk-${{ hashFiles('pyproject.toml', 'tools/*.py', 'CMakeLists.txt', 'src/**', 'users/**') }}
+          restore-keys: |
+            ${{ runner.os }}-pwmk-
+
+      - name: Sync Python environment
+        run: uv sync --frozen
+
+      - name: Build firmware
+        run: uv run tools/pwmk.py build --profile remopicon_v1 --clean
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwmk-remopicon_v1-ubuntu-24.04
+          path: |
+            build/cli/*.uf2
+            build/cli/*.elf
+            build/cli/*.bin
+            build/cli/*.hex
+          if-no-files-found: error
