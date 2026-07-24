@@ -35,11 +35,27 @@
 
 コードレビューを行う際は以下のルールに従ってください。
 
-## レビュー対象
+### レビュー対象
 
 特に言及がない限り、ステージングされたすべての変更がレビュー対象となります。
 レビューはコードの品質、可読性、保守性を向上させることを目的としています。
 
-## レビューのポイント
+### レビューのポイント
 
 修正された内容が全て正しいとは限らないため、注意してレビューを行ってください。
+
+## テストのルール
+
+テストを行う場合は、以下のテストを実施するようにしてください。
+
+### VS Code (Windows)
+
+`uv run tools/pwmk.py profile remopicon_v1` の後に VS Code タスクの`Compile Project`でビルド
+
+### CLI (WSL2)
+
+WSL2 上で `uv run tools/pwmk.py profile remopicon_v1` の後に `uv run tools/pwmk.py build`でビルド
+
+### CLI (Docker on WSL2)
+
+WSL2 上で `uv run tools/test_build.py ubuntu_26_04`でビルドテストを実行

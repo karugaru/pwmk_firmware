@@ -1,0 +1,30 @@
+#ifndef PWMK_SETTINGS_H
+#define PWMK_SETTINGS_H
+
+#define DEEP_SLEEP_TIMEOUT_US ((int64_t){{ settings.deep_sleep_timeout_seconds }} * 1000 * 1000)
+
+#define LED_BRIGHTNESS {{ settings.led_brightness }}
+
+#define DEBOUNCE_TIME_MS {{ settings.debounce_time_ms }}
+
+#define MOUSE_MOVE_DELTA {{ settings.mouse_move_delta }}
+#define MOUSE_MOVE_THRESH {{ settings.mouse_move_thresh }}
+#define MOUSE_WHEEL_DELTA {{ settings.mouse_wheel_delta }}
+#define MOUSE_WHEEL_THRESH {{ settings.mouse_wheel_thresh }}
+
+#define USE_PINNACLE {{ settings.use_pinnacle | c_bool }}
+#define BLE_PERSIST_SELECTED_SLOT {{ settings.ble_persist_selected_slot | c_bool }}
+
+#if USE_PINNACLE
+
+#include "pinnacle/pinnacle.h"
+
+#define PINNACLE_ROTATE {{ settings.pinnacle.rotate }}
+#define PINNACLE_ACCEL {{ settings.pinnacle.accel | c_float }}
+#define PINNACLE_SPEED {{ settings.pinnacle.speed | c_float }}
+
+#endif
+
+void settings_init(void);
+
+#endif

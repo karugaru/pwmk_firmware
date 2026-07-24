@@ -1,0 +1,16 @@
+#ifndef PWMK_KEYMAP_H
+#define PWMK_KEYMAP_H
+
+#include "keyboard/code.h"
+#include "settings/board.h"
+
+void keyswitch_index_init(void);
+icode_t icode_lookup(uint8_t row, uint8_t col);
+
+{% for name, value in keymap.user_keycodes.items() %}
+#define {{ name }} {{ value }}
+{% endfor %}
+
+#define KEYMAP { {% for key in keymap.keymap %}{{ key }}{% if not loop.last %}, {% endif %}{% endfor %} }
+
+#endif

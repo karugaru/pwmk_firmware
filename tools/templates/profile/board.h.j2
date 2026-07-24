@@ -1,0 +1,26 @@
+#ifndef PWMK_BOARD_H
+#define PWMK_BOARD_H
+
+#include <pico/stdlib.h>
+
+#define ROWS {{ board.rows }}
+#define COLS {{ board.cols }}
+
+#define ROWS_PINS { {% for pin in board.rows_pins %}{{ pin }}{% if not loop.last %}, {% endif %}{% endfor %} }
+#define COLS_PINS { {% for pin in board.cols_pins %}{{ pin }}{% if not loop.last %}, {% endif %}{% endfor %} }
+
+#define GPIO_SDA_PIN {{ board.gpio_sda_pin }}
+#define GPIO_SCL_PIN {{ board.gpio_scl_pin }}
+#define GPIO_DR_PIN {{ board.gpio_dr_pin }}
+
+#define GPIO_LED_PIN {{ board.gpio_led_pin }}
+
+#define PIN_SETTLE_TIME_US {{ board.pin_settle_time_us }}
+
+#define LAYOUT { {% for row, col in layout %}{ {{ row }}, {{ col }} }{% if not loop.last %}, {% endif %}{% endfor %} }
+
+extern const uint8_t rows_pins[ROWS];
+extern const uint8_t cols_pins[COLS];
+extern const uint8_t layout[ROWS * COLS][2];
+
+#endif

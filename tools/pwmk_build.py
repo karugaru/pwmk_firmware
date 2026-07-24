@@ -1,91 +1,108 @@
 from __future__ import annotations
 
-import argparse
+from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from pwmk_build_prep import (
+    BuildCommandArgs,
     DEFAULT_PICOTOOL_TAG,
     DEFAULT_SDK_TAG,
     prepare_build_environment,
 )
 from pwmk_common import ensure_linux, run
+from pwmk_profile import require_active_profile_name, select_profile
 
 
-def add_build_subcommand(
-    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
+def register_build_command(app: typer.Typer) -> None:
     """
     build サブコマンドを登録する。
 
-    :param subparsers: サブコマンド登録先
+    :param app: サブコマンド登録先
     """
 
-    parser = subparsers.add_parser("build", help="PWMK ファームウェアをビルドする。")
-    parser.add_argument(
-        "--build-dir",
-        default="build/cli",
-        help="ビルド成果物の出力ディレクトリ。",
-    )
-    parser.add_argument(
-        "--sdk-tag",
-        default=DEFAULT_SDK_TAG,
-        help="pico-sdk を git から取得する際に使用するタグ。",
-    )
-    parser.add_argument(
-        "--sdk-path",
-        help="pico-sdk のパス。指定しない場合は自動的に git から取得する。",
-    )
-    parser.add_argument(
-        "--picotool-tag",
-        default=DEFAULT_PICOTOOL_TAG,
-        help="picotool を git から取得する際に使用するタグ。",
-    )
-    parser.add_argument(
-        "--picotool-path",
-        help="picotool のパス。指定しない場合は自動的に git から取得する。",
-    )
-    parser.add_argument(
-        "--enable-usb",
-        choices=("ON", "OFF"),
-        default="ON",
-        help="PWMK_ENABLE_USB に設定する値。",
-    )
-    parser.add_argument(
-        "--enable-ble",
-        choices=("ON", "OFF"),
-        default="ON",
-        help="PWMK_ENABLE_BLE に設定する値。",
-    )
-    parser.add_argument(
-        "--build-type",
-        default="Release",
-        help="CMAKE_BUILD_TYPE に設定する値。",
-    )
-    parser.add_argument(
-        "--target",
-        default="pwmk",
-        help="cmake --build に渡すビルドターゲット。",
-    )
-    parser.add_argument(
-        "--clean",
-        action="store_true",
-        help="ビルド前にビルドディレクトリを削除する。",
-    )
-    parser.add_argument(
-        "--skip-deps",
-        action="store_true",
-        help="ビルド依存関係の自動インストールをスキップする。",
-    )
-    parser.add_argument(
-        "--delete-cached-repos",
-        action="store_true",
-        help=(
-            "自動取得した pico-sdk / picotool のキャッシュを削除してからビルドする。"
-        ),
-    )
-    parser.set_defaults(handler=handle_build_command)
+    @app.command("build", help="PWMK ファームウェアをビルドする。")
+    def build_command(
+        build_dir: Annotated[
+            str,
+            typer.Option(help="ビルド成果物の出力ディレクトリ。"),
+        ] = "build/cli",
+        profile: Annotated[
+            str | None,
+            typer.Option(
+                "--profile",
+                "-p",
+                help="プロファイル名。指定時はプロファイル切替も行う。",
+            ),
+        ] = None,
+        sdk_tag: Annotated[
+            str,
+            typer.Option(help="pico-sdk を git から取得する際に使用するタグ。"),
+        ] = DEFAULT_SDK_TAG,
+        sdk_path: Annotated[
+            Path | None,
+            typer.Option(
+                help="pico-sdk のパス。指定しない場合は自動的に git から取得する。"
+            ),
+        ] = None,
+        picotool_tag: Annotated[
+            str,
+            typer.Option(help="picotool を git から取得する際に使用するタグ。"),
+        ] = DEFAULT_PICOTOOL_TAG,
+        picotool_path: Annotated[
+            Path | None,
+            typer.Option(
+                help="picotool のパス。指定しない場合は自動的に git から取得する。"
+            ),
+        ] = None,
+        build_type: Annotated[
+            str,
+            typer.Option(help="CMAKE_BUILD_TYPE に設定する値。"),
+        ] = "Release",
+        target: Annotated[
+            str,
+            typer.Option(help="cmake --build に渡すビルドターゲット。"),
+        ] = "pwmk",
+        clean: Annotated[
+            bool,
+            typer.Option(
+                "--clean/--no-clean", help="ビルド前にビルドディレクトリを削除する。"
+            ),
+        ] = False,
+        skip_deps: Annotated[
+            bool,
+            typer.Option(
+                "--skip-deps/--install-deps",
+                help="ビルド依存関係の自動インストールをスキップする。",
+            ),
+        ] = False,
+        delete_cached_repos: Annotated[
+            bool,
+            typer.Option(
+                "--delete-cached-repos/--keep-cached-repos",
+                help="自動取得した pico-sdk / picotool のキャッシュを削除してからビルドする。",
+            ),
+        ] = False,
+    ) -> int:
+        return handle_build_command(
+            BuildCommandArgs(
+                build_dir=build_dir,
+                sdk_tag=sdk_tag,
+                sdk_path=sdk_path,
+                picotool_tag=picotool_tag,
+                picotool_path=picotool_path,
+                build_type=build_type,
+                target=target,
+                clean=clean,
+                skip_deps=skip_deps,
+                delete_cached_repos=delete_cached_repos,
+            ),
+            profile_name=profile,
+        )
 
 
-def run_build(args: argparse.Namespace) -> None:
+def run_build(args: BuildCommandArgs) -> None:
     """
     ビルドを実行する。
 
@@ -103,8 +120,6 @@ def run_build(args: argparse.Namespace) -> None:
         "-G",
         "Ninja",
         f"-DCMAKE_BUILD_TYPE={args.build_type}",
-        f"-DPWMK_ENABLE_USB={args.enable_usb}",
-        f"-DPWMK_ENABLE_BLE={args.enable_ble}",
         f"-DPICO_SDK_PATH={preparation.sdk_dir}",
         f"-DPICOTOOL_FETCH_FROM_GIT_PATH={preparation.picotool_dir.parent}",
         f"-Dpicotool_DIR={preparation.picotool_dir}",
@@ -118,7 +133,9 @@ def run_build(args: argparse.Namespace) -> None:
     )
 
 
-def handle_build_command(args: argparse.Namespace) -> int:
+def handle_build_command(
+    args: BuildCommandArgs, profile_name: str | None = None
+) -> int:
     """
     build サブコマンドを実行する。
 
@@ -126,6 +143,10 @@ def handle_build_command(args: argparse.Namespace) -> int:
     :return: 終了ステータスコード
     """
 
+    if profile_name is not None:
+        select_profile(profile_name)
+
+    require_active_profile_name()
     ensure_linux()
     run_build(args)
     return 0

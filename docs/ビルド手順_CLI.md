@@ -7,15 +7,9 @@
 ## 1. 前提環境
 
 このスクリプトは Linux で動作します。
-依存導入の自動化は次のパッケージマネージャーに対応しています。
+テスト済みの環境は[ビルド手順](ビルド手順.md#cli)に記載されています。
 
-- APT 系
-- RPM 系 (`dnf`)
-- pacman 系
-
-テスト済みの環境は[tools/test_build.py](../tools/test_build.py#L50)の `BUILD_TEST_TARGETS` に記載されています。
-
-`python3` は事前に必要です。その他のビルド依存は、ビルドスクリプトが利用可能なパッケージマネージャーを自動判定して導入します。
+`uv` は事前に必要です。Python 本体と追加ライブラリは `uv` が管理し、その他のビルド依存はビルドスクリプトが利用可能なパッケージマネージャーを自動判定して導入します。
 
 ビルド依存パッケージは以下のとおりです。
 
@@ -25,35 +19,44 @@
 - `git`
 - `libnewlib-arm-none-eabi`
 - `libstdc++-arm-none-eabi-newlib`
-- `python3`
+- `uv`
 
 ## 2. ビルドの実行
 
 リポジトリルートで次のコマンドを実行します。
 
 ```bash
-python3 tools/pwmk.py build --clean
+uv sync
+uv run tools/pwmk.py profile remopicon_v1
+uv run tools/pwmk.py build
 ```
 
 root でない通常ユーザーで依存導入も自動化する場合は、`sudo` が使える必要があります。すでに依存が入っている環境では、そのままビルドだけ実行されます。
 
 `pico-sdk` は既定で git から自動取得され、`$HOME/.pwmk/pico-sdk-<sdk-tag>` 配下に配置されます。
-BLE と USB は既存の CMake オプションをそのまま利用できます。
+`picotool` も既定で自動取得され、`$HOME/.pwmk/picotool-<tag>` 配下に配置されます。
 
-- USBとBLEの両方を有効にする: 既定値のまま実行します。
-- USBのみ有効にする: `python3 tools/pwmk.py build --enable-ble OFF`
-- BLEのみ有効にする: `python3 tools/pwmk.py build --enable-usb OFF`
+ビルド設定はプロファイルで管理します。ボード種別や USB/BLE の有効化を変更したい場合は、`users/<profile>/profile.yaml` を編集してください。
+
+未選択状態で `uv run tools/pwmk.py build` を実行するとエラーになります。
 
 既存の SDK を使いたい場合は `--sdk-path /path/to/pico-sdk` を指定します。
 
 自動依存導入を行わず、既存環境だけでビルドしたい場合は `--skip-deps` を指定します。
+
+プロファイル選択とビルドを 1 回で行う場合は、以下を実行します。
+
+```bash
+uv run tools/pwmk.py build --profile remopicon_v1
+```
 
 成果物は [build/cli](../build/cli) に出力されます。
 
 ## 3. 実行例
 
 ```bash
-apt-get update
-apt-get install -y --no-install-recommends python3
-python3 tools/pwmk.py build --clean
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync
+uv run tools/pwmk.py profile remopicon_v1
+uv run tools/pwmk.py build
 ```
