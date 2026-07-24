@@ -21,6 +21,7 @@
     "terminal.integrated.env.windows": {
         "PICO_SDK_PATH": "${env:USERPROFILE}/.pico-sdk/sdk/2.3.0",
         "PICO_TOOLCHAIN_PATH": "${env:USERPROFILE}/.pico-sdk/toolchain/15_2_Rel1",
+        "UV_PROJECT_ENVIRONMENT": ".venv_win",
         "Path": "${env:USERPROFILE}/.pico-sdk/toolchain/15_2_Rel1/bin;${env:USERPROFILE}/.pico-sdk/picotool/2.3.0/picotool;${env:USERPROFILE}/.pico-sdk/cmake/v3.31.5/bin;${env:USERPROFILE}/.pico-sdk/ninja/v1.12.1;${env:PATH}"
     },
     "terminal.integrated.env.osx": {

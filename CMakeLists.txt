@@ -6,8 +6,19 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(WIN32)
+    set(PWMK_GENERATE_COMMAND
+        ${CMAKE_COMMAND} -E env UV_PROJECT_ENVIRONMENT=.venv_win
+        uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
+    )
+else()
+    set(PWMK_GENERATE_COMMAND
+        uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
+    )
+endif()
+
 execute_process(
-    COMMAND uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
+    COMMAND ${PWMK_GENERATE_COMMAND}
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     COMMAND_ECHO STDOUT
     RESULT_VARIABLE PWMK_GENERATE_RESULT
