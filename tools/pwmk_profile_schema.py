@@ -33,7 +33,8 @@ class BoardProfile(BaseModel):
         description="マトリクス走査時にピン状態が安定するまで待つ時間。単位はマイクロ秒。",
     )
     layout: list[tuple[int, int]] = Field(
-        description="物理配列とマトリクス座標の対応。未使用位置は [-1, -1] を指定する。",
+        description="物理配列とマトリクス座標の対応。未使用位置は [-1, -1] を指定する。"
+        " 例として、[[1,1],[3,3]]の場合、keymap[0]が行1列1のスイッチ、keymap[1]が行3列3のスイッチに対応する。",
     )
 
     @property
