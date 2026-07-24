@@ -118,7 +118,7 @@ endif()
 
 add_executable(pwmk ${SRC_FILES})
 
-pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWMK_SOURCE_DIR}/led)
+pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWMK_PROFILE_GENERATED_SRC_DIR}/led)
 
 # pull in common dependencies
 target_link_libraries(pwmk
