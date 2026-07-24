@@ -1,8 +1,8 @@
 #ifndef PWMK_EVENT_H
 #define PWMK_EVENT_H
 
-#include "code.h"
-#include <../hid/hid.h>
+#include "hid/hid.h"
+#include "keyboard/code.h"
 
 void event_init(void);
 int8_t event_request_pointing_device_id(void);

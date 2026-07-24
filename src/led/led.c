@@ -1,6 +1,7 @@
-#include "led.h"
-#include "hardware/pio.h"
-#include "ws2812.pio.h"
+#include <hardware/pio.h>
+
+#include "led/led.h"
+#include "led/ws2812.pio.h"
 
 static uint8_t brightness = 255;
 static PIO pio = NULL;

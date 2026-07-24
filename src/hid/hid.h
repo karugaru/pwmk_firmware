@@ -1,8 +1,9 @@
 #ifndef PWMK_HID_H
 #define PWMK_HID_H
 
-#include "../keyboard/code.h"
 #include <pico/stdlib.h>
+
+#include "keyboard/code.h"
 
 #define KEYBOARD_REPORT_ID 0x01
 #define MOUSE_REPORT_ID 0x02

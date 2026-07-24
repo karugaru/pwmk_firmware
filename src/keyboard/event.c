@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../ble/ble.h"
-#include "../hid/hid.h"
-#include "../settings/keymap.h"
-#include "../settings/settings.h"
-#include "../state/state.h"
-#include "event.h"
+#include "ble/ble.h"
+#include "hid/hid.h"
+#include "keyboard/event.h"
+#include "settings/keymap.h"
+#include "settings/settings.h"
+#include "state/state.h"
 
 #ifndef DEBUG_EVENT
 #define DEBUG_EVENT 0

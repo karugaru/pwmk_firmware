@@ -1,4 +1,4 @@
-#include "code.h"
+#include "keyboard/code.h"
 
 /**
  * @brief 内部キーコードからキーボード修飾子コードに変換

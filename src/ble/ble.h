@@ -1,9 +1,10 @@
 #ifndef PWMK_BLE_H
 #define PWMK_BLE_H
 
-#include "../hid/hid.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "hid/hid.h"
 
 void ble_setup(void);
 void ble_power_set(bool power);

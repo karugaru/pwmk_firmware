@@ -12,11 +12,11 @@
 #include <pico/cyw43_arch.h>
 #endif
 
-#include "../ble/ble.h"
-#include "../led/led.h"
-#include "../settings/board.h"
-#include "../usb/usb_hid.h"
-#include "sleep.h"
+#include "ble/ble.h"
+#include "led/led.h"
+#include "settings/board.h"
+#include "state/sleep.h"
+#include "usb/usb_hid.h"
 
 #ifndef DEBUG_MAIN
 #define DEBUG_MAIN 0

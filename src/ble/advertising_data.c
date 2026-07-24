@@ -1,5 +1,6 @@
-#include "advertising_data.h"
-#include "btstack.h"
+#include <btstack.h>
+
+#include "ble/advertising_data.h"
 
 const uint8_t adv_data[] = {
     // Flags general discoverable, BR/EDR not supported

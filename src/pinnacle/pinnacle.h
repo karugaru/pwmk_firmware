@@ -1,7 +1,7 @@
 #ifndef PWMK_PINNACLE_H
 #define PWMK_PINNACLE_H
 
-#include "hardware/i2c.h"
+#include <hardware/i2c.h>
 #include <pico/stdlib.h>
 
 // I2Cの通信速度

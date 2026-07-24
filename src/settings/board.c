@@ -1,4 +1,4 @@
-#include "board.h"
+#include "settings/board.h"
 
 const uint8_t rows_pins[ROWS] = ROWS_PINS;
 const uint8_t cols_pins[COLS] = COLS_PINS;

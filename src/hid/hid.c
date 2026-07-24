@@ -1,6 +1,6 @@
-#include "hid.h"
-#include "../keyboard/code.h"
-#include "../settings/settings.h"
+#include "hid/hid.h"
+#include "keyboard/code.h"
+#include "settings/settings.h"
 
 // clang-format off
 const uint8_t hid_descriptor[] = {

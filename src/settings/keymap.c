@@ -1,6 +1,7 @@
-#include "keymap.h"
-#include "board.h"
 #include <stdio.h>
+
+#include "settings/board.h"
+#include "settings/keymap.h"
 
 static const icode_t keymap[ROWS * COLS] = KEYMAP;
 static size_t keyswitch_index_lookup[ROWS][COLS];

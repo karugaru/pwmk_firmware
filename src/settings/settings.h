@@ -20,7 +20,7 @@
 
 #if USE_PINNACLE
 
-#include "../pinnacle/pinnacle.h"
+#include "pinnacle/pinnacle.h"
 
 // Pinnacleの回転設定。
 #define PINNACLE_ROTATE PINNACLE_ROTATE_270

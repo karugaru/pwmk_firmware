@@ -1,11 +1,11 @@
-#include "matrix_scan.h"
-#include "../settings/board.h"
-#include "../settings/keymap.h"
-#include "../settings/settings.h"
-#include "../settings/users.h"
-
-#include "event.h"
 #include <stdio.h>
+
+#include "keyboard/event.h"
+#include "keyboard/matrix_scan.h"
+#include "settings/board.h"
+#include "settings/keymap.h"
+#include "settings/settings.h"
+#include "settings/users.h"
 
 #ifndef DEBUG_MATRIX_SCAN
 #define DEBUG_MATRIX_SCAN 0

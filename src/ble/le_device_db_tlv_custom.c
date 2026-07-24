@@ -1,15 +1,14 @@
-#include "le_device_db_tlv_custom.h"
-#include "../settings/settings.h"
-#include "ble/core.h"
-#include "ble/le_device_db.h"
-#include "ble/le_device_db_tlv.h"
-#include "btstack_debug.h"
-#include "gap.h"
-#include "le_device_db_tlv_custom.h"
-
+#include <btstack_debug.h>
+#include <gap.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
+#include "ble/core.h"
+#include "ble/le_device_db.h"
+#include "ble/le_device_db_tlv.h"
+#include "ble/le_device_db_tlv_custom.h"
+#include "settings/settings.h"
 
 #ifndef BD_ADDR_COPY
 #define BD_ADDR_COPY(dest, src) memcpy((dest), (src), sizeof(bd_addr_t))

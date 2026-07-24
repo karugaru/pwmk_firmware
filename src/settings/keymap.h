@@ -1,8 +1,8 @@
 #ifndef PWMK_KEYMAP_H
 #define PWMK_KEYMAP_H
 
-#include "../keyboard/code.h"
-#include "board.h"
+#include "keyboard/code.h"
+#include "settings/board.h"
 
 //--------------------------------
 // 関数宣言

@@ -23,6 +23,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
+
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 option(PWMK_ENABLE_USB "Build USB HID transport" ON)

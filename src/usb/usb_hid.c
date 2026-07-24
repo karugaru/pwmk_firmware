@@ -1,11 +1,11 @@
 #include <string.h>
 #include <tusb.h>
 
-#include "../hid/hid.h"
-#include "../keyboard/event.h"
-#include "../state/state.h"
-#include "usb_descriptors.h"
-#include "usb_hid.h"
+#include "hid/hid.h"
+#include "keyboard/event.h"
+#include "state/state.h"
+#include "usb/usb_descriptors.h"
+#include "usb/usb_hid.h"
 
 static void usb_hid_send_report(uint8_t start_report_id);
 

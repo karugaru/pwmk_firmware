@@ -1,11 +1,11 @@
 #include <hardware/watchdog.h>
 #include <pico/bootrom.h>
 
-#include "../ble/ble.h"
-#include "../led/led.h"
-#include "../usb/usb_hid.h"
-#include "sleep.h"
-#include "state.h"
+#include "ble/ble.h"
+#include "led/led.h"
+#include "state/sleep.h"
+#include "state/state.h"
+#include "usb/usb_hid.h"
 
 #ifndef PWMK_ENABLE_USB
 #define PWMK_ENABLE_USB 1

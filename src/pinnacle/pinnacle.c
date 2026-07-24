@@ -1,8 +1,9 @@
-#include "pinnacle.h"
-#include "hardware/i2c.h"
+#include <hardware/i2c.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "pinnacle/pinnacle.h"
 
 #ifndef DEBUG_PINNACLE
 #define DEBUG_PINNACLE 0

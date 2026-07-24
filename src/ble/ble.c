@@ -1,15 +1,15 @@
 #include <btstack.h>
 #include <inttypes.h>
 #include <pico/unique_id.h>
+#include <pwmk.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "../ble/le_device_db_tlv_custom.h"
-#include "../keyboard/event.h"
-#include "../state/state.h"
-#include "advertising_data.h"
-#include "ble.h"
-#include "pwmk.h"
+#include "ble/advertising_data.h"
+#include "ble/ble.h"
+#include "ble/le_device_db_tlv_custom.h"
+#include "keyboard/event.h"
+#include "state/state.h"
 
 #ifndef DEBUG_BLE
 #define DEBUG_BLE 0
