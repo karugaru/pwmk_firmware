@@ -81,7 +81,7 @@ class KeymapProfile(BaseModel):
 
     user_keycodes: dict[str, str] = Field(
         default_factory=dict,
-        description="users.c や keymap から参照するユーザー定義キーコード。キーが名前、値が展開先の式。",
+        description="ユーザー定義キーコード。キーが名前、値が展開先の式。",
     )
     keymap: list[str] = Field(
         default_factory=list,

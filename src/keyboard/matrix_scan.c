@@ -116,7 +116,7 @@ void matrix_process(void) {
 #endif
 
         // ユーザー定義イベントコールバックを呼び出し
-        bool process_subsequent = event_process_user_callback(&icode, pressed);
+        bool process_subsequent = event_process_user(&icode, pressed);
         // 標準のイベント処理を呼び出し
         if (process_subsequent) {
           event_process_standard(icode, pressed);
