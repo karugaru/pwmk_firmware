@@ -28,6 +28,11 @@ class BoardProfile(BaseModel):
         description="Pinnacle のデータレディ信号を受けるピン番号。"
     )
     gpio_led_pin: int = Field(description="ステータス LED を接続する GPIO ピン番号。")
+    led_count: int = Field(
+        default=1,
+        ge=1,
+        description="接続する LED の個数。",
+    )
     pin_settle_time_us: int = Field(
         ge=0,
         description="マトリクス走査時にピン状態が安定するまで待つ時間。単位はマイクロ秒。",

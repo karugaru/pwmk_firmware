@@ -41,6 +41,33 @@ class ProfileGenerationTest(unittest.TestCase):
         self.assertEqual(config.board.cols, 5)
         self.assertEqual(len(config.keymap.keymap), config.board.active_layout_count)
 
+    def test_generate_profile_supports_led_count(self) -> None:
+        profile_name = "test_profile_with_multiple_leds"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            shutil.rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  gpio_led_pin: 16",
+            "  gpio_led_pin: 16\n  led_count: 2",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            board_header = (
+                build_dir / "generated" / "profile" / "src" / "settings" / "board.h"
+            )
+            self.assertIn(
+                "#define LED_COUNT 2", board_header.read_text(encoding="utf-8")
+            )
+
     def test_generate_profile_outputs_expected_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             build_dir = Path(temporary_directory)

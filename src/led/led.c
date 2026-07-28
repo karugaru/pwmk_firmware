@@ -2,6 +2,7 @@
 
 #include "led/led.h"
 #include "led/ws2812.pio.h"
+#include "settings/board.h"
 
 static uint8_t brightness = 255;
 static PIO pio = NULL;
@@ -13,7 +14,10 @@ static PIO pio = NULL;
 void led_put_pixel(uint32_t pixel_grb) {
   if (pio == NULL)
     return;
-  pio_sm_put_blocking(pio, 0, pixel_grb << 8u);
+
+  for (uint8_t i = 0; i < LED_COUNT; ++i) {
+    pio_sm_put_blocking(pio, 0, pixel_grb << 8u);
+  }
 }
 
 /**
