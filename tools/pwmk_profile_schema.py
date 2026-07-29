@@ -39,7 +39,7 @@ class BoardProfile(BaseModel):
     )
     layout: list[tuple[int, int]] = Field(
         description="物理配列とマトリクス座標の対応。未使用位置は [-1, -1] を指定する。"
-        " 例として、[[1,1],[3,3]]の場合、keymap[0]が行1列1のスイッチ、keymap[1]が行3列3のスイッチに対応する。",
+        " 例として、[[1,1],[2,3]]の場合、keymap[0]が行1列1のスイッチ、keymap[1]が行2列3のスイッチに対応する。",
     )
 
     @property
