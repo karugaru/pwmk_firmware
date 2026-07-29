@@ -1,3 +1,5 @@
+#if PWMK_ENABLE_BLE
+
 #include <btstack_debug.h>
 #include <gap.h>
 #include <stdbool.h>
@@ -803,3 +805,5 @@ void le_device_db_dump(void) {
     }
   }
 }
+
+#endif // PWMK_ENABLE_BLE

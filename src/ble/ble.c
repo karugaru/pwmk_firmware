@@ -1,3 +1,5 @@
+#if PWMK_ENABLE_BLE
+
 #include <btstack.h>
 #include <inttypes.h>
 #include <pico/unique_id.h>
@@ -362,3 +364,5 @@ static void ble_resume_advertising(void) {
   gap_advertisements_enable(0);
   gap_advertisements_enable(1);
 }
+
+#endif // PWMK_ENABLE_BLE

@@ -28,14 +28,6 @@
 #define DEBUG_PRINT(...)
 #endif
 
-#ifndef PWMK_ENABLE_USB
-#define PWMK_ENABLE_USB 1
-#endif
-
-#ifndef PWMK_ENABLE_BLE
-#define PWMK_ENABLE_BLE 1
-#endif
-
 /**
  * @brief マトリクス列のGPIOをドーマントウェイクに設定する。
  *        行をLOW出力に固定し、列のLOWエッジで復帰する経路を作る。

@@ -1,3 +1,5 @@
+#if PWMK_ENABLE_USB
+
 #include <pico/unique_id.h>
 #include <stddef.h>
 #include <string.h>
@@ -138,3 +140,5 @@ void usb_descriptors_init(void) {
   desc_configuration[offset] = report_desc_len & 0xFF;
   desc_configuration[offset + 1] = (report_desc_len >> 8) & 0xFF;
 }
+
+#endif // PWMK_ENABLE_USB
