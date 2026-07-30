@@ -98,6 +98,7 @@ pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWM
 # pull in common dependencies
 target_link_libraries(pwmk
     pico_stdlib
+    pico_low_power
     hardware_i2c
     hardware_pio
     hardware_rosc

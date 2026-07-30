@@ -147,7 +147,7 @@ void state_set_system(state_system_t new_state) {
     reset_usb_boot(0, 0);
     return;
   case STATE_DEEP_SLEEP:
-    enter_dormant();
+    enter_deepsleep();
     return;
   default:
     return;
