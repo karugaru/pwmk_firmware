@@ -90,10 +90,11 @@ static void prepare_deep_sleep(void) {
 }
 
 /**
- * @brief ドーマントモードに入る。
- *        GPIOピンのエッジで復帰し、ウォッチドッグリブートを行う。
+ * @brief ディープスリープに入る。
  */
-static void enter_dormant(void) {
+void enter_deepsleep() {
+#if PICO_RP2040
+  // RP2040では、ディープスリープはDORMANTモードとして実装する。
   DEBUG_PRINT("entering dormant mode\n");
   prepare_deep_sleep();
 
@@ -140,13 +141,9 @@ static void enter_dormant(void) {
   while (true) {
     tight_loop_contents();
   }
-}
 
-/**
- * @brief PSTATEに入る。
- *        GPIOピンのエッジで復帰し、ウォッチドッグリブートを行う。
- */
-static void enter_pstate(void) {
+#elif PICO_RP2350
+  // RP2350では、ディープスリープはPSTATE(P1.7)として実装する。
   DEBUG_PRINT("entering pstate mode\n");
   prepare_deep_sleep();
 
@@ -177,17 +174,5 @@ static void enter_pstate(void) {
   while (true) {
     __wfi();
   }
-}
-
-/**
- * @brief ディープスリープに入る。
- */
-void enter_deepsleep() {
-#if PICO_RP2040
-  // RP2040では、ディープスリープはDORMANTモードとして実装する。
-  enter_dormant();
-#elif PICO_RP2350
-  // RP2350では、ディープスリープはPSTATE(P1.7)として実装する。
-  enter_pstate();
 #endif
 }
