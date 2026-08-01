@@ -32,7 +32,7 @@ void led_put_rgb(uint8_t red, uint8_t green, uint8_t blue) {
   red = (red * brightness) / 255;
   green = (green * brightness) / 255;
   blue = (blue * brightness) / 255;
-  uint32_t mask = (green << 16) | (red << 8) | (blue << 0);
+  uint32_t mask = ((uint32_t)green << 16) | ((uint32_t)red << 8) | blue;
   led_put_pixel(mask);
 }
 
@@ -46,5 +46,5 @@ void led_init(uint8_t pin, uint8_t bright) {
   pio = pio0;
 
   uint offset = pio_add_program(pio, &ws2812_program);
-  ws2812_program_init(pio, 0, offset, pin, 800000, true);
+  ws2812_program_init(pio, 0, offset, pin, 800000, false);
 }
