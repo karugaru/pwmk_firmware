@@ -11,6 +11,11 @@ permissions:
 jobs:
   firmware-build:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        profile:
+          - remopicon_v1
+          - remopicon_v2_beta
 
     steps:
       - name: Checkout repository
@@ -35,13 +40,13 @@ jobs:
       - name: Sync Python environment
         run: uv sync --frozen
 
-      - name: Build firmware
-        run: uv run tools/pwmk.py build --profile remopicon_v1 --clean
+      - name: Build firmware (${{ matrix.profile }})
+        run: uv run tools/pwmk.py build --profile ${{ matrix.profile }} --clean
 
-      - name: Upload firmware artifacts
+      - name: Upload firmware artifacts (${{ matrix.profile }})
         uses: actions/upload-artifact@v7
         with:
-          name: pwmk-remopicon_v1-ubuntu-24.04
+          name: pwmk-${{ matrix.profile }}-ubuntu-24.04
           path: |
             build/cli/*.uf2
             build/cli/*.elf
