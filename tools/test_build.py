@@ -428,7 +428,16 @@ def shell_command(target: BuildTestTarget) -> str:
     build_command = " ".join(build_script_args)
 
     sync_command = f"{project_environment_prefix} uv sync --frozen"
-    return f"{target.bootstrap_command} && {sync_command} && {build_command}"
+    copy_command = (
+        'WORKDIR="/tmp/pwmk-build-test-workspace" && '
+        'rm -rf "$WORKDIR" && mkdir -p "$WORKDIR" && '
+        'cp -a /workspace/. "$WORKDIR"/'
+    )
+    return (
+        f"{target.bootstrap_command} && {copy_command} && "
+        'cd "$WORKDIR" && '
+        f"{sync_command} && {build_command}"
+    )
 
 
 def run_build_test_target(docker: ResolvedDockerClient, target: BuildTestTarget) -> int:
