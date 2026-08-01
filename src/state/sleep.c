@@ -5,6 +5,7 @@
 #include <hardware/sync.h>
 #include <hardware/watchdog.h>
 #include <hardware/xosc.h>
+#include <pico/low_power.h>
 #include <pico/stdlib.h>
 #include <stdio.h>
 
@@ -26,14 +27,6 @@
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
 #define DEBUG_PRINT(...)
-#endif
-
-#ifndef PWMK_ENABLE_USB
-#define PWMK_ENABLE_USB 1
-#endif
-
-#ifndef PWMK_ENABLE_BLE
-#define PWMK_ENABLE_BLE 1
 #endif
 
 /**
@@ -72,12 +65,9 @@ static void matrix_acknowledge_dormant_wakeup(void) {
 }
 
 /**
- * @brief ドーマントモード(ディープスリープ)に入る。
- *        GPIOピンのエッジで復帰し、ウォッチドッグリブートを行う。
+ * @brief ディープスリープに入る前の準備を行う。
  */
-void enter_dormant(void) {
-  DEBUG_PRINT("entering dormant mode\n");
-
+static void prepare_deep_sleep(void) {
   // 割り込みを無効化
   disable_interrupts();
 
@@ -97,6 +87,16 @@ void enter_dormant(void) {
 
   // stdio をフラッシュ
   stdio_flush();
+}
+
+/**
+ * @brief ディープスリープに入る。
+ */
+void enter_deepsleep() {
+#if PICO_RP2040
+  // RP2040では、ディープスリープはDORMANTモードとして実装する。
+  DEBUG_PRINT("entering dormant mode\n");
+  prepare_deep_sleep();
 
   // クロックをXOSCに切り替え（PLLを停止するため）
   clock_configure(clk_ref, CLOCKS_CLK_REF_CTRL_SRC_VALUE_XOSC_CLKSRC, 0,
@@ -141,4 +141,38 @@ void enter_dormant(void) {
   while (true) {
     tight_loop_contents();
   }
+
+#elif PICO_RP2350
+  // RP2350では、ディープスリープはPSTATE(P1.7)として実装する。
+  DEBUG_PRINT("entering pstate mode\n");
+  prepare_deep_sleep();
+
+  // GPIOピンの割り込み起床を設定する。
+  powman_enable_gpio_wakeup(0, GPIO_DR_PIN, true, true);
+
+  // TODO マトリクスでも起床できるようにする
+  // powman_enable_gpio_wakeup(1, gpio_pin, edge, high);
+
+  // 移行先の状態をP1.7(AON以外の全ドメイン電源OFF)に設定する
+  pstate_bitset_t pstate = pstate_bitset_none();
+
+  // デバッガからの電源要求によってパワーダウンが阻止されないようにする。
+  powman_set_debug_power_request_ignored(true);
+  // VREG をアンロックし、低消費電力モードへ切り替えられるようにする。
+  hw_set_bits(&powman_hw->vreg_ctrl,
+              POWMAN_PASSWORD_BITS | POWMAN_VREG_CTRL_UNLOCK_BITS);
+  // ブートアドレスをクリアする。
+  powman_hw->boot[0] = 0;
+  powman_hw->boot[1] = 0;
+  powman_hw->boot[2] = 0;
+  powman_hw->boot[3] = 0;
+
+  // PSTATE遷移を実行する。
+  powman_set_power_state(pstate_bitset_to_powman_power_state(&pstate));
+
+  // 電源断が実行されるまで待機する。GPIO割り込みで復帰すると電源再起動と同じ状態になる。
+  while (true) {
+    __wfi();
+  }
+#endif
 }

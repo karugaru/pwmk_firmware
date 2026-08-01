@@ -35,9 +35,9 @@ def profile_yaml_path(profile_name: str) -> Path:
     return profile_dir(profile_name) / "profile.yaml"
 
 
-def profile_users_c_path(profile_name: str) -> Path:
-    """指定されたユーザープロファイルの users.c ファイルのパスを返す。"""
-    return profile_dir(profile_name) / "users.c"
+def profile_c_sources(profile_name: str) -> list[Path]:
+    """指定されたユーザープロファイル配下の C ソースファイル一覧を返す。"""
+    return sorted(profile_dir(profile_name).glob("*.c"))
 
 
 def template_root() -> Path:
@@ -81,13 +81,8 @@ def render_template(template_name: str, context: dict[str, Any]) -> str:
 def ensure_profile_exists(profile_name: str) -> None:
     """指定されたプロファイルが存在することを確認する。存在しない場合は SystemExit を発生させる。"""
     yaml_path = profile_yaml_path(profile_name)
-    users_c_path = profile_users_c_path(profile_name)
-
-    missing_paths = [path for path in (yaml_path, users_c_path) if not path.exists()]
-    if missing_paths:
-        missing = ", ".join(
-            str(path.relative_to(repo_root())) for path in missing_paths
-        )
+    if not yaml_path.exists():
+        missing = yaml_path.relative_to(repo_root())
         raise SystemExit(f"プロファイルが見つかりません: {missing}")
 
 
@@ -210,7 +205,7 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
     selected_profile = profile_name or require_active_profile_name()
     config = load_profile_config(selected_profile)
     settings_dir = generated_settings_dir(build_dir)
-    users_c = profile_users_c_path(selected_profile).resolve().as_posix()
+    profile_sources = [path.resolve().as_posix() for path in profile_c_sources(selected_profile)]
 
     context = {
         "profile_name": selected_profile,
@@ -221,7 +216,7 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
         "layout": padded_layout(config.board.layout, config.board.key_capacity),
         "generated_src_dir": generated_src_dir(build_dir).resolve().as_posix(),
         "settings_dir": settings_dir.resolve().as_posix(),
-        "users_c_path": users_c,
+        "profile_c_sources": profile_sources,
     }
 
     write_generated_file(

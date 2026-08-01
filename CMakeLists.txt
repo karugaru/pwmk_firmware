@@ -83,46 +83,22 @@ endif()
 # Add executable. Default name is the project name, version 0.1
 set(PWMK_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 
-file(GLOB SRC_FILES CONFIGURE_DEPENDS
-    ${PWMK_SOURCE_DIR}/*.c
-    ${PWMK_SOURCE_DIR}/pinnacle/*.c
-    ${PWMK_SOURCE_DIR}/keyboard/*.c
-    ${PWMK_SOURCE_DIR}/led/*.c
-    ${PWMK_SOURCE_DIR}/hid/*.c
-    ${PWMK_SOURCE_DIR}/state/*.c
-    ${PWMK_SOURCE_DIR}/peripheral/*.c
-)
-
-file(GLOB SETTINGS_SRCS CONFIGURE_DEPENDS "${PWMK_PROFILE_SETTINGS_DIR}/*.c")
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS ${PWMK_SOURCE_DIR}/*.c)
+file(GLOB_RECURSE SETTINGS_SRCS CONFIGURE_DEPENDS "${PWMK_PROFILE_SETTINGS_DIR}/*.c")
 
 list(APPEND SRC_FILES
     ${SETTINGS_SRCS}
-    ${PWMK_PROFILE_USERS_C}
+    ${PWMK_PROFILE_C_SOURCES}
 )
-
-if (PWMK_ENABLE_BLE)
-    file(GLOB BLE_SRC_FILES CONFIGURE_DEPENDS ${PWMK_SOURCE_DIR}/ble/*.c)
-    list(REMOVE_ITEM BLE_SRC_FILES "${PWMK_SOURCE_DIR}/ble/ble_stub.c")
-    list(APPEND SRC_FILES ${BLE_SRC_FILES})
-else()
-    list(APPEND SRC_FILES ${PWMK_SOURCE_DIR}/ble/ble_stub.c)
-endif()
-
-if (PWMK_ENABLE_USB)
-    file(GLOB USB_SRC_FILES CONFIGURE_DEPENDS ${PWMK_SOURCE_DIR}/usb/*.c)
-    list(REMOVE_ITEM USB_SRC_FILES "${PWMK_SOURCE_DIR}/usb/usb_hid_stub.c")
-    list(APPEND SRC_FILES ${USB_SRC_FILES})
-else()
-    list(APPEND SRC_FILES ${PWMK_SOURCE_DIR}/usb/usb_hid_stub.c)
-endif()
 
 add_executable(pwmk ${SRC_FILES})
 
-pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWMK_SOURCE_DIR}/led)
+pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWMK_PROFILE_GENERATED_SRC_DIR}/led)
 
 # pull in common dependencies
 target_link_libraries(pwmk
     pico_stdlib
+    pico_low_power
     hardware_i2c
     hardware_pio
     hardware_rosc
@@ -152,7 +128,7 @@ target_include_directories(pwmk PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${PWMK_SOURCE_DIR}
     ${PWMK_PROFILE_GENERATED_SRC_DIR}
-    )
+)
 
 if (PWMK_ENABLE_BLE)
     pico_btstack_make_gatt_header(pwmk PRIVATE "${PWMK_SOURCE_DIR}/ble/pwmk.gatt")
@@ -172,7 +148,7 @@ target_compile_definitions(pwmk PRIVATE
     DEBUG_MATRIX_SCAN_DEEP=0
     DEBUG_PINNACLE=0
     DEBUG_PERIPHERAL=0
-    )
+)
 
 # ROM and RAM utilization set to display at build time
 target_link_options(pwmk PRIVATE -Xlinker --print-memory-usage)

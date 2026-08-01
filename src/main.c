@@ -27,14 +27,6 @@
 #define DEBUG_PRINT(...)
 #endif
 
-#ifndef PWMK_ENABLE_USB
-#define PWMK_ENABLE_USB 1
-#endif
-
-#ifndef PWMK_ENABLE_BLE
-#define PWMK_ENABLE_BLE 1
-#endif
-
 #if PWMK_ENABLE_BLE
 static async_at_time_worker_t pwmk_worker;
 #endif

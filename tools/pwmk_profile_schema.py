@@ -28,12 +28,18 @@ class BoardProfile(BaseModel):
         description="Pinnacle のデータレディ信号を受けるピン番号。"
     )
     gpio_led_pin: int = Field(description="ステータス LED を接続する GPIO ピン番号。")
+    led_count: int = Field(
+        default=1,
+        ge=1,
+        description="接続する LED の個数。",
+    )
     pin_settle_time_us: int = Field(
         ge=0,
         description="マトリクス走査時にピン状態が安定するまで待つ時間。単位はマイクロ秒。",
     )
     layout: list[tuple[int, int]] = Field(
-        description="物理配列とマトリクス座標の対応。未使用位置は [-1, -1] を指定する。",
+        description="物理配列とマトリクス座標の対応。未使用位置は [-1, -1] を指定する。"
+        " 例として、[[1,1],[2,3]]の場合、keymap[0]が行1列1のスイッチ、keymap[1]が行2列3のスイッチに対応する。",
     )
 
     @property
@@ -80,7 +86,7 @@ class KeymapProfile(BaseModel):
 
     user_keycodes: dict[str, str] = Field(
         default_factory=dict,
-        description="users.c や keymap から参照するユーザー定義キーコード。キーが名前、値が展開先の式。",
+        description="ユーザー定義キーコード。キーが名前、値が展開先の式。",
     )
     keymap: list[str] = Field(
         default_factory=list,

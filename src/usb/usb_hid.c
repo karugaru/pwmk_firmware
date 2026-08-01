@@ -1,3 +1,5 @@
+#if PWMK_ENABLE_USB
+
 #include <string.h>
 #include <tusb.h>
 
@@ -148,3 +150,5 @@ static void usb_hid_send_report(uint8_t start_report_id) {
     }
   }
 }
+
+#endif // PWMK_ENABLE_USB

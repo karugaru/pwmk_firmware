@@ -1,6 +1,7 @@
-#include <btstack.h>
+#if PWMK_ENABLE_BLE
 
 #include "ble/advertising_data.h"
+#include <btstack.h>
 
 const uint8_t adv_data[] = {
     // Flags general discoverable, BR/EDR not supported
@@ -34,3 +35,5 @@ const uint8_t adv_data[] = {
     0x03,
 };
 const uint8_t adv_data_len = sizeof(adv_data);
+
+#endif // PWMK_ENABLE_BLE

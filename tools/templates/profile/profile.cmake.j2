@@ -3,5 +3,5 @@ set(PWMK_ENABLE_USB {{ cmake.enable_usb | cmake_bool }} CACHE BOOL "Build USB HI
 set(PWMK_ENABLE_BLE {{ cmake.enable_ble | cmake_bool }} CACHE BOOL "Build BLE transport" FORCE)
 set(PWMK_PROFILE_GENERATED_SRC_DIR "{{ generated_src_dir }}")
 set(PWMK_PROFILE_SETTINGS_DIR "{{ settings_dir }}")
-set(PWMK_PROFILE_USERS_C "{{ users_c_path }}")
+set(PWMK_PROFILE_C_SOURCES {% for source in profile_c_sources %} "{{ source }}"{% endfor %})
 set(PWMK_PROFILE_NAME "{{ profile_name }}")
