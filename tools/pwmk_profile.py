@@ -56,6 +56,7 @@ def jinja_environment() -> Environment:
     environment.filters["c_bool"] = lambda value: 1 if value else 0
     environment.filters["cmake_bool"] = lambda value: "ON" if value else "OFF"
     environment.filters["c_float"] = c_float_literal
+    environment.filters["c_hex"] = c_hex_literal
     return environment
 
 
@@ -65,6 +66,11 @@ def c_float_literal(value: float) -> str:
     if "." not in text and "e" not in text and "E" not in text:
         text += ".0"
     return f"{text}f"
+
+
+def c_hex_literal(value: int) -> str:
+    """整数を C の 16 ビット 16 進数リテラルとして返す。"""
+    return f"0x{value:04X}"
 
 
 def render_template(template_name: str, context: dict[str, Any]) -> str:

@@ -1,9 +1,6 @@
 #ifndef PWMK_USB_DESCRIPTORS_H
 #define PWMK_USB_DESCRIPTORS_H
 
-// USB VID/PID (開発用)
-#define USB_VID 0xCafe
-#define USB_PID 0x4001
 #define USB_BCD 0x0200
 
 /**

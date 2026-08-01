@@ -1,6 +1,9 @@
 #ifndef PWMK_SETTINGS_H
 #define PWMK_SETTINGS_H
 
+#define USB_VID {{ settings.usb_vid | c_hex }}
+#define USB_PID {{ settings.usb_pid | c_hex }}
+
 #define DEEP_SLEEP_TIMEOUT_US ((int64_t){{ settings.deep_sleep_timeout_seconds }} * 1000 * 1000)
 
 #define LED_BRIGHTNESS {{ settings.led_brightness }}
