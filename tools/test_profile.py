@@ -84,22 +84,32 @@ class ProfileGenerationTest(unittest.TestCase):
             settings_header = (
                 build_dir / "generated" / "profile" / "src" / "settings" / "settings.h"
             )
+            device_identity_header = (
+                build_dir / "generated" / "profile" / "src" / "device_identity.h"
+            )
+            generated_gatt = build_dir / "generated" / "profile" / "pwmk.gatt"
 
             self.assertTrue(profile_cmake.exists())
             self.assertTrue(board_header.exists())
             self.assertTrue(settings_header.exists())
+            self.assertTrue(device_identity_header.exists())
+            self.assertTrue(generated_gatt.exists())
             self.assertIn(
                 'set(PICO_BOARD "pico_w"', profile_cmake.read_text(encoding="utf-8")
             )
             board_text = board_header.read_text(encoding="utf-8")
             keymap_text = keymap_header.read_text(encoding="utf-8")
             settings_text = settings_header.read_text(encoding="utf-8")
+            device_identity_text = device_identity_header.read_text(encoding="utf-8")
+            gatt_text = generated_gatt.read_text(encoding="utf-8")
 
             self.assertIn("#define ROWS 5", board_text)
             self.assertIn("{ 0, 0 }", board_text)
             self.assertNotIn("{ row }", board_text)
             self.assertIn('#include "keyboard/code.h"', keymap_text)
             self.assertIn("#define BLE_PERSIST_SELECTED_SLOT 1", settings_text)
+            self.assertIn("#define DEVICE_NAME", device_identity_text)
+            self.assertIn('CHARACTERISTIC, GAP_DEVICE_NAME, READ, "', gatt_text)
 
     def test_generate_profile_includes_profile_c_sources(self) -> None:
         profile_name = "test_profile_with_multiple_c_sources"

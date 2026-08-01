@@ -42,6 +42,8 @@ keymap:
     ]
 
 settings:
+  device_name: "Remopicon v2 Beta"
+  manufacturer_name: "PWMK"
   deep_sleep_timeout_seconds: 300
   led_brightness: 16
   debounce_time_ms: 5
