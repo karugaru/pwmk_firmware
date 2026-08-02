@@ -131,7 +131,7 @@ target_include_directories(pwmk PRIVATE
 )
 
 if (PWMK_ENABLE_BLE)
-    pico_btstack_make_gatt_header(pwmk PRIVATE "${PWMK_SOURCE_DIR}/ble/pwmk.gatt")
+    pico_btstack_make_gatt_header(pwmk PRIVATE "${CMAKE_BINARY_DIR}/generated/profile/pwmk.gatt")
 endif()
 
 # create map/bin/hex file etc.

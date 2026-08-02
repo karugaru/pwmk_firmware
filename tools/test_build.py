@@ -15,7 +15,10 @@ SDK_TAG = "2.3.0"
 BUILD_DIR = "/tmp/pwmk-build-test"
 BUILD_TYPE = "Release"
 TARGET = "pwmk"
-PROFILE = "remopicon_v1"
+BUILD_TEST_PROFILES = (
+    "remopicon_v1",
+    "remopicon_v2_beta",
+)
 APT_CACHER_NG_CONTAINER = "pwmk-apt-cacher-ng"
 APT_CACHER_NG_NETWORK = "pwmk-build-test-network"
 APT_CACHER_NG_CACHE_VOLUME = "pwmk-apt-cacher-ng-cache"
@@ -44,6 +47,29 @@ class BuildTestTarget:
     image: str
     bootstrap_command: str
     use_apt_proxy: bool = False
+
+
+@dataclass(frozen=True)
+class BuildTestCase:
+    """
+    ビルドテストのディストリビューションとプロファイルの組み合わせ。
+
+    :param target: ビルドテスト対象のディストリビューション定義
+    :param profile: ビルドに使用するプロファイル名
+    """
+
+    target: BuildTestTarget
+    profile: str
+
+    @property
+    def name(self) -> str:
+        """
+        表示用のテストケース名を返す。
+
+        :return: ディストリビューションとプロファイルを含む名前
+        """
+
+        return f"{self.target.name}/{self.profile}"
 
 
 @dataclass(frozen=True)
@@ -178,6 +204,21 @@ def selected_targets(target_names: list[str] | None) -> list[BuildTestTarget]:
     return [BUILD_TEST_TARGETS_BY_NAME[target_name] for target_name in target_names]
 
 
+def build_test_matrix(targets: list[BuildTestTarget]) -> list[BuildTestCase]:
+    """
+    指定されたディストリビューションとプロファイルのテストマトリクスを返す。
+
+    :param targets: 実行対象ディストリビューション一覧
+    :return: 実行するビルドテストケース一覧
+    """
+
+    return [
+        BuildTestCase(target=target, profile=profile)
+        for target in targets
+        for profile in BUILD_TEST_PROFILES
+    ]
+
+
 def repo_root() -> Path:
     """
     リポジトリのルートディレクトリを返す。
@@ -210,15 +251,18 @@ def ensure_logs_directory() -> Path:
     return directory
 
 
-def target_log_path(target: BuildTestTarget) -> Path:
+def target_log_path(test_case: BuildTestCase) -> Path:
     """
-    対象ディストリビューション用のログファイルパスを返す。
+    テストケース用のログファイルパスを返す。
 
-    :param target: ビルドテスト対象のディストリビューション定義
+    :param test_case: ビルドテストケース
     :return: ログファイルパス
     """
 
-    return ensure_logs_directory() / f"test_build_{target.name}.log"
+    return (
+        ensure_logs_directory()
+        / f"test_build_{test_case.target.name}_{test_case.profile}.log"
+    )
 
 
 def pwmk_cache_volume(target: BuildTestTarget) -> str:
@@ -396,11 +440,11 @@ def ensure_apt_cacher_ng(docker: ResolvedDockerClient) -> None:
         raise
 
 
-def shell_command(target: BuildTestTarget) -> str:
+def shell_command(test_case: BuildTestCase) -> str:
     """
     Docker コンテナ内で実行するシェルコマンドを返す。uv 導入後に依存同期とビルドを行う。
 
-    :param target: ビルドテスト対象のディストリビューション定義
+    :param test_case: ビルドテストケース
     :return: 実行するシェルコマンドの文字列
     """
 
@@ -415,7 +459,7 @@ def shell_command(target: BuildTestTarget) -> str:
         "tools/pwmk.py",
         "build",
         "--profile",
-        PROFILE,
+        test_case.profile,
         "--build-dir",
         BUILD_DIR,
         "--sdk-tag",
@@ -428,29 +472,39 @@ def shell_command(target: BuildTestTarget) -> str:
     build_command = " ".join(build_script_args)
 
     sync_command = f"{project_environment_prefix} uv sync --frozen"
-    return f"{target.bootstrap_command} && {sync_command} && {build_command}"
+    copy_command = (
+        'WORKDIR="/tmp/pwmk-build-test-workspace" && '
+        'rm -rf "$WORKDIR" && mkdir -p "$WORKDIR" && '
+        'cp -a /workspace/. "$WORKDIR"/'
+    )
+    return (
+        f"{test_case.target.bootstrap_command} && {copy_command} && "
+        'cd "$WORKDIR" && '
+        f"{sync_command} && {build_command}"
+    )
 
 
-def run_build_test_target(docker: ResolvedDockerClient, target: BuildTestTarget) -> int:
+def run_build_test_target(docker: ResolvedDockerClient, test_case: BuildTestCase) -> int:
     """
-    単一ディストリビューション向けに Docker コンテナ内でビルドテストを実行する。
+    単一テストケース向けに Docker コンテナ内でビルドテストを実行する。
 
     :param docker: Docker コマンドのプレフィックス
-    :param target: ビルドテスト対象のディストリビューション定義
+    :param test_case: ビルドテストケース
     :return: コンテナ実行の終了コード
     """
 
     workspace = repo_root()
     mount_source = str(workspace.resolve())
+    target = test_case.target
 
-    log_path = target_log_path(target)
-    print(f"[{target.name}] 実行中... ログ: {log_path}")
+    log_path = target_log_path(test_case)
+    print(f"[{test_case.name}] 実行中... ログ: {log_path}")
     container = None
     with log_path.open("w", encoding="utf-8") as log_handle:
         try:
             container = docker.client.create(
                 target.image,
-                ["bash", "-lc", shell_command(target)],
+                ["bash", "-lc", shell_command(test_case)],
                 volumes=[
                     (mount_source, "/workspace"),
                     (pwmk_cache_volume(target), "/root/.pwmk"),
@@ -475,7 +529,7 @@ def run_build_test_target(docker: ResolvedDockerClient, target: BuildTestTarget)
 
         log_handle.write(f"\nexit code: {exit_code}\n")
 
-    print(f"[{target.name}] 完了 exit code={exit_code}")
+    print(f"[{test_case.name}] 完了 exit code={exit_code}")
     return exit_code
 
 
@@ -493,31 +547,38 @@ def run_build_tests(targets: list[BuildTestTarget], no_proxy: bool) -> int:
     if any(target.use_apt_proxy for target in targets) and not no_proxy:
         ensure_apt_cacher_ng(docker)
 
-    failed_targets: list[str] = []
-    summary_lines: list[str] = []
-    for target in targets:
-        if target.use_apt_proxy and no_proxy:
-            target = BuildTestTarget(
+    effective_targets = [
+        (
+            BuildTestTarget(
                 name=target.name,
                 image=target.image,
                 bootstrap_command=APT_DIRECT_BOOTSTRAP_COMMAND,
                 use_apt_proxy=False,
             )
-        exit_code = run_build_test_target(docker, target)
-        summary_lines.append(f"{target.name}: exit code {exit_code}")
+            if target.use_apt_proxy and no_proxy
+            else target
+        )
+        for target in targets
+    ]
+
+    failed_cases: list[str] = []
+    summary_lines: list[str] = []
+    for test_case in build_test_matrix(effective_targets):
+        exit_code = run_build_test_target(docker, test_case)
+        summary_lines.append(f"{test_case.name}: exit code {exit_code}")
         if exit_code != 0:
-            failed_targets.append(f"{target.name}({exit_code})")
+            failed_cases.append(f"{test_case.name}({exit_code})")
 
     with summary_log_path().open("w", encoding="utf-8") as log_handle:
         log_handle.write("\n".join(summary_lines) + "\n")
 
     print("\n=== build test summary ===")
-    if not failed_targets:
+    if not failed_cases:
         print("all targets succeeded")
         print(f"summary log: {summary_log_path()}")
         return 0
 
-    print("failed targets: " + ", ".join(failed_targets))
+    print("failed cases: " + ", ".join(failed_cases))
     print(f"summary log: {summary_log_path()}")
     return 1
 

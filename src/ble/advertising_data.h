@@ -3,7 +3,9 @@
 
 #include <pico/stdlib.h>
 
-extern const uint8_t adv_data[];
-extern const uint8_t adv_data_len;
+extern uint8_t adv_data[];
+extern uint8_t adv_data_len;
+
+void advertising_data_init(void);
 
 #endif // PWMK_ADVERTISING_DATA_H

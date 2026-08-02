@@ -110,6 +110,28 @@ class PinnacleProfile(BaseModel):
 class SettingsProfile(BaseModel):
     """設定プロファイルの設定を表す Pydantic モデル。"""
 
+    device_name: str = Field(
+        default="PWMK",
+        min_length=1,
+        description="USB/BLE で表示するデバイス名。",
+    )
+    manufacturer_name: str = Field(
+        default="PWMK",
+        min_length=1,
+        description="USB/BLE で表示するメーカー名。",
+    )
+    usb_vid: int = Field(
+        default=0xCAFE,
+        ge=0x0000,
+        le=0xFFFF,
+        description="USB デバイス記述子で使用するベンダー ID (VID)。",
+    )
+    usb_pid: int = Field(
+        default=0x4001,
+        ge=0x0000,
+        le=0xFFFF,
+        description="USB デバイス記述子で使用するプロダクト ID (PID)。",
+    )
     deep_sleep_timeout_seconds: int = Field(
         ge=5,
         description="無操作時にディープスリープへ移行するまでの時間。単位は秒。",

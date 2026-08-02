@@ -92,7 +92,7 @@ static void prepare_deep_sleep(void) {
 /**
  * @brief ディープスリープに入る。
  */
-void enter_deepsleep() {
+void enter_deepsleep(void) {
 #if PICO_RP2040
   // RP2040では、ディープスリープはDORMANTモードとして実装する。
   DEBUG_PRINT("entering dormant mode\n");

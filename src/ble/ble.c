@@ -79,9 +79,10 @@ void ble_setup(void) {
   bd_addr_t null_addr;
   memset(null_addr, 0, 6);
   ble_apply_selected_slot_address();
+  advertising_data_init();
   gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0,
                                 null_addr, 0x07, 0x00);
-  gap_advertisements_set_data(adv_data_len, (uint8_t *)adv_data);
+  gap_advertisements_set_data(adv_data_len, adv_data);
   gap_advertisements_enable(1);
 
   // Initialize Event Handlers

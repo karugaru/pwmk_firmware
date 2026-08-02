@@ -39,6 +39,8 @@ class ProfileGenerationTest(unittest.TestCase):
         self.assertEqual(config.cmake.board, "pico_w")
         self.assertEqual(config.board.rows, 5)
         self.assertEqual(config.board.cols, 5)
+        self.assertEqual(config.settings.usb_vid, 0xCAFE)
+        self.assertEqual(config.settings.usb_pid, 0x4001)
         self.assertEqual(len(config.keymap.keymap), config.board.active_layout_count)
 
     def test_generate_profile_supports_led_count(self) -> None:
@@ -84,22 +86,61 @@ class ProfileGenerationTest(unittest.TestCase):
             settings_header = (
                 build_dir / "generated" / "profile" / "src" / "settings" / "settings.h"
             )
+            device_identity_header = (
+                build_dir / "generated" / "profile" / "src" / "device_identity.h"
+            )
+            generated_gatt = build_dir / "generated" / "profile" / "pwmk.gatt"
 
             self.assertTrue(profile_cmake.exists())
             self.assertTrue(board_header.exists())
             self.assertTrue(settings_header.exists())
+            self.assertTrue(device_identity_header.exists())
+            self.assertTrue(generated_gatt.exists())
             self.assertIn(
                 'set(PICO_BOARD "pico_w"', profile_cmake.read_text(encoding="utf-8")
             )
             board_text = board_header.read_text(encoding="utf-8")
             keymap_text = keymap_header.read_text(encoding="utf-8")
             settings_text = settings_header.read_text(encoding="utf-8")
+            device_identity_text = device_identity_header.read_text(encoding="utf-8")
+            gatt_text = generated_gatt.read_text(encoding="utf-8")
 
             self.assertIn("#define ROWS 5", board_text)
             self.assertIn("{ 0, 0 }", board_text)
             self.assertNotIn("{ row }", board_text)
             self.assertIn('#include "keyboard/code.h"', keymap_text)
+            self.assertIn("#define USB_VID 0xCAFE", settings_text)
+            self.assertIn("#define USB_PID 0x4001", settings_text)
             self.assertIn("#define BLE_PERSIST_SELECTED_SLOT 1", settings_text)
+            self.assertIn("#define DEVICE_NAME", device_identity_text)
+            self.assertIn('CHARACTERISTIC, GAP_DEVICE_NAME, READ, "', gatt_text)
+
+    def test_generate_profile_supports_usb_identifier_overrides(self) -> None:
+        profile_name = "test_profile_with_usb_identifier_overrides"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            shutil.rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  usb_vid: 0xCAFE\n  usb_pid: 0x4001",
+            "  usb_vid: 0x1234\n  usb_pid: 0xABCD",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            settings_header = (
+                build_dir / "generated" / "profile" / "src" / "settings" / "settings.h"
+            )
+            settings_text = settings_header.read_text(encoding="utf-8")
+            self.assertIn("#define USB_VID 0x1234", settings_text)
+            self.assertIn("#define USB_PID 0xABCD", settings_text)
 
     def test_generate_profile_includes_profile_c_sources(self) -> None:
         profile_name = "test_profile_with_multiple_c_sources"

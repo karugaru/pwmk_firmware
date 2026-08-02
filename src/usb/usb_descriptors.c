@@ -5,7 +5,9 @@
 #include <string.h>
 #include <tusb.h>
 
+#include "device_identity.h"
 #include "hid/hid.h"
+#include "settings/settings.h"
 #include "usb/usb_descriptors.h"
 
 // デバイスディスクリプタ
@@ -74,8 +76,8 @@ enum {
 // 文字列ディスクリプタ
 static char const *string_desc_arr[] = {
     (const char[]){0x09, 0x04}, // 0: English (0x0409)
-    "PWMK",                     // 1: Manufacturer
-    "PWMK",                     // 2: Product
+    MANUFACTURER_NAME,          // 1: Manufacturer
+    DEVICE_NAME,                // 2: Product
     NULL,                       // 3: Serial (pico_unique_idで自動生成)
 };
 

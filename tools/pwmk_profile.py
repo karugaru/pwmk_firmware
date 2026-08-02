@@ -56,6 +56,7 @@ def jinja_environment() -> Environment:
     environment.filters["c_bool"] = lambda value: 1 if value else 0
     environment.filters["cmake_bool"] = lambda value: "ON" if value else "OFF"
     environment.filters["c_float"] = c_float_literal
+    environment.filters["c_hex"] = c_hex_literal
     return environment
 
 
@@ -65,6 +66,11 @@ def c_float_literal(value: float) -> str:
     if "." not in text and "e" not in text and "E" not in text:
         text += ".0"
     return f"{text}f"
+
+
+def c_hex_literal(value: int) -> str:
+    """整数を C の 16 ビット 16 進数リテラルとして返す。"""
+    return f"0x{value:04X}"
 
 
 def render_template(template_name: str, context: dict[str, Any]) -> str:
@@ -182,6 +188,16 @@ def generated_profile_cmake_path(build_dir: Path) -> Path:
     return generated_profile_root(build_dir) / "profile.cmake"
 
 
+def generated_device_id_header_path(build_dir: Path) -> Path:
+    """ビルドディレクトリ内の生成されたデバイス名ヘッダーのパスを返す。"""
+    return generated_src_dir(build_dir) / "device_identity.h"
+
+
+def generated_gatt_path(build_dir: Path) -> Path:
+    """ビルドディレクトリ内の生成された GATT 定義ファイルのパスを返す。"""
+    return generated_profile_root(build_dir) / "pwmk.gatt"
+
+
 def write_generated_file(path: Path, content: str) -> None:
     """
     文字列をファイルに書き込む。
@@ -205,7 +221,12 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
     selected_profile = profile_name or require_active_profile_name()
     config = load_profile_config(selected_profile)
     settings_dir = generated_settings_dir(build_dir)
-    profile_sources = [path.resolve().as_posix() for path in profile_c_sources(selected_profile)]
+    profile_sources = [
+        path.resolve().as_posix() for path in profile_c_sources(selected_profile)
+    ]
+
+    device_name = config.settings.device_name
+    manufacturer_name = config.settings.manufacturer_name
 
     context = {
         "profile_name": selected_profile,
@@ -217,6 +238,8 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
         "generated_src_dir": generated_src_dir(build_dir).resolve().as_posix(),
         "settings_dir": settings_dir.resolve().as_posix(),
         "profile_c_sources": profile_sources,
+        "device_name": device_name,
+        "manufacturer_name": manufacturer_name,
     }
 
     write_generated_file(
@@ -246,6 +269,14 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
     write_generated_file(
         generated_profile_cmake_path(build_dir),
         render_template("profile.cmake.j2", context),
+    )
+    write_generated_file(
+        generated_device_id_header_path(build_dir),
+        render_template("device_identity.h.j2", context),
+    )
+    write_generated_file(
+        generated_gatt_path(build_dir),
+        render_template("pwmk.gatt.j2", context),
     )
 
     return selected_profile
