@@ -72,9 +72,7 @@ static void pwmk_process_tick(void) {
 
   // USB定期処理
 #if PWMK_ENABLE_USB
-  if (!use_ble) {
-    usb_hid_task();
-  }
+  usb_hid_task();
 #endif
 
   // BLE定期処理
