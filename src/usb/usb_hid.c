@@ -8,8 +8,10 @@
 #include "state/state.h"
 #include "usb/usb_descriptors.h"
 #include "usb/usb_hid.h"
+#include "vial/vial.h"
 
-static void usb_hid_send_report(uint8_t start_report_id);
+static void usb_hid_send_report_chain(uint8_t start_report_id);
+static bool usb_hid_report_chain_active;
 
 // --------------------------------
 // 公開関数
@@ -39,10 +41,12 @@ void usb_hid_task(void) { tud_task(); }
  *        USBがマウント済みかつHIDが準備完了の場合にレポートチェーンを開始する。
  */
 void usb_hid_send_reports(void) {
-  if (!tud_mounted() || !tud_hid_ready() || !event_has_event()) {
+  if (!tud_mounted() || !tud_hid_n_ready(USB_HID_INSTANCE_INPUT) ||
+      !event_has_event()) {
     return;
   }
-  usb_hid_send_report(KEYBOARD_REPORT_ID);
+  usb_hid_report_chain_active = true;
+  usb_hid_send_report_chain(KEYBOARD_REPORT_ID);
 }
 
 /**
@@ -86,11 +90,25 @@ void tud_resume_cb(void) {}
  */
 void tud_hid_report_complete_cb(uint8_t _instance, uint8_t const *report,
                                 uint16_t _len) {
-  // report[0]はレポートID
+  (void)_len;
+
+  if (_instance == USB_HID_INSTANCE_VIAL) {
+    return;
+  }
+
+  if (_instance != USB_HID_INSTANCE_INPUT || !usb_hid_report_chain_active) {
+    return;
+  }
+
+  // report[0]は前回送信済のレポートID
   uint8_t next_report_id = report[0] + 1;
   if (next_report_id <= REPORT_ID_MAX) {
-    usb_hid_send_report(next_report_id);
+    usb_hid_send_report_chain(next_report_id);
+    return;
   }
+
+  // 送るべきレポートがもうない場合はチェーンを終了する
+  usb_hid_report_chain_active = false;
 }
 
 /**
@@ -108,7 +126,42 @@ uint16_t tud_hid_get_report_cb(uint8_t _instance, uint8_t _report_id,
  */
 void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
                            hid_report_type_t _report_type,
-                           uint8_t const *_buffer, uint16_t _bufsize) {}
+                           uint8_t const *_buffer, uint16_t _bufsize) {
+
+  // VIAL用のHID通信ではない場合は無視する
+  if (_instance != USB_HID_INSTANCE_VIAL) {
+    return;
+  }
+
+  // パケットの長さが規定+1の場合は先頭バイトを無視する
+  const uint8_t *packet = _buffer;
+  uint16_t packet_size = _bufsize;
+  if (packet_size == VIAL_PACKET_SIZE + 1) {
+    if (packet[0] == 0) {
+      packet++;
+    }
+    packet_size--;
+  }
+
+  // レポートID、レポートタイプ、パケットの長さが規定と異なる場合は無視する
+  if (_report_id != 0 || _report_type != HID_REPORT_TYPE_OUTPUT ||
+      packet_size != VIAL_PACKET_SIZE) {
+    return;
+  }
+
+  // 受信したパケットをそのまま応答用バッファとして再利用する
+  uint8_t response[VIAL_PACKET_SIZE];
+  memcpy(response, packet, sizeof(response));
+
+  // 受信したパケットを処理する
+  vial_handle_packet(response);
+
+  // 処理結果を応答として送信する
+  if (!tud_hid_n_ready(USB_HID_INSTANCE_VIAL)) {
+    return;
+  }
+  tud_hid_n_report(USB_HID_INSTANCE_VIAL, 0, response, sizeof(response));
+}
 
 // --------------------------------
 // 内部関数
@@ -120,7 +173,7 @@ void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
  *        見つかったら送信して終了する（続きはtud_hid_report_complete_cbで処理）。
  * @param start_report_id 開始レポートID
  */
-static void usb_hid_send_report(uint8_t start_report_id) {
+static void usb_hid_send_report_chain(uint8_t start_report_id) {
   uint8_t report[HID_REPORT_SIZE_MAX] = {0};
 
   for (uint8_t id = start_report_id; id <= REPORT_ID_MAX; id++) {
@@ -149,6 +202,8 @@ static void usb_hid_send_report(uint8_t start_report_id) {
       break;
     }
   }
+
+  usb_hid_report_chain_active = false;
 }
 
 #endif // PWMK_ENABLE_USB

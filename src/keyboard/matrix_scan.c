@@ -128,6 +128,19 @@ void matrix_process(void) {
   }
 }
 
+/**
+ * @brief 指定された行と列のキーが押されているかどうかを返します。
+ * @param row 行番号 (0からROWS-1)
+ * @param col 列番号 (0からCOLS-1)
+ * @return bool キーが押されている場合はtrue、そうでない場合はfalse
+ */
+bool matrix_is_pressed(uint8_t row, uint8_t col) {
+  if (row >= ROWS || col >= COLS) {
+    return false;
+  }
+  return prev_gpio_state[row][col];
+}
+
 //----------------------------------------------------------------
 // 静的関数
 //----------------------------------------------------------------

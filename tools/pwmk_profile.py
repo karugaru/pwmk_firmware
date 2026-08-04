@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import lzma
 import shutil
 from pathlib import Path
 from typing import Annotated, Any
@@ -168,6 +170,54 @@ def padded_layout(
     return list(layout) + [(-1, -1)] * (capacity - len(layout))
 
 
+def vial_unlock_combo(config: ProfileConfig) -> list[tuple[int, int]]:
+    """Vial の解除に使用する 3 個の物理キー座標を返す。"""
+    positions = [
+        (row, col) for row, col in config.board.layout if row >= 0 and col >= 0
+    ]
+    if not positions:
+        positions = [(0, 0)]
+
+    return [positions[min(index, len(positions) - 1)] for index in range(3)]
+
+
+def vial_keyboard_definition_json(config: ProfileConfig) -> str:
+    """プロファイルから Vial keyboard definition の JSON を生成する。"""
+    active_positions = set(config.board.layout)
+    keymap_layout: list[list[dict[str, int] | str]] = []
+
+    for row in range(config.board.rows):
+        layout_row: list[dict[str, int] | str] = []
+        next_column = 0
+        for col in range(config.board.cols):
+            if (row, col) not in active_positions:
+                continue
+            if col > next_column:
+                layout_row.append({"x": col - next_column})
+            layout_row.append(f"{row},{col}")
+            next_column = col + 1
+        if layout_row:
+            keymap_layout.append(layout_row)
+
+    definition = {
+        "name": config.settings.device_name,
+        "vendorId": f"0x{config.settings.usb_vid:04X}",
+        "productId": f"0x{config.settings.usb_pid:04X}",
+        "lighting": "none",
+        "matrix": {"rows": config.board.rows, "cols": config.board.cols},
+        "layouts": {"keymap": keymap_layout or [[]]},
+    }
+    return json.dumps(definition, ensure_ascii=True, indent=2)
+
+
+def vial_keyboard_definition(config: ProfileConfig) -> bytes:
+    """プロファイルから Vial が解釈できる LZMA 圧縮定義を生成する。"""
+    return lzma.compress(
+        vial_keyboard_definition_json(config).encode("utf-8"),
+        format=lzma.FORMAT_ALONE,
+    )
+
+
 def generated_profile_root(build_dir: Path) -> Path:
     """ビルドディレクトリ内の生成されたプロファイルのルートディレクトリを返す。"""
     return build_dir / "generated" / "profile"
@@ -227,6 +277,7 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
 
     device_name = config.settings.device_name
     manufacturer_name = config.settings.manufacturer_name
+    vial_definition_json = vial_keyboard_definition_json(config)
 
     context = {
         "profile_name": selected_profile,
@@ -235,6 +286,11 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
         "keymap": config.keymap,
         "settings": config.settings,
         "layout": padded_layout(config.board.layout, config.board.key_capacity),
+        "vial_keyboard_definition": lzma.compress(
+            vial_definition_json.encode("utf-8"), format=lzma.FORMAT_ALONE
+        ),
+        "vial_keyboard_definition_json_lines": vial_definition_json.splitlines(),
+        "vial_unlock_combo": vial_unlock_combo(config),
         "generated_src_dir": generated_src_dir(build_dir).resolve().as_posix(),
         "settings_dir": settings_dir.resolve().as_posix(),
         "profile_c_sources": profile_sources,
@@ -257,6 +313,14 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
     write_generated_file(
         settings_dir / "keymap.c",
         render_template("keymap.c.j2", context),
+    )
+    write_generated_file(
+        settings_dir / "vial_definition.h",
+        render_template("vial_definition.h.j2", context),
+    )
+    write_generated_file(
+        settings_dir / "vial_definition.c",
+        render_template("vial_definition.c.j2", context),
     )
     write_generated_file(
         settings_dir / "settings.h",

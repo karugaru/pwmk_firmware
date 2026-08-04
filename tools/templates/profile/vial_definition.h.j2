@@ -1,0 +1,13 @@
+#ifndef PWMK_VIAL_DEFINITION_H
+#define PWMK_VIAL_DEFINITION_H
+
+#include <stdint.h>
+
+#define VIAL_KEYBOARD_DEFINITION_SIZE {{ vial_keyboard_definition | length }}
+#define VIAL_UNLOCK_COMBO_LENGTH {{ vial_unlock_combo | length }}
+
+extern const uint8_t
+    vial_keyboard_definition[VIAL_KEYBOARD_DEFINITION_SIZE];
+extern const uint8_t vial_unlock_combo[VIAL_UNLOCK_COMBO_LENGTH][2];
+
+#endif // PWMK_VIAL_DEFINITION_H

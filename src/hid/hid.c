@@ -89,8 +89,8 @@ const uint8_t hid_descriptor[] = {
     0x95, 0x03, //     REPORT_COUNT (3)
     0x81, 0x06, //     INPUT (Data,Var,Rel)
 
-    0xC0, //   END_COLLECTION
-    0xC0, // END_COLLECTION
+    0xC0,       //   END_COLLECTION (Physical)
+    0xC0,       // END_COLLECTION (Application)
 
     /** Consumer Control */
     0x05, 0x0C, // Usage Page (Consumer)
@@ -107,7 +107,7 @@ const uint8_t hid_descriptor[] = {
     0x95, 0x06,       // Report Count (6)
     0x81, 0x00,       // Input (Data, Array)
 
-    0xC0, // End Collection
+    0xC0, // End collection
 };
 // clang-format on
 
