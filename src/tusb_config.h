@@ -85,6 +85,6 @@
 #define CFG_TUD_VENDOR 0
 
 // HIDバッファサイズ
-#define CFG_TUD_HID_EP_BUFSIZE 33
+#define CFG_TUD_HID_EP_BUFSIZE 32
 
 #endif // PWMK_TUSB_CONFIG_H
