@@ -185,8 +185,7 @@ Keyboard Definition Dataはファームウェアのコンパイル時に生成�
 - レスポンス:
   - byte 0: unlocked フラグ（0: locked, 1: unlocked）
   - byte 1: unlock_in_progress フラグ
-  - byte 2: remaining counter / progress value
-  - byte 3..31: unlock combo の row/col ペア
+  - byte 2..31: unlock combo の row/col ペア
 - 実装上の要件:
   - ロックされていない場合、byte 0 = 1
   - アンロック中なら byte 1 = 1

@@ -274,12 +274,11 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x05: {
     // Unlock Status Query
-    // 解除コンボと進行状況を返す。
+    // ロック状態とロック解除キーを確認する。
     uint8_t remaining = vial_update_unlock_state();
     response[0] = unlocked ? 1 : 0;
     response[1] = unlock_in_progress ? 1 : 0;
-    response[2] = remaining;
-    memcpy(&response[3], vial_unlock_combo, sizeof(vial_unlock_combo));
+    memcpy(&response[2], vial_unlock_combo, sizeof(vial_unlock_combo));
     break;
   }
 
