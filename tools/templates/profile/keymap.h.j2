@@ -12,6 +12,7 @@ icode_t icode_lookup(uint8_t row, uint8_t col);
 void keymap_vial_reset(void);
 uint16_t keymap_vial_get(uint8_t layer, uint8_t row, uint8_t col);
 bool keymap_vial_is_supported_keycode(uint16_t keycode);
+bool keymap_vial_is_bootloader_keycode(uint16_t keycode);
 bool keymap_vial_set(uint8_t layer, uint8_t row, uint8_t col,
 					 uint16_t keycode);
 

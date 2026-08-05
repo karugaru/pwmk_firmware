@@ -9,6 +9,7 @@
 #include "settings/board.h"
 #include "settings/keymap.h"
 #include "settings/vial_definition.h"
+#include "state/state.h"
 #include "vial/vial.h"
 
 #ifndef DEBUG_VIAL
@@ -26,6 +27,7 @@
 #define VIA_PROTOCOL_VERSION 0x0009
 #define VIAL_UNLOCK_HOLD_MS 5000
 #define VIAL_KEYMAP_RESPONSE_HEADER_SIZE 4
+#define VIA_VALUE_ID_SWITCH_MATRIX_STATE 0x03
 
 static bool unlocked;           // アンロック状態
 static bool unlock_in_progress; // アンロックが進行中かどうか
@@ -215,6 +217,10 @@ static uint8_t keymap_buffer_get_byte(size_t offset) {
   return offset % 2 == 0 ? (uint8_t)(keycode >> 8) : (uint8_t)keycode;
 }
 
+static bool vial_keycode_write_allowed(uint16_t keycode) {
+  return unlocked || !keymap_vial_is_bootloader_keycode(keycode);
+}
+
 /**
  * @brief Vialコマンドを処理する。
  * @param request 受信したリクエストパケット
@@ -339,12 +345,6 @@ static void handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
  */
 static void handle_dynamic_keymap_set(const uint8_t request[VIAL_PACKET_SIZE],
                                       uint8_t response[VIAL_PACKET_SIZE]) {
-  // ロック中は編集系コマンドを受け付けない。
-  if (!unlocked) {
-    response[0] = 1;
-    return;
-  }
-
   uint16_t offset = read_u16_be(&request[1]);
 
   // パケットが規定の長さを超えないように調整する。
@@ -398,7 +398,8 @@ static void handle_dynamic_keymap_set(const uint8_t request[VIAL_PACKET_SIZE],
 
   // すべてのキーコードを検証してから反映することで更新を原子的に扱う。
   for (size_t index = 0; index < key_count; index++) {
-    if (!keymap_vial_is_supported_keycode(keycodes[index])) {
+    if (!keymap_vial_is_supported_keycode(keycodes[index]) ||
+        !vial_keycode_write_allowed(keycodes[index])) {
       response[0] = 1;
       return;
     }
@@ -444,8 +445,9 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x05:
     // Set Keycode
-    if (unlocked && keymap_vial_set(request[1], request[2], request[3],
-                                    read_u16_be(&request[4]))) {
+    if (vial_keycode_write_allowed(read_u16_be(&request[4])) &&
+        keymap_vial_set(request[1], request[2], request[3],
+                        read_u16_be(&request[4]))) {
       response[0] = 0;
     } else {
       response[0] = 1;

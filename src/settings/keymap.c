@@ -3,9 +3,25 @@
 #include "settings/board.h"
 #include "settings/keymap.h"
 
+#define VIAL_KEYCODE_BOOTLOADER 0x5C00
+
 static const icode_t keymap[ROWS * COLS] = KEYMAP;
 static size_t keyswitch_index_lookup[ROWS][COLS];
 static icode_t dynamic_keymap[ROWS][COLS];
+
+static uint16_t keymap_vial_encode_keycode(icode_t keycode) {
+  if (keycode == ISC_BOOT) {
+    return VIAL_KEYCODE_BOOTLOADER;
+  }
+  return (uint16_t)keycode;
+}
+
+static icode_t keymap_vial_decode_keycode(uint16_t keycode) {
+  if (keycode == VIAL_KEYCODE_BOOTLOADER) {
+    return ISC_BOOT;
+  }
+  return (icode_t)keycode;
+}
 
 static void keymap_vial_reset_internal(void) {
   memset(dynamic_keymap, 0, sizeof(dynamic_keymap));
@@ -59,14 +75,20 @@ uint16_t keymap_vial_get(uint8_t layer, uint8_t row, uint8_t col) {
   }
 
   icode_t keycode = dynamic_keymap[row][col];
-  if (keycode == IKC_NOOP || (keycode >= IKC_A && keycode <= IMKC_RIGHT_GUI)) {
-    return (uint16_t)keycode;
+  if (keycode == ISC_BOOT || keycode == IKC_NOOP ||
+      (keycode >= IKC_A && keycode <= IMKC_RIGHT_GUI)) {
+    return keymap_vial_encode_keycode(keycode);
   }
   return IKC_NOOP;
 }
 
 bool keymap_vial_is_supported_keycode(uint16_t keycode) {
-  return keycode == IKC_NOOP || (keycode >= IKC_A && keycode <= IMKC_RIGHT_GUI);
+  return keycode == VIAL_KEYCODE_BOOTLOADER ||
+         keycode == IKC_NOOP || (keycode >= IKC_A && keycode <= IMKC_RIGHT_GUI);
+}
+
+bool keymap_vial_is_bootloader_keycode(uint16_t keycode) {
+  return keycode == VIAL_KEYCODE_BOOTLOADER;
 }
 
 bool keymap_vial_set(uint8_t layer, uint8_t row, uint8_t col,
@@ -78,6 +100,6 @@ bool keymap_vial_set(uint8_t layer, uint8_t row, uint8_t col,
     return false;
   }
 
-  dynamic_keymap[row][col] = (icode_t)keycode;
+  dynamic_keymap[row][col] = keymap_vial_decode_keycode(keycode);
   return true;
 }
