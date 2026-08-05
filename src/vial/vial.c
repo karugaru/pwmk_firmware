@@ -243,9 +243,9 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
     copy_keyboard_definition_page(read_u16_le(&request[2]), response);
     break;
 
-  case 0x03:
-  case 0x04:
-    // スタブ: エンコーダの取得・保存は現行プロファイルに定義がないため未対応。
+  case 0x03: // Get Encoder Value
+  case 0x04: // Set Encoder Value
+    // スタブ: 未対応。
     response[0] = 1;
     break;
 
@@ -279,7 +279,6 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x08:
     // Lock
-    // RAM 上のキーマップは保持するが、以後の編集は拒否する。
     unlocked = false;
     unlock_in_progress = false;
     unlock_combo_held = false;
@@ -290,14 +289,14 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
     memset(response, 0xFF, VIAL_PACKET_SIZE);
     break;
 
-  case 0x0A:
-  case 0x0B:
-  case 0x0C:
+  case 0x0A: // Get QMK Settings
+  case 0x0B: // Set QMK Settings
+  case 0x0C: // Reset QMK Settings
     // スタブ: QMK Settings の取得・保存・リセットは未実装のため失敗を返す。
     response[0] = 1;
     break;
 
-  case 0x0D:
+  case 0x0D: // Dynamic Entry Operation
     // スタブ: Dynamic Entry は未実装。ゼロ初期化済みの空応答を返す。
     break;
 
@@ -425,9 +424,15 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
     break;
 
   case 0x02:
+    // Get Keyboard Value
     // スタブ: Keyboard Value は識別子だけをエコーし、値はゼロで返す。
     response[0] = request[0];
     response[1] = request[1];
+    break;
+
+  case 0x03: // Set Keyboard Value
+    // スタブ: 未実装。
+    response[0] = 1;
     break;
 
   case 0x04:
@@ -457,23 +462,44 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
     }
     break;
 
+  case 0x07: // Set Lighting Value
+  case 0x08: // Get Lighting Value
+  case 0x09: // Save Lighting Value
+    // スタブ: Lighting / VialRGB の取得・保存・設定は未実装。
+    response[0] = 1;
+    break;
+
+  case 0x0B:
+    // Bootloader Jump
+    // スタブ: ブートローダージャンプは未実装。
+    response[0] = 1;
+    break;
+
   case 0x0C:
+    // Get Macro Count
     // スタブ: マクロは未実装のため、Macro Count は 0 を返す。
     response[0] = request[0];
     break;
 
   case 0x0D:
+    // Get Macro Buffer Size
     // スタブ: マクロバッファは未実装のため、Macro Buffer Size は 0 を返す。
     response[0] = request[0];
     break;
 
   case 0x0E:
+    // Get Macro Buffer
     // スタブ: Macro Buffer Get は要求ヘッダだけをエコーし、データはゼロで返す。
     memcpy(response, request, 4);
     break;
 
+  case 0x0F: // Set Macro Buffer
+    // スタブ: Keyboard Value Set とマクロの保存・リセットは未実装。
+    response[0] = 1;
+    break;
+
   case 0x11:
-    // Layer Count
+    // Get Layer Count
     response[0] = request[0];
     response[1] = KEYMAP_VIAL_LAYER_COUNT;
     break;
@@ -481,25 +507,6 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x12:
     // Dynamic Keymap Buffer Get
     handle_dynamic_keymap_get(request, response);
-    break;
-
-  case 0x13:
-    // Dynamic Keymap Buffer Set
-    handle_dynamic_keymap_set(request, response);
-    break;
-
-  case 0x03:
-  case 0x0F:
-  case 0x10:
-    // スタブ: Keyboard Value Set とマクロの保存・リセットは未実装。
-    response[0] = 1;
-    break;
-
-  case 0x07:
-  case 0x08:
-  case 0x09:
-    // スタブ: Lighting / VialRGB の取得・保存・設定は未実装。
-    response[0] = 1;
     break;
 
   default:

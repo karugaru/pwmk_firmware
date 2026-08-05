@@ -360,19 +360,27 @@ Keyboard Definition Dataはファームウェアのコンパイル時に生成�
 - 実装上の要件:
   - キーマップの全要素を初期値に戻す
 
-### 5.7 0x0C: Macro Count
+### 5.7 0x0B: Bootloader Jump
+
+- リクエスト: byte 0 = 0x0B
+- レスポンス:
+  - ブートローダーに遷移する前提なので期待しない。
+- 実装上の要件:
+  - ブートローダーモードに遷移する。
+
+### 5.8 0x0C: Macro Count
 
 - リクエスト: byte 0 = 0x0C
 - レスポンス:
   - byte 1: マクロ数
 
-### 5.8 0x0D: Macro Buffer Size
+### 5.9 0x0D: Macro Buffer Size
 
 - リクエスト: byte 0 = 0x0D
 - レスポンス:
   - byte 1..2: バッファサイズ（ビッグエンディアン）
 
-### 5.9 0x0E: Macro Buffer Get
+### 5.10 0x0E: Macro Buffer Get
 
 - リクエスト:
   - byte 0 = 0x0E
@@ -381,7 +389,7 @@ Keyboard Definition Dataはファームウェアのコンパイル時に生成�
 - レスポンス:
   - byte 3..N: 指定範囲のマクロバッファ
 
-### 5.10 0x0F: Macro Buffer Set
+### 5.11 0x0F: Macro Buffer Set
 
 - リクエスト:
   - byte 0 = 0x0F
@@ -393,11 +401,6 @@ Keyboard Definition Dataはファームウェアのコンパイル時に生成�
 - 実装上の要件:
   - 書き込み中は、最後のバイトを non-zero として扱うことが望ましい
   - 書き込み完了後に 0x00 に戻す
-
-### 5.11 0x10: Macro Reset
-
-- リクエスト: byte 0 = 0x10
-- レスポンス: 0x00
 
 ### 5.12 0x11: Layer Count
 
@@ -414,30 +417,20 @@ Keyboard Definition Dataはファームウェアのコンパイル時に生成�
 - レスポンス:
   - byte 3..N: キーマップバッファ
 
-### 5.14 0x13: Dynamic Keymap Buffer Set
-
-- リクエスト:
-  - byte 0 = 0x13
-  - byte 1..2: offset
-  - byte 3: size
-  - byte 4..31: データ
-- レスポンス:
-  - 成功なら 0x00
-
-### 5.15 Lighting / VialRGB 拡張 (ホスト実装依存)
+### 5.14 Lighting / VialRGB 拡張 (ホスト実装依存)
 
 - ホストは、VIA 互換の lighting 制御として `0x07` (Set Lighting Value), `0x08` (Get Lighting Value), `0x09` (Save Lighting State) を利用する。
 - `0x07` / `0x08` の `value_id` には、QMK backlight / RGB の設定 ID と、VialRGB 用の `0x40` / `0x41` / `0x42` を使用する。`0x41` は mode の取得/設定に使われ、`0x42` は supported effects の問い合わせに使われる。
 - `GET` 系では、応答の先頭にコマンド ID と `value_id` をエコーし、実データはその後ろに置かれる。ホストは `byte 2..N` を値として解釈する。
 - `QMK RGBLIGHT` の各値は 1 バイトまたは 2 バイトのデータとして返される。VialRGB の `GET_INFO` は、プロトコルバージョン、最大輝度、サポート機能の一覧などを返す。
 
-### 5.16 ホストが使用する Keyboard Value ID
+### 5.15 ホストが使用する Keyboard Value ID
 
 - ホストは、キーマップ以外の状態を取得・設定するために `0x02` / `0x03` の keyboard value コマンドを利用する。
 - `0x02` (`layout_options`) は 4 バイトの符号なし整数として扱う。`GET` では `byte 2..5` を 32 ビット整数として解釈し、`SET` では同じ 4 バイトを送る。
 - `0x03` (`switch_matrix_state`) は、スイッチの押下状態をビットマップとして返す。ホストは、応答の先頭 2 バイトをスキップし、その後ろのバイト列を行ごとに解釈する。1 行あたりのバイト数は `ceil(cols / 8)` であり、各ビットは 1 キーに対応する。ホスト実装では、各行スライスの末尾から逆順にバイトを読むため、実装側もこの並びを尊重する必要がある。
 
-### 5.17 Protocol Version による機能ゲート
+### 5.16 Protocol Version による機能ゲート
 
 - ホストは、機能ごとに別個の問い合わせを増やすのではなく、Vial のプロトコルバージョンを能力ゲートとして使う。
 - 実装上の観測値として、以下のしきい値がホストで使われる。
@@ -459,7 +452,7 @@ Keyboard Definition Dataはファームウェアのコンパイル時に生成�
 - 1 レイヤーのキー位置数は、物理レイアウトの行数 × 列数に対応する。
 - 1 つのキーコードは、2 バイトの配列として扱う。
 - ホスト実装では、キーマップバッファはビッグエンディアンの `>H` で読み書きされる。つまり 1 キーコードにつき 2 バイト、各レイヤーの行列を連続して並べる。
-- `0x12` / `0x13` でやり取りするバッファは、レイヤー 0 から順に、各レイヤー内では row 0..rows-1、col 0..cols-1 の順で並べることが前提である。
+- `0x12` で取得するバッファは、レイヤー 0 から順に、各レイヤー内では row 0..rows-1、col 0..cols-1 の順で並ぶ。
 
 ### 6.2 マクロ
 
@@ -567,7 +560,7 @@ Keyboard Definition Dataはファームウェアのコンパイル時に生成�
 
 1. ホストが `0xFE, 0x00` で keyboard ID を問い合わせる
 2. ホストが `0xFE, 0x01` と `0xFE, 0x02` で keyboard definition を取得する
-3. ホストが `0x04, 0x05, 0x06, 0x13` などの VIA コマンドでキーマップを読み書きする
+3. ホストが `0x04, 0x05, 0x06, 0x12` などの VIA コマンドでキーマップを読み書きする
 4. 必要に応じて `0xFE, 0x0D` で動的エントリを取得・更新する
 5. 変更後は `0xFE, 0x05` などで状態を確認し、必要なら `0xFE, 0x06` / `0xFE, 0x07` でアンロックする
 
