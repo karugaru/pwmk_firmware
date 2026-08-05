@@ -80,6 +80,67 @@ class ProfileGenerationTest(unittest.TestCase):
                 "#define LED_COUNT 2", board_header.read_text(encoding="utf-8")
             )
 
+    def test_generate_profile_supports_vial_unlock_combo(self) -> None:
+        profile_name = "test_profile_with_vial_unlock_combo"
+        profile_data = {
+            "cmake": {"board": "pico_w"},
+            "board": {
+                "rows_pins": [0, 1],
+                "cols_pins": [2, 3],
+                "gpio_sda_pin": 4,
+                "gpio_scl_pin": 5,
+                "gpio_dr_pin": 6,
+                "gpio_led_pin": 7,
+                "pin_settle_time_us": 1,
+                "layout": [[0, 0], [0, 1], [1, 0], [1, 1]],
+                "vial_unlock_combo": [[1, 1], [0, 1]],
+            },
+            "keymap": {"keymap": ["IKC_NOOP"] * 4},
+            "settings": {
+                "deep_sleep_timeout_seconds": 5,
+                "led_brightness": 1,
+                "debounce_time_ms": 0,
+                "mouse_move_delta": 0,
+                "mouse_move_thresh": 0,
+                "mouse_wheel_delta": 0,
+                "mouse_wheel_thresh": 0,
+                "use_pinnacle": False,
+                "pinnacle": {
+                    "rotate": "PINNACLE_ROTATE_0",
+                    "accel": 1.0,
+                    "speed": 1.0,
+                },
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            profile_dir = temporary_root / "users" / profile_name
+            profile_dir.mkdir(parents=True)
+            (profile_dir / "profile.yaml").write_text(
+                json.dumps(profile_data), encoding="utf-8"
+            )
+            (profile_dir / "keyboard-layout.json").write_text("[]\n", encoding="utf-8")
+
+            with patch(
+                "pwmk_profile.users_root", return_value=temporary_root / "users"
+            ):
+                build_dir = temporary_root / "build"
+                generate_profile(build_dir, profile_name)
+
+            settings_dir = build_dir / "generated" / "profile" / "src" / "settings"
+            vial_definition_header = settings_dir / "vial_definition.h"
+            vial_definition_source = settings_dir / "vial_definition.c"
+
+            self.assertIn(
+                "#define VIAL_UNLOCK_COMBO_LENGTH 2",
+                vial_definition_header.read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "    { 1, 1 },\n    { 0, 1 }",
+                vial_definition_source.read_text(encoding="utf-8"),
+            )
+
     def test_generate_profile_requires_keyboard_layout(self) -> None:
         profile_name = "test_profile_without_keyboard_layout"
         profile_dir = users_root() / profile_name
@@ -177,9 +238,7 @@ class ProfileGenerationTest(unittest.TestCase):
             decoded_definition = lzma.decompress(
                 definition_bytes, format=lzma.FORMAT_ALONE
             ).decode("utf-8")
-            comment_marker = (
-                "// Vial keyboard definition before UTF-8 encoding and LZMA compression:"
-            )
+            comment_marker = "// Vial keyboard definition before UTF-8 encoding and LZMA compression:"
             comment_start = vial_definition_text.splitlines().index(comment_marker) + 1
             comment_definition = "\n".join(
                 line[3:]

@@ -41,6 +41,12 @@ class BoardProfile(BaseModel):
         description="物理配列とマトリクス座標の対応。未使用位置は [-1, -1] を指定する。"
         " 例として、[[1,1],[2,3]]の場合、keymap[0]が行1列1のスイッチ、keymap[1]が行2列3のスイッチに対応する。",
     )
+    vial_unlock_combo: list[tuple[int, int]] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=14,
+        description="Vial のロックを解除するために同時押しするキーのマトリクス座標一覧。省略時はレイアウト先頭の3キーを使用する。",
+    )
 
     @property
     def rows(self) -> int:
@@ -77,6 +83,19 @@ class BoardProfile(BaseModel):
             if position in seen_positions:
                 raise ValueError("レイアウトの要素は一意である必要があります。")
             seen_positions.add(position)
+
+        if self.vial_unlock_combo is not None:
+            seen_unlock_positions: set[tuple[int, int]] = set()
+            for position in self.vial_unlock_combo:
+                if position not in seen_positions:
+                    raise ValueError(
+                        "Vial の解除コンボにはレイアウト上のキー座標を指定する必要があります。"
+                    )
+                if position in seen_unlock_positions:
+                    raise ValueError(
+                        "Vial の解除コンボのキー座標は一意である必要があります。"
+                    )
+                seen_unlock_positions.add(position)
 
         return self
 

@@ -219,7 +219,10 @@ def padded_layout(
 
 
 def vial_unlock_combo(config: ProfileConfig) -> list[tuple[int, int]]:
-    """Vial の解除に使用する 3 個の物理キー座標を返す。"""
+    """Vial の解除に使用する物理キー座標を返す。"""
+    if config.board.vial_unlock_combo is not None:
+        return list(config.board.vial_unlock_combo)
+
     positions = [
         (row, col) for row, col in config.board.layout if row >= 0 and col >= 0
     ]
