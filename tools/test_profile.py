@@ -130,15 +130,18 @@ class ProfileGenerationTest(unittest.TestCase):
 
             settings_dir = build_dir / "generated" / "profile" / "src" / "settings"
             vial_definition_header = settings_dir / "vial_definition.h"
-            vial_definition_source = settings_dir / "vial_definition.c"
 
             self.assertIn(
                 "#define VIAL_UNLOCK_COMBO_LENGTH 2",
                 vial_definition_header.read_text(encoding="utf-8"),
             )
             self.assertIn(
-                "    { 1, 1 },\n    { 0, 1 }",
-                vial_definition_source.read_text(encoding="utf-8"),
+                "{ 1, 1 }",
+                vial_definition_header.read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "{ 0, 1 }",
+                vial_definition_header.read_text(encoding="utf-8"),
             )
 
     def test_generate_profile_requires_keyboard_layout(self) -> None:
@@ -189,14 +192,6 @@ class ProfileGenerationTest(unittest.TestCase):
                 / "settings"
                 / "vial_definition.h"
             )
-            vial_definition_source = (
-                build_dir
-                / "generated"
-                / "profile"
-                / "src"
-                / "settings"
-                / "vial_definition.c"
-            )
 
             self.assertTrue(profile_cmake.exists())
             self.assertTrue(board_header.exists())
@@ -204,7 +199,13 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertTrue(device_identity_header.exists())
             self.assertTrue(generated_gatt.exists())
             self.assertTrue(vial_definition_header.exists())
-            self.assertTrue(vial_definition_source.exists())
+            for source_name in (
+                "board.c",
+                "keymap.c",
+                "settings.c",
+                "vial_definition.c",
+            ):
+                self.assertFalse((vial_definition_header.parent / source_name).exists())
             self.assertIn(
                 'set(PICO_BOARD "pico_w"', profile_cmake.read_text(encoding="utf-8")
             )
@@ -213,7 +214,7 @@ class ProfileGenerationTest(unittest.TestCase):
             settings_text = settings_header.read_text(encoding="utf-8")
             device_identity_text = device_identity_header.read_text(encoding="utf-8")
             gatt_text = generated_gatt.read_text(encoding="utf-8")
-            vial_definition_text = vial_definition_source.read_text(encoding="utf-8")
+            vial_definition_text = vial_definition_header.read_text(encoding="utf-8")
 
             self.assertIn("#define ROWS 5", board_text)
             self.assertIn("{ 0, 0 }", board_text)
@@ -224,28 +225,13 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertIn("#define BLE_PERSIST_SELECTED_SLOT 1", settings_text)
             self.assertIn("#define DEVICE_NAME", device_identity_text)
             self.assertIn('CHARACTERISTIC, GAP_DEVICE_NAME, READ, "', gatt_text)
-            definition_array = re.search(
-                r"const uint8_t vial_keyboard_definition\[[^]]+\] = \{(?P<bytes>.*?)\n\};",
-                vial_definition_text,
-                re.DOTALL,
-            )
-            self.assertIsNotNone(definition_array)
-            assert definition_array is not None
             definition_bytes = bytes(
                 int(value, 16)
-                for value in re.findall(r"0x([0-9A-F]{2})", definition_array["bytes"])
+                for value in re.findall(r"0x([0-9A-F]{2})", vial_definition_text)
             )
             decoded_definition = lzma.decompress(
                 definition_bytes, format=lzma.FORMAT_ALONE
             ).decode("utf-8")
-            comment_marker = "// Vial keyboard definition before UTF-8 encoding and LZMA compression:"
-            comment_start = vial_definition_text.splitlines().index(comment_marker) + 1
-            comment_definition = "\n".join(
-                line[3:]
-                for line in vial_definition_text.splitlines()[comment_start:]
-                if line.startswith("// ")
-            )
-            self.assertEqual(comment_definition, decoded_definition)
             definition = json.loads(decoded_definition)
             self.assertEqual(definition["matrix"], {"rows": 5, "cols": 5})
             expected_layout = json.loads(

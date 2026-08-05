@@ -327,7 +327,6 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
         "settings": config.settings,
         "layout": padded_layout(config.board.layout, config.board.key_capacity),
         "vial_keyboard_definition": vial_keyboard_definition(config, keymap_layout),
-        "vial_keyboard_definition_json_lines": vial_definition_json.splitlines(),
         "vial_unlock_combo": vial_unlock_combo(config),
         "generated_src_dir": generated_src_dir(build_dir).resolve().as_posix(),
         "settings_dir": settings_dir.resolve().as_posix(),
@@ -341,32 +340,20 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
         render_template("board.h.j2", context),
     )
     write_generated_file(
-        settings_dir / "board.c",
-        render_template("board.c.j2", context),
-    )
-    write_generated_file(
         settings_dir / "keymap.h",
         render_template("keymap.h.j2", context),
-    )
-    write_generated_file(
-        settings_dir / "keymap.c",
-        render_template("keymap.c.j2", context),
     )
     write_generated_file(
         settings_dir / "vial_definition.h",
         render_template("vial_definition.h.j2", context),
     )
     write_generated_file(
-        settings_dir / "vial_definition.c",
-        render_template("vial_definition.c.j2", context),
+        settings_dir / "vial.json",
+        vial_definition_json,
     )
     write_generated_file(
         settings_dir / "settings.h",
         render_template("settings.h.j2", context),
-    )
-    write_generated_file(
-        settings_dir / "settings.c",
-        render_template("settings.c.j2", context),
     )
     write_generated_file(
         generated_profile_cmake_path(build_dir),
