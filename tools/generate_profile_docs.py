@@ -32,6 +32,7 @@ def build_markdown(schema: dict[str, Any]) -> str:
         f"# {ROOT_TITLE}",
         "",
         "このドキュメントは `uv run tools/generate_profile_docs.py` により自動生成されます。",
+        "`keyboard-layout.json` の内容は KLE互換の(非raw)JSON形式で記述します。",
         "",
         "## トップレベル",
         "",

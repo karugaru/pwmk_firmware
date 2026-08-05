@@ -36,6 +36,12 @@ class ProfileGenerationTest(unittest.TestCase):
 
         profile_path.write_text(self._original_current_profile, encoding="utf-8")
 
+    def _copy_keyboard_layout(self, profile_dir: Path) -> None:
+        source_layout = users_root() / "remopicon_v1" / "keyboard-layout.json"
+        (profile_dir / "keyboard-layout.json").write_text(
+            source_layout.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+
     def test_current_profile_is_valid(self) -> None:
         config = load_profile_config("remopicon_v1")
 
@@ -61,6 +67,7 @@ class ProfileGenerationTest(unittest.TestCase):
             "  gpio_led_pin: 16\n  led_count: 2",
         )
         (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             build_dir = Path(temporary_directory)
@@ -72,6 +79,26 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertIn(
                 "#define LED_COUNT 2", board_header.read_text(encoding="utf-8")
             )
+
+    def test_generate_profile_requires_keyboard_layout(self) -> None:
+        profile_name = "test_profile_without_keyboard_layout"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            shutil.rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        (profile_dir / "profile.yaml").write_text(
+            source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            with self.assertRaisesRegex(
+                SystemExit, "keyboard-layout.json が見つかりません"
+            ):
+                generate_profile(Path(temporary_directory), profile_name)
 
     def test_generate_profile_outputs_expected_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -162,7 +189,12 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertEqual(comment_definition, decoded_definition)
             definition = json.loads(decoded_definition)
             self.assertEqual(definition["matrix"], {"rows": 5, "cols": 5})
-            self.assertEqual(definition["layouts"]["keymap"][0][0], "0,0")
+            expected_layout = json.loads(
+                (users_root() / "remopicon_v1" / "keyboard-layout.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(definition["layouts"]["keymap"], expected_layout)
 
     def test_generate_profile_supports_usb_identifier_overrides(self) -> None:
         profile_name = "test_profile_with_usb_identifier_overrides"
@@ -179,6 +211,7 @@ class ProfileGenerationTest(unittest.TestCase):
             "  usb_vid: 0x1234\n  usb_pid: 0xABCD",
         )
         (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             build_dir = Path(temporary_directory)
@@ -204,6 +237,7 @@ class ProfileGenerationTest(unittest.TestCase):
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
+        self._copy_keyboard_layout(profile_dir)
         (profile_dir / "alpha.c").write_text("void alpha(void) {}\n", encoding="utf-8")
         (profile_dir / "beta.c").write_text("void beta(void) {}\n", encoding="utf-8")
 
@@ -238,6 +272,7 @@ class ProfileGenerationTest(unittest.TestCase):
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
+        self._copy_keyboard_layout(profile_dir)
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             build_dir = Path(temporary_directory)
