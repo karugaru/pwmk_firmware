@@ -44,13 +44,10 @@
 
 修正された内容が全て正しいとは限らないため、注意してレビューを行ってください。
 
-## テストのルール
+## ビルドのルール
 
-テストを行う場合は、以下のテストを実施するようにしてください。
-
-### VS Code (Windows)
-
-`uv run tools/pwmk.py profile remopicon_v1` の後に VS Code タスクの`Compile Project`でビルド
+ビルド・ビルドテストを行う場合は、以下の手順に従ってください。
+最も優先するのはCLI (WSL2)の手順です。
 
 ### CLI (WSL2)
 
@@ -59,3 +56,7 @@ WSL2 上で `uv run tools/pwmk.py profile remopicon_v1` の後に `uv run tools/
 ### CLI (Docker on WSL2)
 
 WSL2 上で `uv run tools/test_build.py ubuntu_26_04`でビルドテストを実行
+
+### VS Code (Windows)
+
+`uv run tools/pwmk.py profile remopicon_v1` の後に VS Code タスクの`Compile Project`でビルド
