@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -81,10 +82,7 @@ def render_object_table(
     definitions: dict[str, Any],
 ) -> list[str]:
     required_fields = set(schema.get("required", []))
-    lines = [
-        "| 項目 | 型 | 必須 | 既定値 | 説明 | 制約 |",
-        "| --- | --- | --- | --- | --- | --- |",
-    ]
+    rows = [["項目", "型", "必須", "既定値", "説明", "制約"]]
 
     for field_name, field_schema in schema.get("properties", {}).items():
         resolved = dereference(field_schema, definitions)
@@ -95,18 +93,43 @@ def render_object_table(
             field_schema.get("description") or resolved.get("description") or ""
         )
         constraints = escape_table_text(format_constraints(field_schema, resolved))
-        lines.append(
-            "| {name} | {type_} | {required} | {default} | {description} | {constraints} |".format(
-                name=escape_table_text(field_name),
-                type_=escape_table_text(field_type),
-                required=required,
-                default=escape_table_text(default),
-                description=description,
-                constraints=constraints,
-            )
+        rows.append(
+            [
+                escape_table_text(field_name),
+                escape_table_text(field_type),
+                required,
+                escape_table_text(default),
+                description,
+                constraints,
+            ]
         )
 
+    widths = [
+        max(markdown_display_width(row[index]) for row in rows)
+        for index in range(len(rows[0]))
+    ]
+    lines = [format_markdown_table_row(rows[0], widths)]
+    lines.append(format_markdown_table_row(["-" * width for width in widths], widths))
+    lines.extend(format_markdown_table_row(row, widths) for row in rows[1:])
+
     return lines
+
+
+def markdown_display_width(text: str) -> int:
+    """Markdown 表の列揃えに使用する文字列の表示幅を返す。"""
+    return sum(
+        2 if unicodedata.east_asian_width(character) in ("F", "W") else 1
+        for character in text
+    )
+
+
+def format_markdown_table_row(cells: list[str], widths: list[int]) -> str:
+    """指定した列幅で Markdown 表の 1 行を整形する。"""
+    padded_cells = [
+        cell + " " * (width - markdown_display_width(cell))
+        for cell, width in zip(cells, widths, strict=True)
+    ]
+    return "| " + " | ".join(padded_cells) + " |"
 
 
 def dereference(schema: dict[str, Any], definitions: dict[str, Any]) -> dict[str, Any]:
