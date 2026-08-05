@@ -221,6 +221,23 @@ static bool vial_keycode_write_allowed(uint16_t keycode) {
   return unlocked || !keymap_vial_is_bootloader_keycode(keycode);
 }
 
+static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
+  const size_t bytes_per_row = (COLS + 7) / 8;
+
+  for (uint8_t row = 0; row < ROWS; row++) {
+    for (uint8_t col = 0; col < COLS; col++) {
+      if (!matrix_is_pressed(row, col)) {
+        continue;
+      }
+
+      size_t byte_in_row = col / 8;
+      size_t response_index =
+          2 + row * bytes_per_row + (bytes_per_row - byte_in_row - 1);
+      response[response_index] |= (uint8_t)(1u << (col % 8));
+    }
+  }
+}
+
 /**
  * @brief Vialコマンドを処理する。
  * @param request 受信したリクエストパケット
@@ -426,9 +443,16 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x02:
     // Get Keyboard Value
-    // スタブ: Keyboard Value は識別子だけをエコーし、値はゼロで返す。
+    // スタブ: マトリクス状態取得以外は未実装
     response[0] = request[0];
     response[1] = request[1];
+    if (request[1] == VIA_VALUE_ID_SWITCH_MATRIX_STATE) {
+      if (!unlocked) {
+        response[0] = 1;
+        break;
+      }
+      write_switch_matrix_state(response);
+    }
     break;
 
   case 0x03: // Set Keyboard Value
@@ -473,8 +497,11 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x0B:
     // Bootloader Jump
-    // スタブ: ブートローダージャンプは未実装。
-    response[0] = 1;
+    if (unlocked) {
+      state_set_system(STATE_BOOTLOADER);
+    } else {
+      response[0] = 1;
+    }
     break;
 
   case 0x0C:
