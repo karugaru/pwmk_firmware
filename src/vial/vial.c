@@ -5,6 +5,7 @@
 
 #include <pico/unique_id.h>
 
+#include "keyboard/code_convert.h"
 #include "keyboard/matrix_scan.h"
 #include "settings/board.h"
 #include "settings/keymap.h"
@@ -218,7 +219,7 @@ static uint8_t keymap_buffer_get_byte(size_t offset) {
 }
 
 static bool vial_keycode_write_allowed(uint16_t keycode) {
-  return unlocked || !keymap_vial_is_bootloader_keycode(keycode);
+  return unlocked || !code_convert_is_dangerous_vial_code(keycode);
 }
 
 static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
@@ -414,7 +415,8 @@ static void handle_dynamic_keymap_set(const uint8_t request[VIAL_PACKET_SIZE],
 
   // すべてのキーコードを検証してから反映することで更新を原子的に扱う。
   for (size_t index = 0; index < key_count; index++) {
-    if (!keymap_vial_is_supported_keycode(keycodes[index]) ||
+    icode_t keycode_internal;
+    if (!code_convert_to_internal(keycodes[index], &keycode_internal) ||
         !vial_keycode_write_allowed(keycodes[index])) {
       response[0] = 1;
       return;

@@ -107,7 +107,7 @@ void matrix_process(void) {
       // 状態が変化していればイベント処理
       if (last_gpio_state[row][col] != prev_gpio_state[row][col]) {
 
-        icode_t icode = icode_lookup(row, col);
+        icode_t icode = keymap_icode_lookup(row, col);
         bool pressed = last_gpio_state[row][col];
 
 #if DEBUG_MATRIX_SCAN

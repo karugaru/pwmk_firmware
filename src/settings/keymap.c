@@ -1,9 +1,8 @@
 #include <string.h>
 
+#include "keyboard/code_convert.h"
 #include "settings/board.h"
 #include "settings/keymap.h"
-
-#define VIAL_KEYCODE_BOOTLOADER 0x5C00 // ブートローダーキーのVIALキーコード
 
 // 内部キーコードの既定キーマップ。
 static const icode_t keymap[ROWS * COLS] = KEYMAP;
@@ -11,34 +10,6 @@ static const icode_t keymap[ROWS * COLS] = KEYMAP;
 static size_t keyswitch_index_lookup[ROWS][COLS];
 // 内部キーコードの動的キーマップ。
 static icode_t dynamic_keymap[ROWS][COLS];
-
-/**
- * @brief
- * 内部用キーコードをVIALのキーコードに変換する。
- *
- * @param keycode_internal 内部用キーコード
- * @return VIALのキーコード
- */
-static uint16_t keymap_vial_encode_keycode(icode_t keycode_internal) {
-  if (keycode_internal == ISC_BOOT) {
-    return VIAL_KEYCODE_BOOTLOADER;
-  }
-  return (uint16_t)keycode_internal;
-}
-
-/**
- * @brief
- * VIALのキーコードを内部用キーコードに変換する。
- *
- * @param keycode_vial VIALのキーコード
- * @return 内部用キーコード
- */
-static icode_t keymap_vial_decode_keycode(uint16_t keycode_vial) {
-  if (keycode_vial == VIAL_KEYCODE_BOOTLOADER) {
-    return ISC_BOOT;
-  }
-  return (icode_t)keycode_vial;
-}
 
 /**
  * @brief
@@ -61,7 +32,7 @@ static void keymap_vial_reset_internal(void) {
  * @brief
  * キーインデックスルックアップテーブルを初期化する。
  */
-void keyswitch_index_init(void) {
+void keymap_index_init(void) {
   for (uint8_t row = 0; row < ROWS; row++) {
     for (uint8_t col = 0; col < COLS; col++) {
       keyswitch_index_lookup[row][col] = -1;
@@ -88,7 +59,7 @@ void keyswitch_index_init(void) {
  * @param col 列番号
  * @return 内部用キーコード
  */
-icode_t icode_lookup(uint8_t row, uint8_t col) {
+icode_t keymap_icode_lookup(uint8_t row, uint8_t col) {
   if (row >= ROWS || col >= COLS) {
     return IKC_NOOP;
   }
@@ -121,34 +92,13 @@ uint16_t keymap_vial_get(uint8_t layer, uint8_t row, uint8_t col) {
   }
 
   icode_t keycode_internal = dynamic_keymap[row][col];
-  if (keycode_internal == ISC_BOOT || keycode_internal == IKC_NOOP ||
-      (keycode_internal >= IKC_A && keycode_internal <= IMKC_RIGHT_GUI)) {
-    return keymap_vial_encode_keycode(keycode_internal);
+
+  uint16_t keycode_vial;
+  if (!code_convert_to_vial(keycode_internal, &keycode_vial)) {
+    return IKC_NOOP;
   }
-  return IKC_NOOP;
-}
 
-/**
- * @brief
- * 指定したVIALのキーコードがPWMKでサポートされているかどうかを判定する。
- *
- * @param keycode_vial VIALのキーコード
- * @return サポートされている場合はtrue、そうでない場合はfalse
- */
-bool keymap_vial_is_supported_keycode(uint16_t keycode_vial) {
-  return keycode_vial == VIAL_KEYCODE_BOOTLOADER || keycode_vial == IKC_NOOP ||
-         (keycode_vial >= IKC_A && keycode_vial <= IMKC_RIGHT_GUI);
-}
-
-/**
- * @brief
- * 指定したVIALのキーコードがブートローダー起動用のキーコードかどうかを判定する。
- *
- * @param keycode_vial VIALのキーコード
- * @return ブートローダー起動用のキーコードの場合はtrue、そうでない場合はfalse
- */
-bool keymap_vial_is_bootloader_keycode(uint16_t keycode_vial) {
-  return keycode_vial == VIAL_KEYCODE_BOOTLOADER;
+  return keycode_vial;
 }
 
 /**
@@ -166,10 +116,12 @@ bool keymap_vial_set(uint8_t layer, uint8_t row, uint8_t col,
   if (layer != 0 || row >= ROWS || col >= COLS) {
     return false;
   }
-  if (!keymap_vial_is_supported_keycode(keycode_vial)) {
+
+  icode_t keycode_internal;
+  if (!code_convert_to_internal(keycode_vial, &keycode_internal)) {
     return false;
   }
 
-  dynamic_keymap[row][col] = keymap_vial_decode_keycode(keycode_vial);
+  dynamic_keymap[row][col] = keycode_internal;
   return true;
 }
