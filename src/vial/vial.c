@@ -218,10 +218,19 @@ static uint8_t keymap_buffer_get_byte(size_t offset) {
   return offset % 2 == 0 ? (uint8_t)(keycode >> 8) : (uint8_t)keycode;
 }
 
+/**
+ * @brief 指定されたキーコードが書き込み可能かどうかを判定する。
+ * @param keycode 判定するキーコード
+ * @return 書き込み可能な場合はtrue、書き込み不可の場合はfalse
+ */
 static bool vial_keycode_write_allowed(uint16_t keycode) {
   return unlocked || !code_convert_is_dangerous_vial_code(keycode);
 }
 
+/**
+ * @brief スイッチマトリクスの状態を応答バッファに書き込む。
+ * @param response 応答バッファ
+ */
 static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
   const size_t bytes_per_row = (COLS + 7) / 8;
 
