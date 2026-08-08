@@ -10,7 +10,11 @@ board:
   gpio_scl_pin: 5
   gpio_dr_pin: 6
   gpio_led_pin: 16
-  pin_settle_time_us: 1
+  pin_settle_time_us: 5
+  vial_unlock_combo:
+    - [3, 3]
+    - [3, 4]
+    - [4, 0]
   # prettier-ignore
   layout:
     [

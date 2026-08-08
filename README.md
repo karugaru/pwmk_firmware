@@ -35,8 +35,9 @@
 ## 使い方
 
 - まだ開発中のため、ドキュメントは不完全です。詳しい使用方法はソースコードを直接参照してください。
-- 設定は `users/<profile>/profile.yaml` で管理します。
+- 設定は `users/<profile>/profile.yaml` と `users/<profile>/keyboard-layout.json` で管理します。
 - ボード設定、キーマップ、USB/BLE の有効化、マウスキーやトラックパッドの設定は `users/<profile>/profile.yaml` で行います。
+- Vial に表示するキーレイアウトは `users/<profile>/keyboard-layout.json` に KLE 互換の配列として記述します。
 - ユーザ定義の処理は `users/<profile>/*.c` で行います。
 - 使用できるキーコードは [src/keyboard/code.h](src/keyboard/code.h) に定義されています。
 - 現行の標準プロファイルは `users/remopicon_v1` です。

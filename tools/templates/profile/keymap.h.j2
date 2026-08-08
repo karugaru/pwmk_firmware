@@ -4,8 +4,15 @@
 #include "keyboard/code.h"
 #include "settings/board.h"
 
-void keyswitch_index_init(void);
-icode_t icode_lookup(uint8_t row, uint8_t col);
+#define KEYMAP_VIAL_LAYER_COUNT 1
+#define KEYMAP_VIAL_BUFFER_SIZE (KEYMAP_VIAL_LAYER_COUNT * ROWS * COLS * 2)
+
+void keymap_index_init(void);
+icode_t keymap_icode_lookup(uint8_t row, uint8_t col);
+void keymap_vial_reset(void);
+uint16_t keymap_vial_get(uint8_t layer, uint8_t row, uint8_t col);
+bool keymap_vial_set(uint8_t layer, uint8_t row, uint8_t col,
+					 uint16_t keycode);
 
 {% for name, value in keymap.user_keycodes.items() %}
 #define {{ name }} {{ value }}

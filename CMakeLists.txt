@@ -1,11 +1,31 @@
-# Generated Cmake Pico project file
+# PWMK CMakeプロジェクト設定
 
 cmake_minimum_required(VERSION 3.13)
 
+# 使用する言語を設定する。
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# プロファイル生成処理が参照する入力ファイルを収集する。
+file(GLOB PWMK_TOOL_INPUTS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/tools/*.py"
+)
+file(GLOB_RECURSE PWMK_PROFILE_GENERATION_INPUTS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/tools/templates/*"
+    "${CMAKE_CURRENT_LIST_DIR}/users/*"
+)
+list(APPEND PWMK_PROFILE_GENERATION_INPUTS
+    ${PWMK_TOOL_INPUTS}
+    "${CMAKE_CURRENT_LIST_DIR}/pyproject.toml"
+    "${CMAKE_CURRENT_LIST_DIR}/uv.lock"
+)
+# 生成処理の入力をCMakeの再構成トリガーとして登録する。
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    ${PWMK_PROFILE_GENERATION_INPUTS}
+)
+
+# ソース生成用コマンドを構築する。
 if(WIN32)
     set(PWMK_GENERATE_COMMAND
         ${CMAKE_COMMAND} -E env UV_PROJECT_ENVIRONMENT=.venv_win
@@ -17,6 +37,7 @@ else()
     )
 endif()
 
+# CMakeの構成処理中に、選択中プロファイルの設定とソースを生成する。
 execute_process(
     COMMAND ${PWMK_GENERATE_COMMAND}
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
@@ -24,15 +45,15 @@ execute_process(
     RESULT_VARIABLE PWMK_GENERATE_RESULT
 )
 
+# プロファイル生成に失敗した場合はビルドを中止する。
 if (NOT PWMK_GENERATE_RESULT EQUAL 0)
     message(FATAL_ERROR "pwmk generate failed with exit code ${PWMK_GENERATE_RESULT}")
 endif()
 
+# 生成されたプロファイル設定を読み込む。
 include(${CMAKE_BINARY_DIR}/generated/profile/profile.cmake)
 
-# Initialise pico_sdk from installed location
-# (note this can come from environment, CMake cache etc)
-
+# == Raspberry Pi Pico VS Code拡張機能の動作に必要なため、以下の行は編集しないでください ==
 # == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
 if(WIN32)
     set(USERHOME $ENV{USERPROFILE})
@@ -48,17 +69,19 @@ if (EXISTS ${picoVscode})
 endif()
 # ====================================================================================
 
+# USB HIDとBLEをオプションとして定義する。
 option(PWMK_ENABLE_USB "Build USB HID transport" ON)
 option(PWMK_ENABLE_BLE "Build BLE transport" ON)
 
-# Pull in Raspberry Pi Pico SDK (must be before project)
+# Raspberry Pi Pico SDKを取り込む。project()より前に実行する必要がある。
 include(pico_sdk_import.cmake)
 
 project(pwmk C CXX ASM)
 
-# Initialise the Raspberry Pi Pico SDK
+# Raspberry Pi Pico SDKを初期化する。
 pico_sdk_init()
 
+# USB HIDを無効にした場合は、stdioの出力先としてUSB CDCを使用する。
 if (PWMK_ENABLE_USB)
     set(PWMK_ENABLE_USB_VALUE 1)
     set(PWMK_STDIO_USB_VALUE 0)
@@ -70,7 +93,7 @@ endif()
 if (PWMK_ENABLE_BLE)
     set(PWMK_ENABLE_BLE_VALUE 1)
 
-    # Override BTstack's default LE device DB implementation with our local one.
+    # BTstack標準のLEデバイスデータベース実装を外し、ローカル実装を使用する。
     get_target_property(PICO_BTSTACK_BLE_SOURCES pico_btstack_ble INTERFACE_SOURCES)
     if (PICO_BTSTACK_BLE_SOURCES)
         list(REMOVE_ITEM PICO_BTSTACK_BLE_SOURCES "${PICO_BTSTACK_PATH}/src/ble/le_device_db_tlv.c")
@@ -80,22 +103,22 @@ else()
     set(PWMK_ENABLE_BLE_VALUE 0)
 endif()
 
-# Add executable. Default name is the project name, version 0.1
+# コンパイル対象のソースを収集する。
 set(PWMK_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS ${PWMK_SOURCE_DIR}/*.c)
-file(GLOB_RECURSE SETTINGS_SRCS CONFIGURE_DEPENDS "${PWMK_PROFILE_SETTINGS_DIR}/*.c")
 
 list(APPEND SRC_FILES
-    ${SETTINGS_SRCS}
     ${PWMK_PROFILE_C_SOURCES}
 )
 
+# 収集したソースから実行ファイルを作成する。
 add_executable(pwmk ${SRC_FILES})
 
+# PIOプログラムからCヘッダーを生成する。
 pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWMK_PROFILE_GENERATED_SRC_DIR}/led)
 
-# pull in common dependencies
+# 常に使用するPico SDKのライブラリをリンクする。
 target_link_libraries(pwmk
     pico_stdlib
     pico_low_power
@@ -106,6 +129,7 @@ target_link_libraries(pwmk
     hardware_watchdog
 )
 
+# BLEを有効にした場合だけ、BTstackとCYW43関連のライブラリをリンクする。
 if (PWMK_ENABLE_BLE)
     target_link_libraries(pwmk
         pico_btstack_ble
@@ -114,6 +138,7 @@ if (PWMK_ENABLE_BLE)
     )
 endif()
 
+# USBを有効にした場合だけ、TinyUSBと固有ID取得用のライブラリをリンクする。
 if (PWMK_ENABLE_USB)
     target_link_libraries(pwmk
         tinyusb_device
@@ -121,26 +146,30 @@ if (PWMK_ENABLE_USB)
     )
 endif()
 
+# USBとUARTのstdioを設定する。
 pico_enable_stdio_usb(pwmk ${PWMK_STDIO_USB_VALUE})
 pico_enable_stdio_uart(pwmk 1)
 
+# ヘッダーをインクルード検索対象に追加する。
 target_include_directories(pwmk PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${PWMK_SOURCE_DIR}
     ${PWMK_PROFILE_GENERATED_SRC_DIR}
 )
 
+# BLEを有効にした場合は、GATT定義からBTstack用のヘッダーを生成する。
 if (PWMK_ENABLE_BLE)
     pico_btstack_make_gatt_header(pwmk PRIVATE "${CMAKE_BINARY_DIR}/generated/profile/pwmk.gatt")
 endif()
 
-# create map/bin/hex file etc.
+# UF2、BIN、HEX、MAPなどの追加出力を生成する。
 pico_add_extra_outputs(pwmk)
 
+# コンパイル時の機能フラグとデバッグ出力の設定を定義する。
 target_compile_definitions(pwmk PRIVATE
     PWMK_ENABLE_USB=${PWMK_ENABLE_USB_VALUE}
     PWMK_ENABLE_BLE=${PWMK_ENABLE_BLE_VALUE}
-    #WANT_HCI_DUMP=1 # This enables btstack debug
+    #WANT_HCI_DUMP=1 # BTstackのデバッグログを有効にする場合に使用する
     DEBUG_MAIN=0
     DEBUG_BLE=0
     DEBUG_EVENT=0
@@ -148,10 +177,11 @@ target_compile_definitions(pwmk PRIVATE
     DEBUG_MATRIX_SCAN_DEEP=0
     DEBUG_PINNACLE=0
     DEBUG_PERIPHERAL=0
+    DEBUG_VIAL=0
 )
 
-# ROM and RAM utilization set to display at build time
+# リンク時にフラッシュ（ROM）とRAMの使用量を表示する。
 target_link_options(pwmk PRIVATE -Xlinker --print-memory-usage)
 
-# Set warnings to display at build time
+# 必要に応じてコンパイラー警告を有効にする。
 # target_compile_options(pwmk PRIVATE -Wall -Wextra)

@@ -71,7 +71,7 @@
 
 // クラス設定
 #if PWMK_ENABLE_USB
-#define CFG_TUD_HID 1
+#define CFG_TUD_HID 2
 #define CFG_TUD_CDC 0
 #else
 #define CFG_TUD_HID 0

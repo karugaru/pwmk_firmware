@@ -8,5 +8,6 @@
 
 void matrix_init(void);
 void matrix_process(void);
+bool matrix_is_pressed(uint8_t row, uint8_t col);
 
 #endif // PWMK_MATRIX_SCAN_H

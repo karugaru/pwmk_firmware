@@ -107,7 +107,7 @@ void matrix_process(void) {
       // 状態が変化していればイベント処理
       if (last_gpio_state[row][col] != prev_gpio_state[row][col]) {
 
-        icode_t icode = icode_lookup(row, col);
+        icode_t icode = keymap_icode_lookup(row, col);
         bool pressed = last_gpio_state[row][col];
 
 #if DEBUG_MATRIX_SCAN
@@ -126,6 +126,19 @@ void matrix_process(void) {
       prev_gpio_state[row][col] = last_gpio_state[row][col];
     }
   }
+}
+
+/**
+ * @brief 指定された行と列のキーが押されているかどうかを返します。
+ * @param row 行番号 (0からROWS-1)
+ * @param col 列番号 (0からCOLS-1)
+ * @return bool キーが押されている場合はtrue、そうでない場合はfalse
+ */
+bool matrix_is_pressed(uint8_t row, uint8_t col) {
+  if (row >= ROWS || col >= COLS) {
+    return false;
+  }
+  return prev_gpio_state[row][col];
 }
 
 //----------------------------------------------------------------
