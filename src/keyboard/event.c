@@ -1,13 +1,10 @@
-#include <pico/bootrom.h>
+#include "keyboard/event.h"
+#include "hid/hid.h"
+#include "keyboard/code.h"
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "ble/ble.h"
-#include "hid/hid.h"
-#include "keyboard/event.h"
-#include "settings/keymap.h"
-#include "settings/settings.h"
-#include "state/state.h"
 
 #ifndef DEBUG_EVENT
 #define DEBUG_EVENT 0
@@ -15,7 +12,7 @@
 
 #if DEBUG_EVENT
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
-#define DEBUG_PRINT_REPORT(name, report)                                 \
+#define DEBUG_PRINT_REPORT(name, report)                                       \
   do {                                                                         \
     /* デバッグ出力 */                                                         \
     printf("%s: ", name);                                                      \
@@ -34,6 +31,8 @@ static bool
 event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode);
 static bool event_apply_press_consumer_key(consumer_code_t keycode);
 static bool event_apply_release_consumer_key(consumer_code_t keycode);
+
+static event_settings_t event_settings = {0};
 
 static hid_state_t hid_state = {0};
 static int8_t pointing_device_mouse_keys = -1;
@@ -88,93 +87,14 @@ static bool reached_threshold(int16_t value, int16_t threshold) {
  */
 static bool event_has_mouse_move_event() {
   for (int i = 0; i < hid_state.pointing_id_max; i++) {
-    if (reached_threshold(hid_state.mouse[i].xDelta, MOUSE_MOVE_THRESH) ||
-        reached_threshold(hid_state.mouse[i].yDelta, MOUSE_MOVE_THRESH) ||
-        reached_threshold(hid_state.mouse[i].wDelta, MOUSE_WHEEL_THRESH)) {
+    if (reached_threshold(hid_state.mouse[i].xDelta,
+                          event_settings.mouse_move_thresh) ||
+        reached_threshold(hid_state.mouse[i].yDelta,
+                          event_settings.mouse_move_thresh) ||
+        reached_threshold(hid_state.mouse[i].wDelta,
+                          event_settings.mouse_wheel_thresh)) {
       return true;
     }
-  }
-
-  return false;
-}
-
-/**
- * @brief 特殊キーコードの処理
- * @param icode キーコード
- * @param pressed 押下状態
- * @return 処理された場合はtrue、処理されなかった場合はfalse
- */
-static bool event_process_special(icode_t icode, bool pressed) {
-  // ISC_BOOTが押されたらブートモードでリセット
-  if (icode == ISC_BOOT && pressed) {
-    state_set_system(STATE_BOOTLOADER);
-    return true;
-  }
-
-  // 接続モード切替コードの処理
-  if (pressed && ISC_CONN_TOGGLE <= icode && icode <= ISC_CONN_BLE) {
-    connection_preference_t new_pref;
-    bool handled = true;
-
-    switch (icode) {
-    case ISC_CONN_TOGGLE:
-      new_pref = (state_get_connection_preference() == CONN_PREF_USB)
-                     ? CONN_PREF_BLE
-                     : CONN_PREF_USB;
-      break;
-    case ISC_CONN_USB:
-      new_pref = CONN_PREF_USB;
-      break;
-    case ISC_CONN_BLE:
-      new_pref = CONN_PREF_BLE;
-      break;
-    default:
-      handled = false;
-      break;
-    }
-
-    if (handled) {
-      state_switch_connection_preference(new_pref);
-      return true;
-    }
-  }
-
-  // BLEスロット系コードの処理
-  if (pressed && ISC_BLE_UNPAIR <= icode && icode <= ISC_BLE_SLOT_4) {
-    bool ble_slot_updated = false;
-
-    DEBUG_PRINT("BLE slot op requested: icode=0x%04X\n", icode);
-
-    switch (icode) {
-    case ISC_BLE_UNPAIR:
-      ble_slot_updated = ble_unpair_selected_slot();
-      DEBUG_PRINT("BLE slot op: unpair selected result=%d\n",
-                        ble_slot_updated ? 1 : 0);
-      break;
-    case ISC_BLE_SLOT_1:
-      ble_slot_updated = ble_select_slot(0);
-      DEBUG_PRINT("BLE slot op: select slot 1 result=%d\n",
-                        ble_slot_updated ? 1 : 0);
-      break;
-    case ISC_BLE_SLOT_2:
-      ble_slot_updated = ble_select_slot(1);
-      DEBUG_PRINT("BLE slot op: select slot 2 result=%d\n",
-                        ble_slot_updated ? 1 : 0);
-      break;
-    case ISC_BLE_SLOT_3:
-      ble_slot_updated = ble_select_slot(2);
-      DEBUG_PRINT("BLE slot op: select slot 3 result=%d\n",
-                        ble_slot_updated ? 1 : 0);
-      break;
-    case ISC_BLE_SLOT_4:
-      ble_slot_updated = ble_select_slot(3);
-      DEBUG_PRINT("BLE slot op: select slot 4 result=%d\n",
-                        ble_slot_updated ? 1 : 0);
-      break;
-    default:
-      break;
-    }
-    return ble_slot_updated;
   }
 
   return false;
@@ -274,11 +194,17 @@ static bool event_process_pointing(icode_t icode, bool pressed) {
 
 /**
  * @brief イベント処理の初期化
+ * @param settings イベント設定構造体
  */
-void event_init(void) {
-  int8_t id = hid_request_pointing_device_id(&hid_state);
-  if (id >= 0) {
-    pointing_device_mouse_keys = id;
+void event_init(event_settings_t settings) {
+  event_settings = settings;
+  event_settings.mouse_move_thresh = MAX(event_settings.mouse_move_thresh, 1);
+  event_settings.mouse_wheel_thresh = MAX(event_settings.mouse_wheel_thresh, 1);
+
+  hid_state = (hid_state_t){0};
+  pointing_device_mouse_keys = hid_request_pointing_device_id(&hid_state);
+  for (int i = 0; i < 6; i++) {
+    mouse_move_key_pressed[i] = false;
   }
 }
 
@@ -443,16 +369,17 @@ void event_accumulate_mouse(uint8_t device_id, mouse_button_code_t buttons,
  * @param pressed 押された(true)か離された(false)か
  * @param event_time イベントの発生時刻
  */
-void event_process(icode_t icode, bool pressed, absolute_time_t event_time) {
+void event_process(icode_t icode, bool pressed, uint64_t event_time) {
   // 現在は使用していないが、将来的にイベントのタイムスタンプを処理するために保持
   (void)event_time;
 
-  bool process_subsequent = event_process_user_cb(&icode, pressed);
+  bool process_subsequent = event_process_user_cb(&icode, pressed, event_time);
   if (!process_subsequent) {
     return;
   }
 
-  if (event_process_special(icode, pressed)) {
+  if (event_settings.platform_callback != NULL &&
+      event_settings.platform_callback(icode, pressed)) {
     return;
   }
   if (event_process_key(icode, pressed)) {
@@ -476,22 +403,22 @@ void event_process_periodic(void) {
     int8_t dw = 0;
 
     if (mouse_move_key_pressed[MOUSE_MOVE_UP]) {
-      dy -= MOUSE_MOVE_DELTA;
+      dy -= event_settings.mouse_move_delta;
     }
     if (mouse_move_key_pressed[MOUSE_MOVE_DOWN]) {
-      dy += MOUSE_MOVE_DELTA;
+      dy += event_settings.mouse_move_delta;
     }
     if (mouse_move_key_pressed[MOUSE_MOVE_LEFT]) {
-      dx -= MOUSE_MOVE_DELTA;
+      dx -= event_settings.mouse_move_delta;
     }
     if (mouse_move_key_pressed[MOUSE_MOVE_RIGHT]) {
-      dx += MOUSE_MOVE_DELTA;
+      dx += event_settings.mouse_move_delta;
     }
     if (mouse_move_key_pressed[MOUSE_WHEEL_UP]) {
-      dw += MOUSE_WHEEL_DELTA;
+      dw += event_settings.mouse_wheel_delta;
     }
     if (mouse_move_key_pressed[MOUSE_WHEEL_DOWN]) {
-      dw -= MOUSE_WHEEL_DELTA;
+      dw -= event_settings.mouse_wheel_delta;
     }
 
     if (dx != 0 || dy != 0 || dw != 0) {
@@ -511,12 +438,15 @@ void event_process_periodic(void) {
  * @param icode
  * 内部コード。上書きされた場合、その内容が標準イベント処理に渡される。
  * @param pressed 押されたか離されたか
+ * @param event_time イベントの発生時刻
  * @return
  * 標準イベント処理を続行する場合はtrueを返す。しない場合はfalseを返す。
  */
-__attribute__((weak)) bool event_process_user_cb(icode_t *icode, bool pressed) {
+__attribute__((weak)) bool event_process_user_cb(icode_t *icode, bool pressed,
+                                                 uint64_t event_time) {
   (void)icode;
   (void)pressed;
+  (void)event_time;
   return true;
 }
 
@@ -557,7 +487,9 @@ bool event_pop_hid_report(keymap_hid_report_t *report) {
   if (hid_state.has_mouse_event || event_has_mouse_move_event()) {
     report->report_id = MOUSE_REPORT_ID;
     report->size = HID_MOUSE_REPORT_SIZE;
-    hid_mouse_to_report_and_consume(&hid_state, report->data);
+    hid_mouse_to_report_and_consume(&hid_state, report->data,
+                                    event_settings.mouse_move_thresh,
+                                    event_settings.mouse_wheel_thresh);
     hid_state.has_mouse_event = false;
 
     DEBUG_PRINT_REPORT("Mouse Report", report);

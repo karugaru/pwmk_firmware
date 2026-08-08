@@ -1,9 +1,16 @@
 #ifndef PWMK_HID_H
 #define PWMK_HID_H
 
-#include <pico/stdlib.h>
-
 #include "keyboard/code.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
 #define KEYBOARD_REPORT_ID 0x01
 #define MOUSE_REPORT_ID 0x02
@@ -49,7 +56,9 @@ typedef struct {
 void hid_keyboard_to_report(hid_state_t *event,
                             uint8_t report[HID_KEYBOARD_REPORT_SIZE]);
 void hid_mouse_to_report_and_consume(hid_state_t *event,
-                                     uint8_t report[HID_MOUSE_REPORT_SIZE]);
+                                     uint8_t report[HID_MOUSE_REPORT_SIZE],
+                                     int16_t mouse_move_thresh,
+                                     int16_t mouse_wheel_thresh);
 void hid_consumer_to_report(hid_state_t *event,
                             uint8_t report[HID_CONSUMER_REPORT_SIZE]);
 

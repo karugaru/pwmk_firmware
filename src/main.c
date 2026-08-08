@@ -8,6 +8,7 @@
 #include "ble/ble.h"
 #include "keyboard/code.h"
 #include "keyboard/event.h"
+#include "keyboard/event_platform.h"
 #include "keyboard/matrix_scan.h"
 #include "led/led.h"
 #include "peripheral/peripheral.h"
@@ -147,7 +148,14 @@ int main() {
   matrix_init();
 
   // イベント処理を初期化
-  event_init();
+  event_settings_t event_settings = {
+      .mouse_move_thresh = MOUSE_MOVE_THRESH,
+      .mouse_wheel_thresh = MOUSE_WHEEL_THRESH,
+      .mouse_move_delta = MOUSE_MOVE_DELTA,
+      .mouse_wheel_delta = MOUSE_WHEEL_DELTA,
+      .platform_callback = event_process_platform,
+  };
+  event_init(event_settings);
 
   // BLEの初期化
 #if PWMK_ENABLE_BLE

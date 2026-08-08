@@ -1,7 +1,7 @@
 #ifndef PWMK_CODE_H
 #define PWMK_CODE_H
 
-#include <pico/stdlib.h>
+#include <stdint.h>
 
 /**
  * @brief
