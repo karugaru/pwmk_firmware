@@ -89,8 +89,9 @@ void tud_resume_cb(void) {}
  *        レポートチェーンの次のレポートを送信する。
  */
 void tud_hid_report_complete_cb(uint8_t _instance, uint8_t const *report,
-                                uint16_t _len) {
-  (void)_len;
+                                uint16_t len) {
+  (void)report;
+  (void)len;
 
   if (_instance == USB_HID_INSTANCE_VIAL) {
     return;
@@ -106,9 +107,14 @@ void tud_hid_report_complete_cb(uint8_t _instance, uint8_t const *report,
 /**
  * @brief GET_REPORTリクエストのコールバック。
  */
-uint16_t tud_hid_get_report_cb(uint8_t _instance, uint8_t _report_id,
-                               hid_report_type_t _report_type, uint8_t *_buffer,
-                               uint16_t _reqlen) {
+uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
+                               hid_report_type_t report_type, uint8_t *buffer,
+                               uint16_t reqlen) {
+  (void)instance;
+  (void)report_id;
+  (void)report_type;
+  (void)buffer;
+  (void)reqlen;
   return 0;
 }
 

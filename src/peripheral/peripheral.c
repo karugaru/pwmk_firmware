@@ -12,7 +12,7 @@
 #if DEBUG_PERIPHERAL
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
-#define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) ((void)(0))
 #endif
 
 static int8_t pointing_device_pinnacle = -1;

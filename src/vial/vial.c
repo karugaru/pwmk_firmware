@@ -18,9 +18,16 @@
 #endif
 
 #if DEBUG_VIAL
-#define VIAL_DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT_PACKET(label, packet)                                      \
+  do {                                                                         \
+    DEBUG_PRINT("%s: ", label);                                                \
+    for (uint8_t index = 0; index < VIAL_PACKET_SIZE; index++) {               \
+      DEBUG_PRINT("0x%02X ", packet[index]);                                   \
+    }                                                                          \
+    DEBUG_PRINT("\n");                                                         \
+  } while (0)
 #else
-#define VIAL_DEBUG_PRINT(...)
+#define DEBUG_PRINT_PACKET(...) ((void)(0))
 #endif
 
 #define VIAL_PREFIX 0xFE
@@ -73,25 +80,6 @@ static void write_u32_le(uint8_t *buffer, uint32_t value) {
   buffer[1] = (uint8_t)(value >> 8);
   buffer[2] = (uint8_t)(value >> 16);
   buffer[3] = (uint8_t)(value >> 24);
-}
-
-/**
- * @brief Vialパケットをデバッグ出力する。
- * @param label パケット種別を示すラベル
- * @param packet 出力するパケット
- */
-static void vial_debug_print_packet(const char *label,
-                                    const uint8_t packet[VIAL_PACKET_SIZE]) {
-#if DEBUG_VIAL
-  VIAL_DEBUG_PRINT("%s: ", label);
-  for (uint8_t index = 0; index < VIAL_PACKET_SIZE; index++) {
-    VIAL_DEBUG_PRINT("0x%02X ", packet[index]);
-  }
-  VIAL_DEBUG_PRINT("\n");
-#else
-  (void)label;
-  (void)packet;
-#endif
 }
 
 /**
@@ -184,24 +172,6 @@ static uint16_t keymap_buffer_get_keycode(size_t key_index) {
 }
 
 /**
- * @brief キーマップバッファの指定されたキーインデックスにキーコードを設定する。
- * @param key_index キーインデックス
- * @param keycode 設定するキーコード
- * @return 成功した場合はtrue、失敗した場合はfalse
- */
-static bool keymap_buffer_set_keycode(size_t key_index, uint16_t keycode) {
-  if (key_index >= KEYMAP_VIAL_BUFFER_SIZE / 2) {
-    return false;
-  }
-
-  uint8_t layer = (uint8_t)(key_index / (ROWS * COLS));
-  size_t matrix_index = key_index % (ROWS * COLS);
-  uint8_t row = (uint8_t)(matrix_index / COLS);
-  uint8_t col = (uint8_t)(matrix_index % COLS);
-  return keymap_vial_set(layer, row, col, keycode);
-}
-
-/**
  * @brief キーマップバッファから指定されたオフセットのバイトを取得する。
  * @param offset バイトオフセット
  * @return 指定されたオフセットのバイト
@@ -285,7 +255,6 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x05: {
     // Unlock Status Query
     // ロック状態とロック解除キーを確認する。
-    uint8_t remaining = vial_update_unlock_state();
     response[0] = unlocked ? 1 : 0;
     response[1] = unlock_in_progress ? 1 : 0;
     memcpy(&response[2], vial_unlock_combo, sizeof(vial_unlock_combo));
@@ -361,79 +330,6 @@ static void handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
   for (uint8_t index = 0; index < size; index++) {
     response[VIAL_KEYMAP_RESPONSE_HEADER_SIZE + index] =
         keymap_buffer_get_byte((size_t)offset + index);
-  }
-}
-
-/**
- * @brief Dynamic KeymapのSETコマンドを処理する。
- * @param request 受信したリクエストパケット
- * @param response 応答パケットのバッファ
- */
-static void handle_dynamic_keymap_set(const uint8_t request[VIAL_PACKET_SIZE],
-                                      uint8_t response[VIAL_PACKET_SIZE]) {
-  uint16_t offset = read_u16_be(&request[1]);
-
-  // パケットが規定の長さを超えないように調整する。
-  uint8_t size;
-  if (request[3] > VIAL_PACKET_SIZE - VIAL_KEYMAP_RESPONSE_HEADER_SIZE) {
-    size = VIAL_PACKET_SIZE - VIAL_KEYMAP_RESPONSE_HEADER_SIZE;
-  } else {
-    size = request[3];
-  }
-
-  // サイズが0の場合は何もしない。
-  if (size == 0) {
-    return;
-  }
-
-  size_t first_key_index = offset / 2;
-  size_t last_key_index = ((size_t)offset + size - 1) / 2;
-  if (last_key_index >= KEYMAP_VIAL_BUFFER_SIZE / 2) {
-    response[0] = 1;
-    return;
-  }
-
-  // 部分的な書き込みを防ぐため、影響するキーコードを一時配列で組み立てる。
-  size_t key_count = last_key_index - first_key_index + 1;
-  uint16_t
-      keycodes[(VIAL_PACKET_SIZE - VIAL_KEYMAP_RESPONSE_HEADER_SIZE + 2) / 2];
-  for (size_t index = 0; index < key_count; index++) {
-    keycodes[index] = keymap_buffer_get_keycode(first_key_index + index);
-  }
-
-  // バイトオフセットの偶奇で、ビッグエンディアンキーコードの
-  // 上位バイトまたは下位バイトだけを更新する。
-  // なので書き込み開始位置がキーコードの境界でなくてもよい。
-  for (uint8_t index = 0; index < size; index++) {
-    size_t byte_offset = (size_t)offset + index;
-    size_t key_index = byte_offset / 2 - first_key_index;
-    uint16_t masked;
-    uint16_t writing;
-    if (byte_offset % 2 == 0) {
-      // 偶数オフセットは 16 ビットキーコードの上位バイト。
-      masked = keycodes[key_index] & 0x00FF;
-      writing = (uint16_t)request[VIAL_KEYMAP_RESPONSE_HEADER_SIZE + index]
-                << 8;
-    } else {
-      // 奇数オフセットは 16 ビットキーコードの下位バイト。
-      masked = keycodes[key_index] & 0xFF00;
-      writing = (uint16_t)request[VIAL_KEYMAP_RESPONSE_HEADER_SIZE + index];
-    }
-    keycodes[key_index] = masked | writing;
-  }
-
-  // すべてのキーコードを検証してから反映することで更新を原子的に扱う。
-  for (size_t index = 0; index < key_count; index++) {
-    icode_t keycode_internal;
-    if (!code_convert_to_internal(keycodes[index], &keycode_internal) ||
-        !vial_keycode_write_allowed(keycodes[index])) {
-      response[0] = 1;
-      return;
-    }
-  }
-
-  for (size_t index = 0; index < key_count; index++) {
-    keymap_buffer_set_keycode(first_key_index + index, keycodes[index]);
   }
 }
 
@@ -563,7 +459,7 @@ void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
   uint8_t request[VIAL_PACKET_SIZE];
   // 入力を退避してから同じ 32 バイト領域をゼロ初期化した応答として再利用する。
   memcpy(request, packet, sizeof(request));
-  vial_debug_print_packet("Vial request", request);
+  DEBUG_PRINT_PACKET("Vial request", request);
   memset(packet, 0, VIAL_PACKET_SIZE);
 
   if (request[0] == VIAL_PREFIX) {
@@ -574,7 +470,7 @@ void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
     handle_via_command(request, packet);
   }
 
-  vial_debug_print_packet("Vial response", packet);
+  DEBUG_PRINT_PACKET("Vial response", packet);
 }
 
 #endif // PWMK_ENABLE_USB

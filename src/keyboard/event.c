@@ -14,8 +14,8 @@
 #endif
 
 #if DEBUG_EVENT
-#define EVENT_DEBUG_PRINT(...) printf(__VA_ARGS__)
-#define EVENT_DEBUG_PRINT_REPORT(name, report)                                 \
+#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT_REPORT(name, report)                                 \
   do {                                                                         \
     /* デバッグ出力 */                                                         \
     printf("%s: ", name);                                                      \
@@ -25,8 +25,8 @@
     printf("\n");                                                              \
   } while (0);
 #else
-#define EVENT_DEBUG_PRINT(...)
-#define EVENT_DEBUG_PRINT_REPORT(name, report)
+#define DEBUG_PRINT(...) ((void)(0))
+#define DEBUG_PRINT_REPORT(name, report) ((void)(name), (void)(report))
 #endif
 
 static bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode);
@@ -143,38 +143,38 @@ static bool event_process_special(icode_t icode, bool pressed) {
   if (pressed && ISC_BLE_UNPAIR <= icode && icode <= ISC_BLE_SLOT_4) {
     bool ble_slot_updated = false;
 
-    EVENT_DEBUG_PRINT("BLE slot op requested: icode=0x%04X\n", icode);
+    DEBUG_PRINT("BLE slot op requested: icode=0x%04X\n", icode);
 
     switch (icode) {
     case ISC_BLE_UNPAIR:
       ble_slot_updated = ble_unpair_selected_slot();
-      EVENT_DEBUG_PRINT("BLE slot op: unpair selected result=%d\n",
+      DEBUG_PRINT("BLE slot op: unpair selected result=%d\n",
                         ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_1:
       ble_slot_updated = ble_select_slot(0);
-      EVENT_DEBUG_PRINT("BLE slot op: select slot 1 result=%d\n",
+      DEBUG_PRINT("BLE slot op: select slot 1 result=%d\n",
                         ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_2:
       ble_slot_updated = ble_select_slot(1);
-      EVENT_DEBUG_PRINT("BLE slot op: select slot 2 result=%d\n",
+      DEBUG_PRINT("BLE slot op: select slot 2 result=%d\n",
                         ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_3:
       ble_slot_updated = ble_select_slot(2);
-      EVENT_DEBUG_PRINT("BLE slot op: select slot 3 result=%d\n",
+      DEBUG_PRINT("BLE slot op: select slot 3 result=%d\n",
                         ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_4:
       ble_slot_updated = ble_select_slot(3);
-      EVENT_DEBUG_PRINT("BLE slot op: select slot 4 result=%d\n",
+      DEBUG_PRINT("BLE slot op: select slot 4 result=%d\n",
                         ble_slot_updated ? 1 : 0);
       break;
     default:
       break;
     }
-    return true;
+    return ble_slot_updated;
   }
 
   return false;
@@ -515,6 +515,8 @@ void event_process_periodic(void) {
  * 標準イベント処理を続行する場合はtrueを返す。しない場合はfalseを返す。
  */
 __attribute__((weak)) bool event_process_user_cb(icode_t *icode, bool pressed) {
+  (void)icode;
+  (void)pressed;
   return true;
 }
 
@@ -538,7 +540,7 @@ bool event_pop_hid_report(keymap_hid_report_t *report) {
     hid_keyboard_to_report(&hid_state, report->data);
     hid_state.has_keyboard_event = false;
 
-    EVENT_DEBUG_PRINT_REPORT("Keyboard Report", report);
+    DEBUG_PRINT_REPORT("Keyboard Report", report);
     return true;
   }
 
@@ -548,7 +550,7 @@ bool event_pop_hid_report(keymap_hid_report_t *report) {
     hid_consumer_to_report(&hid_state, report->data);
     hid_state.has_consumer_event = false;
 
-    EVENT_DEBUG_PRINT_REPORT("Consumer Report", report);
+    DEBUG_PRINT_REPORT("Consumer Report", report);
     return true;
   }
 
@@ -558,7 +560,7 @@ bool event_pop_hid_report(keymap_hid_report_t *report) {
     hid_mouse_to_report_and_consume(&hid_state, report->data);
     hid_state.has_mouse_event = false;
 
-    EVENT_DEBUG_PRINT_REPORT("Mouse Report", report);
+    DEBUG_PRINT_REPORT("Mouse Report", report);
     return true;
   }
 

@@ -7,7 +7,7 @@
 // 内部キーコードの既定キーマップ。
 static const icode_t keymap[ROWS * COLS] = KEYMAP;
 // 行番号と列番号からキーインデックスを取得するためのルックアップテーブル。
-static size_t keyswitch_index_lookup[ROWS][COLS];
+static int16_t keyswitch_index_lookup[ROWS][COLS];
 // 内部キーコードの動的キーマップ。
 static icode_t dynamic_keymap[ROWS][COLS];
 
@@ -64,7 +64,7 @@ icode_t keymap_icode_lookup(uint8_t row, uint8_t col) {
     return IKC_NOOP;
   }
 
-  size_t index = keyswitch_index_lookup[row][col];
+  int16_t index = keyswitch_index_lookup[row][col];
   if (index != -1) {
     return dynamic_keymap[row][col];
   }
