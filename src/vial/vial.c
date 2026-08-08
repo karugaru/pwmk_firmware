@@ -142,13 +142,13 @@ static uint8_t vial_update_unlock_state(void) {
 static void copy_keyboard_definition_page(uint16_t page,
                                           uint8_t response[VIAL_PACKET_SIZE]) {
   // Definition Data Query の応答はヘッダなしの 32 バイトページ。
-  size_t offset = (size_t)page * VIAL_PACKET_SIZE;
+  uint16_t offset = page * VIAL_PACKET_SIZE;
   if (offset >= VIAL_KEYBOARD_DEFINITION_SIZE) {
     return;
   }
 
-  size_t remaining = VIAL_KEYBOARD_DEFINITION_SIZE - offset;
-  size_t length = remaining < VIAL_PACKET_SIZE ? remaining : VIAL_PACKET_SIZE;
+  uint16_t remaining = VIAL_KEYBOARD_DEFINITION_SIZE - offset;
+  uint16_t length = remaining < VIAL_PACKET_SIZE ? remaining : VIAL_PACKET_SIZE;
   memcpy(response, &vial_keyboard_definition[offset], length);
 }
 
@@ -158,14 +158,14 @@ static void copy_keyboard_definition_page(uint16_t page,
  * @param key_index キーインデックス
  * @return キーコード
  */
-static uint16_t keymap_buffer_get_keycode(size_t key_index) {
+static uint16_t keymap_buffer_get_keycode(uint16_t key_index) {
   if (key_index >= KEYMAP_VIAL_BUFFER_SIZE / 2) {
     return 0;
   }
 
   // バッファは layer -> row -> column の順で配置される。
   uint8_t layer = (uint8_t)(key_index / (ROWS * COLS));
-  size_t matrix_index = key_index % (ROWS * COLS);
+  uint16_t matrix_index = key_index % (ROWS * COLS);
   uint8_t row = (uint8_t)(matrix_index / COLS);
   uint8_t col = (uint8_t)(matrix_index % COLS);
   return keymap_vial_get(layer, row, col);
@@ -176,12 +176,12 @@ static uint16_t keymap_buffer_get_keycode(size_t key_index) {
  * @param offset バイトオフセット
  * @return 指定されたオフセットのバイト
  */
-static uint8_t keymap_buffer_get_byte(size_t offset) {
+static uint8_t keymap_buffer_get_byte(uint16_t offset) {
   if (offset >= KEYMAP_VIAL_BUFFER_SIZE) {
     return 0;
   }
 
-  size_t key_index = offset / 2;
+  uint16_t key_index = offset / 2;
   uint16_t keycode = keymap_buffer_get_keycode(key_index);
   // VIA の Dynamic Keymap Buffer では
   // 16ビットキーコードをビッグエンディアンで送る。
@@ -202,7 +202,7 @@ static bool vial_keycode_write_allowed(uint16_t keycode) {
  * @param response 応答バッファ
  */
 static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
-  const size_t bytes_per_row = (COLS + 7) / 8;
+  const uint16_t bytes_per_row = (COLS + 7) / 8;
 
   for (uint8_t row = 0; row < ROWS; row++) {
     for (uint8_t col = 0; col < COLS; col++) {
@@ -210,8 +210,8 @@ static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
         continue;
       }
 
-      size_t byte_in_row = col / 8;
-      size_t response_index =
+      uint16_t byte_in_row = col / 8;
+      uint16_t response_index =
           2 + row * bytes_per_row + (bytes_per_row - byte_in_row - 1);
       response[response_index] |= (uint8_t)(1u << (col % 8));
     }
@@ -329,7 +329,7 @@ static void handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
 
   for (uint8_t index = 0; index < size; index++) {
     response[VIAL_KEYMAP_RESPONSE_HEADER_SIZE + index] =
-        keymap_buffer_get_byte((size_t)offset + index);
+        keymap_buffer_get_byte(offset + index);
   }
 }
 

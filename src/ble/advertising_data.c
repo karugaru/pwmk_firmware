@@ -14,7 +14,7 @@ uint8_t adv_data_len = 0;
  */
 void advertising_data_init(void) {
   size_t const name_len = strlen(DEVICE_NAME);
-  size_t index = 0;
+  uint16_t index = 0;
 
   adv_data[index++] = 0x02;
   adv_data[index++] = BLUETOOTH_DATA_TYPE_FLAGS;

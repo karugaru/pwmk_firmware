@@ -6,7 +6,7 @@
 
 typedef struct {
   uint8_t report_id;
-  size_t size;
+  uint16_t size;
   uint8_t data[HID_REPORT_SIZE_MAX];
 } keymap_hid_report_t;
 

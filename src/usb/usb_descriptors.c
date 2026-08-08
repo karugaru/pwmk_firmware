@@ -135,7 +135,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
          i < sizeof(VIAL_SERIAL_PREFIX) - 1 && chr_count < max_count; i++) {
       _desc_str[1 + chr_count++] = VIAL_SERIAL_PREFIX[i];
     }
-    for (size_t i = 0;
+    for (uint16_t i = 0;
          i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES && chr_count + 1 < max_count;
          i++) {
       uint8_t byte = board_id.id[i];

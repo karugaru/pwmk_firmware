@@ -18,7 +18,7 @@ static icode_t dynamic_keymap[ROWS][COLS];
 static void keymap_vial_reset_internal(void) {
   memset(dynamic_keymap, 0, sizeof(dynamic_keymap));
 
-  for (size_t index = 0; index < ROWS * COLS; index++) {
+  for (uint16_t index = 0; index < ROWS * COLS; index++) {
     uint8_t row = layout[index][0];
     uint8_t col = layout[index][1];
     if (row == (uint8_t)-1 || col == (uint8_t)-1) {
@@ -39,7 +39,7 @@ void keymap_index_init(void) {
     }
   }
 
-  for (size_t index = 0; index < ROWS * COLS; index++) {
+  for (uint16_t index = 0; index < ROWS * COLS; index++) {
     uint8_t row = layout[index][0];
     uint8_t col = layout[index][1];
     if (row == (uint8_t)-1 || col == (uint8_t)-1) {
