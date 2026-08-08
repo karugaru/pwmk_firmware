@@ -441,8 +441,12 @@ void event_accumulate_mouse(uint8_t device_id, mouse_button_code_t buttons,
  *        マウスコード、特殊コードなどを判別・処理し、内部HID状態を更新する。
  * @param icode 内部コード
  * @param pressed 押された(true)か離された(false)か
+ * @param event_time イベントの発生時刻
  */
-void event_process(icode_t icode, bool pressed) {
+void event_process(icode_t icode, bool pressed, absolute_time_t event_time) {
+  // 現在は使用していないが、将来的にイベントのタイムスタンプを処理するために保持
+  (void)event_time;
+
   bool process_subsequent = event_process_user_cb(&icode, pressed);
   if (!process_subsequent) {
     return;

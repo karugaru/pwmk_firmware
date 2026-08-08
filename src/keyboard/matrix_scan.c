@@ -115,7 +115,7 @@ void matrix_process(void) {
                pressed ? "pressed" : "released");
 #endif
 
-        event_process(icode, pressed);
+        event_process(icode, pressed, current_time);
       }
       // 前回の状態を更新
       prev_gpio_state[row][col] = last_gpio_state[row][col];
