@@ -15,9 +15,25 @@
 
 #if DEBUG_EVENT
 #define EVENT_DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define EVENT_DEBUG_PRINT_REPORT(name, report)                                 \
+  do {                                                                         \
+    /* デバッグ出力 */                                                         \
+    printf("%s: ", name);                                                      \
+    for (int i = 0; i < (report->size); i++) {                                 \
+      printf("0x%02X ", (report->data[i]));                                    \
+    }                                                                          \
+    printf("\n");                                                              \
+  } while (0);
 #else
 #define EVENT_DEBUG_PRINT(...)
+#define EVENT_DEBUG_PRINT_REPORT(name, report)
 #endif
+
+static bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode);
+static bool
+event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode);
+static bool event_apply_press_consumer_key(consumer_code_t keycode);
+static bool event_apply_release_consumer_key(consumer_code_t keycode);
 
 static hid_state_t hid_state = {0};
 static int8_t pointing_device_mouse_keys = -1;
@@ -88,7 +104,7 @@ static bool event_has_mouse_move_event() {
  * @param pressed 押下状態
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
-static bool event_process_standard_special(icode_t icode, bool pressed) {
+static bool event_process_special(icode_t icode, bool pressed) {
   // ISC_BOOTが押されたらブートモードでリセット
   if (icode == ISC_BOOT && pressed) {
     state_set_system(STATE_BOOTLOADER);
@@ -170,7 +186,7 @@ static bool event_process_standard_special(icode_t icode, bool pressed) {
  * @param pressed 押下状態
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
-static bool event_process_standard_key(icode_t icode, bool pressed) {
+static bool event_process_key(icode_t icode, bool pressed) {
   if (icode >= ICODE_STANDARD_START && icode <= ICODE_STANDARD_END) {
     keyboard_modifiered_code_t keycode = (keyboard_modifiered_code_t)icode;
     bool state_changed = false;
@@ -195,7 +211,7 @@ static bool event_process_standard_key(icode_t icode, bool pressed) {
  * @param pressed 押下状態
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
-static bool event_process_standard_consumer(icode_t icode, bool pressed) {
+static bool event_process_consumer(icode_t icode, bool pressed) {
   if (icode >= ICODE_CONSUMER_START && icode <= ICODE_CONSUMER_END) {
     consumer_code_t keycode = code_icodes_to_consumer(icode);
 
@@ -221,7 +237,7 @@ static bool event_process_standard_consumer(icode_t icode, bool pressed) {
  * @param pressed 押下状態
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
-static bool event_process_standard_pointing(icode_t icode, bool pressed) {
+static bool event_process_pointing(icode_t icode, bool pressed) {
   if (icode >= ICODE_MOUSE_BUTTON_START && icode <= ICODE_MOUSE_BUTTON_END) {
     if (pointing_device_mouse_keys < 0) {
       return true;
@@ -278,7 +294,7 @@ int8_t event_request_pointing_device_id(void) {
  * @brief キーボードキーを追加
  * @return 内部状態が変化された場合にtrueを返す
  */
-bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode) {
+static bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode) {
   // 修飾キーが直接指定された場合
   if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
     keyboard_modifier_bits_t old_real_mod = hid_state.keyboard.real_modifier;
@@ -320,7 +336,8 @@ bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode) {
  * @brief キーボードキーを削除
  * @return 内部状態が変化された場合にtrueを返す
  */
-bool event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode) {
+static bool
+event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode) {
   // 修飾キーが直接指定された場合
   if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
     keyboard_modifier_bits_t old_real_mod = hid_state.keyboard.real_modifier;
@@ -357,7 +374,7 @@ bool event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode) {
  * @brief コンシューマーキーを追加
  * @return 内部状態が変化された場合にtrueを返す
  */
-bool event_apply_press_consumer_key(consumer_code_t keycode) {
+static bool event_apply_press_consumer_key(consumer_code_t keycode) {
   // 既に押されているかチェック
   for (int i = 0; i < 6; i++) {
     if (hid_state.consumer.keycode[i] == keycode) {
@@ -380,7 +397,7 @@ bool event_apply_press_consumer_key(consumer_code_t keycode) {
  * @brief コンシューマーキーを削除
  * @return 内部状態が変化された場合にtrueを返す
  */
-bool event_apply_release_consumer_key(consumer_code_t keycode) {
+static bool event_apply_release_consumer_key(consumer_code_t keycode) {
   for (int i = 0; i < 6; i++) {
     if (hid_state.consumer.keycode[i] == keycode) {
       // 見つかったキーを削除し、後ろのキーを前に詰める
@@ -419,24 +436,28 @@ void event_accumulate_mouse(uint8_t device_id, mouse_button_code_t buttons,
 }
 
 /**
- * @brief 標準的なイベントを処理する。
+ * @briefイベントを処理する。
  *        内部コードから、標準キーコード、コンシューマコード、
- *        マウスコード、特殊コード
- *        などを判別・処理し、内部HID状態を更新する。
+ *        マウスコード、特殊コードなどを判別・処理し、内部HID状態を更新する。
  * @param icode 内部コード
  * @param pressed 押された(true)か離された(false)か
  */
-void event_process_standard(icode_t icode, bool pressed) {
-  if (event_process_standard_special(icode, pressed)) {
+void event_process(icode_t icode, bool pressed) {
+  bool process_subsequent = event_process_user_cb(&icode, pressed);
+  if (!process_subsequent) {
     return;
   }
-  if (event_process_standard_key(icode, pressed)) {
+
+  if (event_process_special(icode, pressed)) {
     return;
   }
-  if (event_process_standard_consumer(icode, pressed)) {
+  if (event_process_key(icode, pressed)) {
     return;
   }
-  if (event_process_standard_pointing(icode, pressed)) {
+  if (event_process_consumer(icode, pressed)) {
+    return;
+  }
+  if (event_process_pointing(icode, pressed)) {
     return;
   }
 }
@@ -487,9 +508,9 @@ void event_process_periodic(void) {
  * 内部コード。上書きされた場合、その内容が標準イベント処理に渡される。
  * @param pressed 押されたか離されたか
  * @return
- * ユーザー定義イベントが処理された場合はfalseを返す。標準イベント処理を続行する場合はtrueを返す。
+ * 標準イベント処理を続行する場合はtrueを返す。しない場合はfalseを返す。
  */
-__attribute__((weak)) bool event_process_user(icode_t *icode, bool pressed) {
+__attribute__((weak)) bool event_process_user_cb(icode_t *icode, bool pressed) {
   return true;
 }
 
@@ -501,71 +522,41 @@ bool event_has_event(void) {
   return hid_state.has_keyboard_event || hid_state.has_consumer_event ||
          hid_state.has_mouse_event || event_has_mouse_move_event();
 }
+
 /**
- * @brief
- * キーボードの内部状態が変化されているならば、HIDレポートとして取り出す。
+ * @brief 内部HID状態から、HIDレポートを1つ取り出す
  * @return レポートが取り出された場合にtrueを返す
  */
-bool event_pop_keyboard_report(uint8_t report[HID_KEYBOARD_REPORT_SIZE]) {
-  if (!hid_state.has_keyboard_event) {
-    return false;
-  }
-  hid_keyboard_to_report(&hid_state, report);
-  hid_state.has_keyboard_event = false;
+bool event_pop_hid_report(keymap_hid_report_t *report) {
+  if (hid_state.has_keyboard_event) {
+    report->report_id = KEYBOARD_REPORT_ID;
+    report->size = HID_KEYBOARD_REPORT_SIZE;
+    hid_keyboard_to_report(&hid_state, report->data);
+    hid_state.has_keyboard_event = false;
 
-#if DEBUG_EVENT
-  // デバッグ出力
-  printf("Keyboard Report: ");
-  for (int i = 0; i < HID_KEYBOARD_REPORT_SIZE; i++) {
-    printf("0x%02X ", report[i]);
+    EVENT_DEBUG_PRINT_REPORT("Keyboard Report", report);
+    return true;
   }
-  printf("\n");
-#endif
 
-  return true;
-}
-/**
- * @brief
- * コンシューマの内部状態が変化されているならば、HIDレポートとして取り出す。
- * @return レポートが取り出された場合にtrueを返す
- */
-bool event_pop_consumer_report(uint8_t report[HID_CONSUMER_REPORT_SIZE]) {
-  if (!hid_state.has_consumer_event) {
-    return false;
+  if (hid_state.has_consumer_event) {
+    report->report_id = CONSUMER_REPORT_ID;
+    report->size = HID_CONSUMER_REPORT_SIZE;
+    hid_consumer_to_report(&hid_state, report->data);
+    hid_state.has_consumer_event = false;
+
+    EVENT_DEBUG_PRINT_REPORT("Consumer Report", report);
+    return true;
   }
-  hid_consumer_to_report(&hid_state, report);
-  hid_state.has_consumer_event = false;
 
-#if DEBUG_EVENT
-  // デバッグ出力
-  printf("Consumer Report: ");
-  for (int i = 0; i < HID_CONSUMER_REPORT_SIZE; i++) {
-    printf("0x%02X ", report[i]);
+  if (hid_state.has_mouse_event || event_has_mouse_move_event()) {
+    report->report_id = MOUSE_REPORT_ID;
+    report->size = HID_MOUSE_REPORT_SIZE;
+    hid_mouse_to_report_and_consume(&hid_state, report->data);
+    hid_state.has_mouse_event = false;
+
+    EVENT_DEBUG_PRINT_REPORT("Mouse Report", report);
+    return true;
   }
-  printf("\n");
-#endif
 
-  return true;
-}
-/**
- * @brief マウスの内部状態が変化されているならば、HIDレポートとして取り出す。
- * @return レポートが取り出された場合にtrueを返す
- */
-bool event_pop_mouse_report(uint8_t report[HID_MOUSE_REPORT_SIZE]) {
-  if (!hid_state.has_mouse_event && !event_has_mouse_move_event()) {
-    return false;
-  }
-  hid_mouse_to_report_and_consume(&hid_state, report);
-  hid_state.has_mouse_event = false;
-
-#if DEBUG_EVENT
-  // デバッグ出力
-  printf("Mouse Report: ");
-  for (int i = 0; i < HID_MOUSE_REPORT_SIZE; i++) {
-    printf("0x%02X ", report[i]);
-  }
-  printf("\n");
-#endif
-
-  return true;
+  return false;
 }

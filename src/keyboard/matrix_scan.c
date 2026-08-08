@@ -115,12 +115,7 @@ void matrix_process(void) {
                pressed ? "pressed" : "released");
 #endif
 
-        // ユーザー定義イベントコールバックを呼び出し
-        bool process_subsequent = event_process_user(&icode, pressed);
-        // 標準のイベント処理を呼び出し
-        if (process_subsequent) {
-          event_process_standard(icode, pressed);
-        }
+        event_process(icode, pressed);
       }
       // 前回の状態を更新
       prev_gpio_state[row][col] = last_gpio_state[row][col];

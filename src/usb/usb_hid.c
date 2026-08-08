@@ -10,7 +10,7 @@
 #include "usb/usb_hid.h"
 #include "vial/vial.h"
 
-static void usb_hid_send_report_chain(uint8_t start_report_id);
+static void usb_hid_send_report_chain(void);
 static bool usb_hid_report_chain_active;
 
 // --------------------------------
@@ -46,7 +46,7 @@ void usb_hid_send_reports(void) {
     return;
   }
   usb_hid_report_chain_active = true;
-  usb_hid_send_report_chain(KEYBOARD_REPORT_ID);
+  usb_hid_send_report_chain();
 }
 
 /**
@@ -100,15 +100,7 @@ void tud_hid_report_complete_cb(uint8_t _instance, uint8_t const *report,
     return;
   }
 
-  // report[0]は前回送信済のレポートID
-  uint8_t next_report_id = report[0] + 1;
-  if (next_report_id <= REPORT_ID_MAX) {
-    usb_hid_send_report_chain(next_report_id);
-    return;
-  }
-
-  // 送るべきレポートがもうない場合はチェーンを終了する
-  usb_hid_report_chain_active = false;
+  usb_hid_send_report_chain();
 }
 
 /**
@@ -168,42 +160,18 @@ void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
 // --------------------------------
 
 /**
- * @brief 指定されたレポートIDからレポートチェーンを開始する。
- *        送信すべきレポートが見つかるまで順に探索し、
- *        見つかったら送信して終了する（続きはtud_hid_report_complete_cbで処理）。
- * @param start_report_id 開始レポートID
+ * @brief レポートチェーンを開始する。
+ *        送信すべきレポートがあれば送信して終了する。
+ *        （続きはtud_hid_report_complete_cbで処理）
  */
-static void usb_hid_send_report_chain(uint8_t start_report_id) {
-  uint8_t report[HID_REPORT_SIZE_MAX] = {0};
+static void usb_hid_send_report_chain() {
 
-  for (uint8_t id = start_report_id; id <= REPORT_ID_MAX; id++) {
-    memset(report, 0, sizeof(report));
-
-    switch (id) {
-    case KEYBOARD_REPORT_ID:
-      if (event_pop_keyboard_report(report)) {
-        tud_hid_report(KEYBOARD_REPORT_ID, report, HID_KEYBOARD_REPORT_SIZE);
-        return;
-      }
-      break;
-
-    case MOUSE_REPORT_ID:
-      if (event_pop_mouse_report(report)) {
-        tud_hid_report(MOUSE_REPORT_ID, report, HID_MOUSE_REPORT_SIZE);
-        return;
-      }
-      break;
-
-    case CONSUMER_REPORT_ID:
-      if (event_pop_consumer_report(report)) {
-        tud_hid_report(CONSUMER_REPORT_ID, report, HID_CONSUMER_REPORT_SIZE);
-        return;
-      }
-      break;
-    }
+  keymap_hid_report_t report;
+  if (event_pop_hid_report(&report)) {
+    tud_hid_report(report.report_id, report.data, report.size);
+  } else {
+    usb_hid_report_chain_active = false;
   }
-
-  usb_hid_report_chain_active = false;
 }
 
 #endif // PWMK_ENABLE_USB
