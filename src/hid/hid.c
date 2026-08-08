@@ -9,7 +9,7 @@ const uint8_t hid_descriptor[] = {
     0x09, 0x06, // Usage (Keyboard)
     0xA1, 0x01, // Collection (Application)
 
-    0x85, KEYBOARD_REPORT_ID, // Report ID
+    0x85, HID_KEYBOARD_REPORT_ID, // Report ID
 
     // Modifier byte
 
@@ -59,7 +59,7 @@ const uint8_t hid_descriptor[] = {
     0x09, 0x02, // USAGE (Mouse)
     0xA1, 0x01, // COLLECTION (Application)
 
-    0x85, MOUSE_REPORT_ID, // Report ID
+    0x85, HID_MOUSE_REPORT_ID, // Report ID
 
     0x09, 0x01, //   USAGE (Pointer)
     0xA1, 0x00, //   COLLECTION (Physical)
@@ -96,7 +96,7 @@ const uint8_t hid_descriptor[] = {
     0x09, 0x01, // Usage (Consumer Control)
     0xA1, 0x01, // Collection (Application)
 
-    0x85, CONSUMER_REPORT_ID, // Report ID
+    0x85, HID_CONSUMER_REPORT_ID, // Report ID
 
     0x15, 0x00,       // Logical Minimum (0)
     0x26, 0xFF, 0x03, // Logical Maximum (1023)
@@ -142,7 +142,7 @@ void hid_mouse_to_report_and_consume(hid_state_t *event,
   int16_t x = 0;
   int16_t y = 0;
   int16_t w = 0;
-  mouse_button_code_t buttons = 0;
+  code_mouse_button_t buttons = 0;
 
   for (int i = 0; i < event->pointing_id_max; i++) {
     buttons |= event->mouse[i].buttons;
@@ -176,7 +176,7 @@ void hid_consumer_to_report(hid_state_t *event,
                             uint8_t report[HID_CONSUMER_REPORT_SIZE]) {
   // キーコードの下位バイト、上位バイト、同様に5つ分のキーコード
   for (int i = 0; i < 6; i++) {
-    consumer_code_t keycode = event->consumer.keycode[i];
+    code_consumer_t keycode = event->consumer.keycode[i];
     report[i * 2] = (uint8_t)(keycode & 0xFF);            // 下位バイト
     report[i * 2 + 1] = (uint8_t)((keycode >> 8) & 0xFF); // 上位バイト
   }

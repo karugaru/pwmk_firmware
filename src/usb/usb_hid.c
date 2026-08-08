@@ -172,7 +172,7 @@ void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
  */
 static void usb_hid_send_report_chain() {
 
-  keymap_hid_report_t report;
+  event_hid_report_t report;
   if (event_pop_hid_report(&report)) {
     tud_hid_report(report.report_id, report.data, report.size);
   } else {

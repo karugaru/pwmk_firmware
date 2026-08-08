@@ -4,7 +4,7 @@
  * @brief 内部キーコードからキーボード修飾子コードに変換
  * @return 変換後のキーボード修飾子コード、該当しない場合はKMC_UNDEFINED
  */
-keyboard_modifier_t code_icode_to_modifier(icode_t ic) {
+code_mod_t code_icode_to_modifier(icode_t ic) {
   switch (ic) {
   case IMKC_LEFT_CONTROL:
     return KMC_LEFT_CONTROL;
@@ -31,14 +31,14 @@ keyboard_modifier_t code_icode_to_modifier(icode_t ic) {
  * @brief 内部キーコードからキーボード修飾子ビットを抽出
  * @return 抽出した修飾子ビット、該当しない場合はKMC_UNDEFINED
  */
-keyboard_modifier_bits_t code_icode_extract_modifier_bits(icode_t ic) {
+code_mod_bits_t code_icode_extract_modifier_bits(icode_t ic) {
   if (ic < ICODE_STANDARD_START || ic > ICODE_STANDARD_END) {
     return KMC_UNDEFINED;
   }
 
   // この時点でicは16bit幅であることが確定しているので、
   // 下位8bitがキーコード、上位8bitが修飾子ビットを表す
-  keyboard_modifier_bits_t mod_bits = (ic & 0xFF00) >> 8;
+  code_mod_bits_t mod_bits = (ic & 0xFF00) >> 8;
   return mod_bits;
 }
 
@@ -46,7 +46,7 @@ keyboard_modifier_bits_t code_icode_extract_modifier_bits(icode_t ic) {
  * @brief 内部キーコードからコンシューマーコードに変換
  * @return 変換後のコンシューマーコード、該当しない場合はCC_UNDEFINED
  */
-consumer_code_t code_icodes_to_consumer(icode_t ic) {
+code_consumer_t code_icodes_to_consumer(icode_t ic) {
   switch (ic) {
   case ICC_RECORD:
     return CC_RECORD;
@@ -83,7 +83,7 @@ consumer_code_t code_icodes_to_consumer(icode_t ic) {
  * @brief 内部キーコードからマウスボタンコードに変換
  * @return 変換後のマウスボタンコード、該当しない場合はMBC_UNDEFINED
  */
-mouse_button_code_t code_icodes_to_mouse_button(icode_t ic) {
+code_mouse_button_t code_icodes_to_mouse_button(icode_t ic) {
   switch (ic) {
   case IMC_MOUSE_LEFT:
     return MBC_LEFT;

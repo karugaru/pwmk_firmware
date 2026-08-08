@@ -39,13 +39,13 @@ static bool requested_deep_sleep;
  */
 static void pwmk_process_tick(void) {
   // キーマトリクス処理を実行
-  matrix_process();
+  matrix_scan_process();
 
   // 定期処理を実行
   event_process_periodic();
 
   // 接続モードとトランスポートの状態を取得
-  connection_preference_t connection_pref = state_get_connection_preference();
+  state_conn_pref_t connection_pref = state_get_connection_preference();
   bool usb_active = usb_hid_is_active();
   bool ble_enabled = ble_is_enabled();
   bool ble_connected = ble_is_connected();
@@ -145,7 +145,7 @@ int main() {
   settings_init();
 
   // マトリクススキャン初期化
-  matrix_init();
+  matrix_scan_init();
 
   // イベント処理を初期化
   event_settings_t event_settings = {
@@ -153,7 +153,7 @@ int main() {
       .mouse_wheel_thresh = MOUSE_WHEEL_THRESH,
       .mouse_move_delta = MOUSE_MOVE_DELTA,
       .mouse_wheel_delta = MOUSE_WHEEL_DELTA,
-      .platform_callback = event_process_platform,
+      .platform_callback = event_platform_process,
   };
   event_init(event_settings);
 

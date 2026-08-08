@@ -22,7 +22,7 @@
  * @param pressed 押下状態
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
-bool event_process_platform(icode_t icode, bool pressed) {
+bool event_platform_process(icode_t icode, bool pressed) {
   // ISC_BOOTが押されたらブートモードでリセット
   if (icode == ISC_BOOT && pressed) {
     state_set_system(STATE_BOOTLOADER);
@@ -31,7 +31,7 @@ bool event_process_platform(icode_t icode, bool pressed) {
 
   // 接続モード切替コードの処理
   if (pressed && ISC_CONN_TOGGLE <= icode && icode <= ISC_CONN_BLE) {
-    connection_preference_t new_pref;
+    state_conn_pref_t new_pref;
     bool handled = true;
 
     switch (icode) {

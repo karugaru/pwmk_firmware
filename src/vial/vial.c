@@ -88,7 +88,7 @@ static void write_u32_le(uint8_t *buffer, uint32_t value) {
  */
 static bool vial_unlock_combo_pressed(void) {
   for (uint8_t index = 0; index < VIAL_UNLOCK_COMBO_LENGTH; index++) {
-    if (!matrix_is_pressed(vial_unlock_combo[index][0],
+    if (!matrix_scan_is_pressed(vial_unlock_combo[index][0],
                            vial_unlock_combo[index][1])) {
       return false;
     }
@@ -206,7 +206,7 @@ static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
 
   for (uint8_t row = 0; row < ROWS; row++) {
     for (uint8_t col = 0; col < COLS; col++) {
-      if (!matrix_is_pressed(row, col)) {
+      if (!matrix_scan_is_pressed(row, col)) {
         continue;
       }
 

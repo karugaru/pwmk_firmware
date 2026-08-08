@@ -93,7 +93,7 @@ static void matrix_acknowledge_dormant_wakeup(void) {
 /**
  * @brief DORMANTを使用してディープスリープに入る。
  */
-void enter_deepsleep(void) {
+void sleep_enter_deep(void) {
   // RP2040では、ディープスリープはDORMANTモードとして実装する。
   DEBUG_PRINT("entering dormant mode\n");
   prepare_deep_sleep();
@@ -148,7 +148,7 @@ void enter_deepsleep(void) {
 /**
  * @brief PSTATEを使用してディープスリープに入る。
  */
-void enter_deepsleep(void) {
+void sleep_enter_deep(void) {
   // RP2350では、ディープスリープはPSTATE(P1.7)として実装する。
   DEBUG_PRINT("entering pstate mode\n");
   prepare_deep_sleep();

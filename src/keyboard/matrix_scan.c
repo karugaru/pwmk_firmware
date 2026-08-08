@@ -36,7 +36,7 @@ static volatile absolute_time_t last_change_time = 0;
  * @brief キーマトリクススキャンの初期化を行います。
  *        各行ピンを入力モードに設定し、各列ピンをプルアップ付き入力モードに設定します。
  */
-void matrix_init(void) {
+void matrix_scan_init(void) {
   // GPIO初期化
 
   // すべての行のピンをプル抵抗を無効にして入力モードに設定
@@ -71,7 +71,7 @@ void matrix_init(void) {
  *
  * @param event_user_callback ユーザー定義イベントコールバック関数
  */
-void matrix_process(void) {
+void matrix_scan_process(void) {
   // 現在時刻を取得
   absolute_time_t current_time = get_absolute_time();
 
@@ -129,7 +129,7 @@ void matrix_process(void) {
  * @param col 列番号 (0からCOLS-1)
  * @return bool キーが押されている場合はtrue、そうでない場合はfalse
  */
-bool matrix_is_pressed(uint8_t row, uint8_t col) {
+bool matrix_scan_is_pressed(uint8_t row, uint8_t col) {
   if (row >= ROWS || col >= COLS) {
     return false;
   }

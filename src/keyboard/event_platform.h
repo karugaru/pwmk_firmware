@@ -4,6 +4,6 @@
 #include "keyboard/code.h"
 #include <stdbool.h>
 
-bool event_process_platform(icode_t icode, bool pressed);
+bool event_platform_process(icode_t icode, bool pressed);
 
 #endif // PWMK_EVENT_PLATFORM_H

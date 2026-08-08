@@ -26,11 +26,10 @@
 #define DEBUG_PRINT_REPORT(name, report) ((void)(name), (void)(report))
 #endif
 
-static bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode);
-static bool
-event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode);
-static bool event_apply_press_consumer_key(consumer_code_t keycode);
-static bool event_apply_release_consumer_key(consumer_code_t keycode);
+static bool event_apply_press_keyboard_key(code_modded_t keycode);
+static bool event_apply_release_keyboard_key(code_modded_t keycode);
+static bool event_apply_press_consumer_key(code_consumer_t keycode);
+static bool event_apply_release_consumer_key(code_consumer_t keycode);
 
 static event_settings_t event_settings = {0};
 
@@ -108,7 +107,7 @@ static bool event_has_mouse_move_event() {
  */
 static bool event_process_key(icode_t icode, bool pressed) {
   if (icode >= ICODE_STANDARD_START && icode <= ICODE_STANDARD_END) {
-    keyboard_modifiered_code_t keycode = (keyboard_modifiered_code_t)icode;
+    code_modded_t keycode = (code_modded_t)icode;
     bool state_changed = false;
     if (pressed) {
       state_changed = event_apply_press_keyboard_key(keycode);
@@ -133,7 +132,7 @@ static bool event_process_key(icode_t icode, bool pressed) {
  */
 static bool event_process_consumer(icode_t icode, bool pressed) {
   if (icode >= ICODE_CONSUMER_START && icode <= ICODE_CONSUMER_END) {
-    consumer_code_t keycode = code_icodes_to_consumer(icode);
+    code_consumer_t keycode = code_icodes_to_consumer(icode);
 
     bool state_changed = false;
     if (pressed) {
@@ -163,10 +162,10 @@ static bool event_process_pointing(icode_t icode, bool pressed) {
       return true;
     }
 
-    mouse_button_code_t state_button =
+    code_mouse_button_t state_button =
         hid_state.mouse[pointing_device_mouse_keys].buttons;
 
-    mouse_button_code_t mouse_button = code_icodes_to_mouse_button(icode);
+    code_mouse_button_t mouse_button = code_icodes_to_mouse_button(icode);
     if (pressed) {
       state_button |= mouse_button;
     } else {
@@ -220,22 +219,22 @@ int8_t event_request_pointing_device_id(void) {
  * @brief キーボードキーを追加
  * @return 内部状態が変化された場合にtrueを返す
  */
-static bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode) {
+static bool event_apply_press_keyboard_key(code_modded_t keycode) {
   // 修飾キーが直接指定された場合
   if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
-    keyboard_modifier_bits_t old_real_mod = hid_state.keyboard.real_modifier;
-    keyboard_modifier_bits_t new_real_mod =
+    code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
+    code_mod_bits_t new_real_mod =
         old_real_mod | code_icode_to_modifier((icode_t)keycode);
-    keyboard_modifier_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
+    code_mod_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
 
     hid_state.keyboard.real_modifier = new_real_mod;
     return (old_real_mod | virt_mod) != (new_real_mod | virt_mod);
   }
 
   // コードから修飾子ビットとキーコードを抽出
-  keyboard_modifier_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
-  keyboard_modifier_bits_t key_bits = 0xFF & keycode;
-  keyboard_modifier_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
+  code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
+  code_mod_bits_t key_bits = 0xFF & keycode;
+  code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
   hid_state.keyboard.virtual_modifier |= mod_bits;
 
   bool virt_mod_changed = old_virt_mod != hid_state.keyboard.virtual_modifier;
@@ -263,22 +262,22 @@ static bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode) {
  * @return 内部状態が変化された場合にtrueを返す
  */
 static bool
-event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode) {
+event_apply_release_keyboard_key(code_modded_t keycode) {
   // 修飾キーが直接指定された場合
   if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
-    keyboard_modifier_bits_t old_real_mod = hid_state.keyboard.real_modifier;
-    keyboard_modifier_bits_t new_real_mod =
+    code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
+    code_mod_bits_t new_real_mod =
         old_real_mod & ~code_icode_to_modifier((icode_t)keycode);
-    keyboard_modifier_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
+    code_mod_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
 
     hid_state.keyboard.real_modifier = new_real_mod;
     return (old_real_mod | virt_mod) != (new_real_mod | virt_mod);
   }
 
   // コードから修飾子ビットとキーコードを抽出
-  keyboard_modifier_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
-  keyboard_modifier_bits_t key_bits = 0xFF & keycode;
-  keyboard_modifier_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
+  code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
+  code_mod_bits_t key_bits = 0xFF & keycode;
+  code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
   hid_state.keyboard.virtual_modifier &= ~mod_bits;
 
   bool virt_mod_changed = old_virt_mod != hid_state.keyboard.virtual_modifier;
@@ -300,7 +299,7 @@ event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode) {
  * @brief コンシューマーキーを追加
  * @return 内部状態が変化された場合にtrueを返す
  */
-static bool event_apply_press_consumer_key(consumer_code_t keycode) {
+static bool event_apply_press_consumer_key(code_consumer_t keycode) {
   // 既に押されているかチェック
   for (int i = 0; i < 6; i++) {
     if (hid_state.consumer.keycode[i] == keycode) {
@@ -323,7 +322,7 @@ static bool event_apply_press_consumer_key(consumer_code_t keycode) {
  * @brief コンシューマーキーを削除
  * @return 内部状態が変化された場合にtrueを返す
  */
-static bool event_apply_release_consumer_key(consumer_code_t keycode) {
+static bool event_apply_release_consumer_key(code_consumer_t keycode) {
   for (int i = 0; i < 6; i++) {
     if (hid_state.consumer.keycode[i] == keycode) {
       // 見つかったキーを削除し、後ろのキーを前に詰める
@@ -345,13 +344,13 @@ static bool event_apply_release_consumer_key(consumer_code_t keycode) {
  * @param y Y軸の移動量
  * @param w ホイールの移動量
  */
-void event_accumulate_mouse(uint8_t device_id, mouse_button_code_t buttons,
+void event_accumulate_mouse(uint8_t device_id, code_mouse_button_t buttons,
                             int8_t x, int8_t y, int8_t w) {
   if (device_id >= hid_state.pointing_id_max) {
     return;
   }
 
-  mouse_button_code_t old_buttons = hid_state.mouse[device_id].buttons;
+  code_mouse_button_t old_buttons = hid_state.mouse[device_id].buttons;
 
   hid_state.mouse[device_id].buttons = buttons;
   hid_state.mouse[device_id].xDelta += x;
@@ -422,7 +421,7 @@ void event_process_periodic(void) {
     }
 
     if (dx != 0 || dy != 0 || dw != 0) {
-      mouse_button_code_t buttons =
+      code_mouse_button_t buttons =
           hid_state.mouse[pointing_device_mouse_keys].buttons;
       event_accumulate_mouse(pointing_device_mouse_keys, buttons, dx, dy, dw);
     }
@@ -463,9 +462,9 @@ bool event_has_event(void) {
  * @brief 内部HID状態から、HIDレポートを1つ取り出す
  * @return レポートが取り出された場合にtrueを返す
  */
-bool event_pop_hid_report(keymap_hid_report_t *report) {
+bool event_pop_hid_report(event_hid_report_t *report) {
   if (hid_state.has_keyboard_event) {
-    report->report_id = KEYBOARD_REPORT_ID;
+    report->report_id = HID_KEYBOARD_REPORT_ID;
     report->size = HID_KEYBOARD_REPORT_SIZE;
     hid_keyboard_to_report(&hid_state, report->data);
     hid_state.has_keyboard_event = false;
@@ -475,7 +474,7 @@ bool event_pop_hid_report(keymap_hid_report_t *report) {
   }
 
   if (hid_state.has_consumer_event) {
-    report->report_id = CONSUMER_REPORT_ID;
+    report->report_id = HID_CONSUMER_REPORT_ID;
     report->size = HID_CONSUMER_REPORT_SIZE;
     hid_consumer_to_report(&hid_state, report->data);
     hid_state.has_consumer_event = false;
@@ -485,7 +484,7 @@ bool event_pop_hid_report(keymap_hid_report_t *report) {
   }
 
   if (hid_state.has_mouse_event || event_has_mouse_move_event()) {
-    report->report_id = MOUSE_REPORT_ID;
+    report->report_id = HID_MOUSE_REPORT_ID;
     report->size = HID_MOUSE_REPORT_SIZE;
     hid_mouse_to_report_and_consume(&hid_state, report->data,
                                     event_settings.mouse_move_thresh,

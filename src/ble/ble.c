@@ -300,7 +300,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel,
  *        送信すべきレポートがある場合にのみ送信する。
  */
 static void send_report() {
-  keymap_hid_report_t report;
+  event_hid_report_t report;
   while (event_pop_hid_report(&report)) {
     hids_device_send_input_report_for_id(con_handle, report.report_id,
                                          report.data, report.size);
