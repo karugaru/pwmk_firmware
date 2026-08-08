@@ -29,6 +29,31 @@
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
 
+/**
+ * @brief ディープスリープに入る前の準備を行う。
+ */
+static void prepare_deep_sleep(void) {
+  // 割り込みを無効化
+  disable_interrupts();
+
+  // LEDを消灯
+  led_put_rgb(0, 0, 0);
+
+  // BLEを無効化
+#if PWMK_ENABLE_BLE
+  ble_power_set(false);
+  gpio_put(CYW43_PIN_WL_REG_ON, false);
+#endif
+
+  // USBを無効化
+#if PWMK_ENABLE_USB
+  usb_hid_deinit();
+#endif
+
+  // stdio をフラッシュ
+  stdio_flush();
+}
+
 #if PICO_RP2040
 /**
  * @brief マトリクス列のGPIOをドーマントウェイクに設定する。
@@ -121,31 +146,6 @@ void enter_deepsleep(void) {
 #elif PICO_RP2350
 
 /**
- * @brief ディープスリープに入る前の準備を行う。
- */
-static void prepare_deep_sleep(void) {
-  // 割り込みを無効化
-  disable_interrupts();
-
-  // LEDを消灯
-  led_put_rgb(0, 0, 0);
-
-  // BLEを無効化
-#if PWMK_ENABLE_BLE
-  ble_power_set(false);
-  gpio_put(CYW43_PIN_WL_REG_ON, false);
-#endif
-
-  // USBを無効化
-#if PWMK_ENABLE_USB
-  usb_hid_deinit();
-#endif
-
-  // stdio をフラッシュ
-  stdio_flush();
-}
-
-/**
  * @brief PSTATEを使用してディープスリープに入る。
  */
 void enter_deepsleep(void) {
@@ -180,5 +180,5 @@ void enter_deepsleep(void) {
   while (true) {
     __wfi();
   }
-#endif
 }
+#endif
