@@ -261,8 +261,7 @@ static bool event_apply_press_keyboard_key(code_modded_t keycode) {
  * @brief キーボードキーを削除
  * @return 内部状態が変化された場合にtrueを返す
  */
-static bool
-event_apply_release_keyboard_key(code_modded_t keycode) {
+static bool event_apply_release_keyboard_key(code_modded_t keycode) {
   // 修飾キーが直接指定された場合
   if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
     code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
@@ -364,13 +363,20 @@ void event_accumulate_mouse(uint8_t device_id, code_mouse_button_t buttons,
  * @briefイベントを処理する。
  *        内部コードから、標準キーコード、コンシューマコード、
  *        マウスコード、特殊コードなどを判別・処理し、内部HID状態を更新する。
- * @param icode 内部コード
+ * @param row 行番号
+ * @param col 列番号
  * @param pressed 押された(true)か離された(false)か
  * @param event_time イベントの発生時刻
  */
-void event_process(icode_t icode, bool pressed, uint64_t event_time) {
+void event_process(uint8_t row, uint8_t col, bool pressed,
+                   uint64_t event_time) {
   // 現在は使用していないが、将来的にイベントのタイムスタンプを処理するために保持
   (void)event_time;
+
+  if (event_settings.keymap_get_callback == NULL) {
+    return;
+  }
+  icode_t icode = event_settings.keymap_get_callback(0, row, col);
 
   bool process_subsequent = event_process_user_cb(&icode, pressed, event_time);
   if (!process_subsequent) {

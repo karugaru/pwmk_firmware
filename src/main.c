@@ -154,6 +154,7 @@ int main() {
       .mouse_move_delta = MOUSE_MOVE_DELTA,
       .mouse_wheel_delta = MOUSE_WHEEL_DELTA,
       .platform_callback = event_platform_process,
+      .keymap_get_callback = keymap_get,
   };
   event_init(event_settings);
 

@@ -13,6 +13,7 @@ typedef struct {
 } event_hid_report_t;
 
 typedef bool (*event_platform_cb_t)(icode_t icode, bool pressed);
+typedef icode_t (*keymap_get_cb_t)(uint8_t layer, uint8_t row, uint8_t col);
 
 typedef struct {
   int16_t mouse_move_thresh;
@@ -20,6 +21,7 @@ typedef struct {
   int16_t mouse_move_delta;
   int16_t mouse_wheel_delta;
   event_platform_cb_t platform_callback;
+  keymap_get_cb_t keymap_get_callback;
 } event_settings_t;
 
 void event_init(event_settings_t settings);
@@ -28,7 +30,7 @@ int8_t event_request_pointing_device_id(void);
 
 void event_accumulate_mouse(uint8_t device_id, code_mouse_button_t buttons,
                             int8_t x, int8_t y, int8_t w);
-void event_process(icode_t icode, bool pressed, uint64_t event_time);
+void event_process(uint8_t row, uint8_t col, bool pressed, uint64_t event_time);
 void event_process_periodic(void);
 
 bool event_has_event(void);

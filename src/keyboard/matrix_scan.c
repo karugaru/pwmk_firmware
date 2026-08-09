@@ -3,7 +3,6 @@
 #include "keyboard/event.h"
 #include "keyboard/matrix_scan.h"
 #include "settings/board.h"
-#include "settings/keymap.h"
 #include "settings/settings.h"
 
 #ifndef DEBUG_MATRIX_SCAN
@@ -106,16 +105,14 @@ void matrix_scan_process(void) {
     for (int col = 0; col < COLS; col++) {
       // 状態が変化していればイベント処理
       if (last_gpio_state[row][col] != prev_gpio_state[row][col]) {
-
-        icode_t icode = keymap_get(0, row, col);
         bool pressed = last_gpio_state[row][col];
 
 #if DEBUG_MATRIX_SCAN
-        printf("Matrix debounced 0x%04lX (%d, %d) %s\n", icode, row, col,
+        printf("Matrix debounced (%d, %d) %s\n", row, col,
                pressed ? "pressed" : "released");
 #endif
 
-        event_process(icode, pressed, to_us_since_boot(current_time));
+        event_process(row, col, pressed, to_us_since_boot(current_time));
       }
       // 前回の状態を更新
       prev_gpio_state[row][col] = last_gpio_state[row][col];
