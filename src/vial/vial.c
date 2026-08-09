@@ -89,7 +89,7 @@ static void write_u32_le(uint8_t *buffer, uint32_t value) {
 static bool vial_unlock_combo_pressed(void) {
   for (uint8_t index = 0; index < VIAL_UNLOCK_COMBO_LENGTH; index++) {
     if (!matrix_scan_is_pressed(vial_unlock_combo[index][0],
-                           vial_unlock_combo[index][1])) {
+                                vial_unlock_combo[index][1])) {
       return false;
     }
   }
@@ -159,7 +159,7 @@ static void copy_keyboard_definition_page(uint16_t page,
  * @return キーコード
  */
 static uint16_t keymap_buffer_get_keycode(uint16_t key_index) {
-  if (key_index >= KEYMAP_VIAL_BUFFER_SIZE / 2) {
+  if (key_index >= KEYMAP_BUFFER_SIZE / 2) {
     return 0;
   }
 
@@ -168,7 +168,13 @@ static uint16_t keymap_buffer_get_keycode(uint16_t key_index) {
   uint16_t matrix_index = key_index % (ROWS * COLS);
   uint8_t row = (uint8_t)(matrix_index / COLS);
   uint8_t col = (uint8_t)(matrix_index % COLS);
-  return keymap_vial_get(layer, row, col);
+
+  icode_t internal = keymap_get(layer, row, col);
+  uint16_t vial;
+  if (code_convert_to_vial(internal, &vial)) {
+    return vial;
+  }
+  return 0;
 }
 
 /**
@@ -177,7 +183,7 @@ static uint16_t keymap_buffer_get_keycode(uint16_t key_index) {
  * @return 指定されたオフセットのバイト
  */
 static uint8_t keymap_buffer_get_byte(uint16_t offset) {
-  if (offset >= KEYMAP_VIAL_BUFFER_SIZE) {
+  if (offset >= KEYMAP_BUFFER_SIZE) {
     return 0;
   }
 
@@ -366,28 +372,45 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
     response[0] = 1;
     break;
 
-  case 0x04:
+  case 0x04: {
     // Get Keycode
     memcpy(response, request, 3);
-    write_u16_be(&response[3],
-                 keymap_vial_get(request[1], request[2], request[3]));
-    break;
-
-  case 0x05:
-    // Set Keycode
-    if (vial_keycode_write_allowed(read_u16_be(&request[4])) &&
-        keymap_vial_set(request[1], request[2], request[3],
-                        read_u16_be(&request[4]))) {
-      response[0] = 0;
+    icode_t internal = keymap_get(request[1], request[2], request[3]);
+    uint16_t vial;
+    if (code_convert_to_vial(internal, &vial)) {
+      write_u16_be(&response[3], vial);
     } else {
-      response[0] = 1;
+      write_u16_be(&response[3], 0);
     }
     break;
+  }
+
+  case 0x05: {
+    // Set Keycode
+    response[0] = 1;
+
+    uint16_t vial = read_u16_be(&request[4]);
+    if (!vial_keycode_write_allowed(vial)) {
+      break;
+    }
+
+    icode_t internal;
+    if (!code_convert_to_internal(vial, &internal)) {
+      break;
+    }
+
+    if (!keymap_set(request[1], request[2], request[3], internal)) {
+      break;
+    }
+
+    response[0] = 0;
+    break;
+  }
 
   case 0x06:
     // Dynamic Keymap Reset
     if (unlocked) {
-      keymap_vial_reset();
+      keymap_reset();
       response[0] = 0;
     } else {
       response[0] = 1;
@@ -436,7 +459,7 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x11:
     // Get Layer Count
     response[0] = request[0];
-    response[1] = KEYMAP_VIAL_LAYER_COUNT;
+    response[1] = KEYMAP_LAYER_COUNT;
     break;
 
   case 0x12:
