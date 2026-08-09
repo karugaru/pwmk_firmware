@@ -44,6 +44,16 @@
 
 修正された内容が全て正しいとは限らないため、注意してレビューを行ってください。
 
+## テストのルール
+
+構成済みのテストを行う場合は、以下のコマンドで実行してください。
+cmakeコマンドを直接使用すると失敗する可能性が高いです。
+
+```powershell
+wsl.exe -- uv run tools/test_keyboard.py
+wsl.exe -- uv run tools/test_profile.py
+```
+
 ## ビルドのルール
 
 ビルド・ビルドテストを行う場合は、以下の手順に従ってください。
@@ -51,12 +61,18 @@
 
 ### CLI (WSL2)
 
-WSL2 上で `uv run tools/pwmk.py profile remopicon_v1` の後に `uv run tools/pwmk.py build`でビルド
+```powershell
+wsl.exe -- uv run tools/pwmk.py profile remopicon_v1; uv run tools/pwmk.py build
+# or
+wsl.exe -- uv run tools/pwmk.py profile remopicon_v2_beta; uv run tools/pwmk.py build
+```
 
 ### CLI (Docker on WSL2)
 
-WSL2 上で `uv run tools/test_build.py ubuntu_26_04`でビルドテストを実行
+```powershell
+wsl.exe -- uv run tools/test_build.py ubuntu_26_04
+```
 
 ### VS Code (Windows)
 
-`uv run tools/pwmk.py profile remopicon_v1` の後に VS Code タスクの`Compile Project`でビルド
+`uv run tools/pwmk.py profile remopicon_v1` の後に VS Code タスクの`Clean CMake`、`Compile Project`でビルド
