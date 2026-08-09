@@ -31,7 +31,7 @@
 #endif
 
 #define VIAL_PREFIX 0xFE
-#define VIAL_PROTOCOL_VERSION 1
+#define VIAL_PROTOCOL_VERSION 6
 #define VIA_PROTOCOL_VERSION 0x0009
 #define VIAL_UNLOCK_HOLD_MS 5000
 #define VIAL_KEYMAP_RESPONSE_HEADER_SIZE 4
@@ -304,7 +304,14 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
     break;
 
   case 0x0D: // Dynamic Entry Operation
-    // スタブ: Dynamic Entry は未実装。ゼロ初期化済みの空応答を返す。
+    // スタブ: Dynamic Entry は全て未実装。ゼロ初期化済みの空応答を返す。
+    // 未実装の機能:
+    // - tab dance
+    // - combo
+    // - key override
+    // - alt repeat key
+    // - caps word
+    // - layer lock
     break;
 
   default:
@@ -452,7 +459,7 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
     break;
 
   case 0x0F: // Set Macro Buffer
-    // スタブ: Keyboard Value Set とマクロの保存・リセットは未実装。
+    // スタブ: マクロの設定は未実装。
     response[0] = 1;
     break;
 

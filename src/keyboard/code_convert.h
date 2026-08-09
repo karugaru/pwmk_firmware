@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define VIAL_KEYCODE_BOOTLOADER 0x5C00 // ブートローダーキーのVIALキーコード
+#define VIAL_KEYCODE_BOOTLOADER 0x7C00// ブートローダーキーのVIALキーコード
 
 bool code_convert_to_vial(icode_t keycode_internal, uint16_t *keycode_vial);
 bool code_convert_to_internal(uint16_t keycode_vial, icode_t *keycode_internal);
