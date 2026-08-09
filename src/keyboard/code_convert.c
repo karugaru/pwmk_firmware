@@ -4,9 +4,7 @@
 #include <stdint.h>
 
 /**
- * @brief
- * 内部用キーコードをVIALのキーコードに変換する。
- *
+ * @brief 内部用キーコードをVIALのキーコードに変換する。
  * @param keycode_internal 変換する内部用キーコード
  * @param keycode_vial 変換後のVIALのキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
@@ -27,9 +25,7 @@ bool code_convert_to_vial(icode_t keycode_internal, uint16_t *keycode_vial) {
 }
 
 /**
- * @brief
- * VIALのキーコードを内部用キーコードに変換する。
- *
+ * @brief VIALのキーコードを内部用キーコードに変換する。
  * @param keycode_vial 変換するVIALのキーコード
  * @param keycode_internal 変換後の内部用のキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
@@ -52,7 +48,6 @@ bool code_convert_to_internal(uint16_t keycode_vial,
 /**
  * @brief
  * 指定したVIALのキーコードがブートローダー起動用のキーコードかどうかを判定する。
- *
  * @param keycode_vial VIALのキーコード
  * @return ブートローダー起動用のキーコードの場合はtrue、そうでない場合はfalse
  */

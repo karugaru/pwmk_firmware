@@ -115,6 +115,8 @@ static void pwmk_process_tick(void) {
 
 /**
  * @brief CYW43のasync_context向け1ms定期ワーカー。
+ * @param context 非同期コンテキスト
+ * @param worker ワーカー構造体
  */
 #if PWMK_ENABLE_BLE
 static void pwmk_worker_process(async_context_t *context,

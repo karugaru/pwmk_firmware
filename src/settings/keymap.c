@@ -16,8 +16,7 @@ static icode_t dynamic_keymap[ROWS * COLS];
 static int16_t keyswitch_index_lookup[ROWS][COLS];
 
 /**
- * @brief
- * キーマップを初期化する。
+ * @brief キーマップを初期化する。
  */
 void keymap_init(void) {
   // ルックアップテーブルを初期化
@@ -40,8 +39,7 @@ void keymap_init(void) {
 }
 
 /**
- * @brief
- * 動的キーマップを既定のキーマップにリセットする。
+ * @brief 動的キーマップを既定のキーマップにリセットする。
  */
 void keymap_reset(void) {
   memset(dynamic_keymap, 0, sizeof(dynamic_keymap));
@@ -55,7 +53,6 @@ void keymap_reset(void) {
  * @brief
  * キーマップの指定した位置の内部用キーコードを取得する。
  * 指定した位置にキーが存在しない場合はIKC_NOOPを返す。
- *
  * @param layer レイヤー番号
  * @param row 行番号
  * @param col 列番号
@@ -74,9 +71,7 @@ icode_t keymap_get(uint8_t layer, uint8_t row, uint8_t col) {
 }
 
 /**
- * @brief
- * キーマップの指定した位置に内部用キーコードを設定する。
- *
+ * @brief キーマップの指定した位置に内部用キーコードを設定する。
  * @param layer レイヤー番号
  * @param row 行番号
  * @param col 列番号

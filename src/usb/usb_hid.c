@@ -50,8 +50,7 @@ void usb_hid_send_reports(void) {
 }
 
 /**
- * @brief
- * USBが接続済みかつHID通信準備完了かどうかを返す。
+ * @brief USBが接続済みかつHID通信準備完了かどうかを返す。
  * @return USBが接続済みかつHID通信準備完了な場合はtrue、それ以外はfalse
  */
 bool usb_hid_is_active(void) { return tud_mounted(); }
