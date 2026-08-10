@@ -22,3 +22,15 @@ target_include_directories(event_keyboard_test PRIVATE
 )
 
 add_test(NAME event_keyboard_test COMMAND event_keyboard_test)
+
+add_executable(code_convert_test
+    code_convert_test.c
+    unity.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/keyboard/code_convert.c
+)
+
+target_include_directories(code_convert_test PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/../src
+)
+
+add_test(NAME code_convert_test COMMAND code_convert_test)

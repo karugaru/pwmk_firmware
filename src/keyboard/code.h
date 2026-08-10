@@ -299,7 +299,6 @@ typedef enum {
 #define ICODE_MOUSE_MOVE_END IMC_MOUSE_WHEEL_DOWN
 #define ICODE_SPECIAL_START ISC_BOOT
 #define ICODE_SPECIAL_END ISC_BLE_SLOT_4
-#define ICODE_USER_START (IUC_RANGE_MIN + 1)
 
 typedef uint8_t code_t;
 typedef uint16_t code_modded_t;
