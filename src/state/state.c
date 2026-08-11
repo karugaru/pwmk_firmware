@@ -35,7 +35,7 @@ static const state_led_entry_t state_led_table[] = {
 // clang-format on
 
 static volatile state_system_t current_state = STATE_RESET;
-static volatile connection_preference_t conn_pref = CONN_PREF_USB;
+static volatile state_conn_pref_t conn_pref = CONN_PREF_USB;
 
 /**
  * @brief 指定された状態がランタイム状態かどうかを返す。
@@ -81,7 +81,7 @@ static state_system_t state_resolve_runtime(void) {
  * @brief システムの優先接続モードを設定する。
  * @param pref 設定する優先接続モード
  */
-void state_set_connection_preference(connection_preference_t pref) {
+void state_set_connection_preference(state_conn_pref_t pref) {
   conn_pref = pref;
   state_refresh_runtime();
 }
@@ -90,15 +90,13 @@ void state_set_connection_preference(connection_preference_t pref) {
  * @brief システムの優先接続モードを取得する。
  * @return 現在の優先接続モード
  */
-connection_preference_t state_get_connection_preference(void) {
-  return conn_pref;
-}
+state_conn_pref_t state_get_connection_preference(void) { return conn_pref; }
 
 /**
  * @brief 優先接続モードを切り替える。
  * @param pref 切り替える優先接続モード
  */
-void state_switch_connection_preference(connection_preference_t pref) {
+void state_switch_connection_preference(state_conn_pref_t pref) {
   conn_pref = pref;
   // BLE優先に切り替えた場合、BLEが有効でなければ有効にする
   if (pref == CONN_PREF_BLE) {
@@ -147,7 +145,7 @@ void state_set_system(state_system_t new_state) {
     reset_usb_boot(0, 0);
     return;
   case STATE_DEEP_SLEEP:
-    enter_deepsleep();
+    sleep_enter_deep();
     return;
   default:
     return;

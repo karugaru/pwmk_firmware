@@ -50,7 +50,7 @@ class ProfileGenerationTest(unittest.TestCase):
         self.assertEqual(config.board.cols, 5)
         self.assertEqual(config.settings.usb_vid, 0xCAFE)
         self.assertEqual(config.settings.usb_pid, 0x4001)
-        self.assertEqual(len(config.keymap.keymap), config.board.active_layout_count)
+        self.assertEqual(len(config.keymap.keymap), config.board.layout_count)
 
     def test_generate_profile_supports_led_count(self) -> None:
         profile_name = "test_profile_with_multiple_leds"

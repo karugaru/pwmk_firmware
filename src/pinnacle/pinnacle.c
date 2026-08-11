@@ -12,7 +12,7 @@
 #if DEBUG_PINNACLE
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
-#define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) ((void)(0))
 #endif
 
 #define PINNACLE_DEFAULT_SENSITIVITY PINNACLE_SENSITIVITY_MOST_SENSITIVE

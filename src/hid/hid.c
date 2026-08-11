@@ -1,6 +1,5 @@
 #include "hid/hid.h"
 #include "keyboard/code.h"
-#include "settings/settings.h"
 
 // clang-format off
 const uint8_t hid_descriptor[] = {
@@ -10,7 +9,7 @@ const uint8_t hid_descriptor[] = {
     0x09, 0x06, // Usage (Keyboard)
     0xA1, 0x01, // Collection (Application)
 
-    0x85, KEYBOARD_REPORT_ID, // Report ID
+    0x85, HID_KEYBOARD_REPORT_ID, // Report ID
 
     // Modifier byte
 
@@ -60,7 +59,7 @@ const uint8_t hid_descriptor[] = {
     0x09, 0x02, // USAGE (Mouse)
     0xA1, 0x01, // COLLECTION (Application)
 
-    0x85, MOUSE_REPORT_ID, // Report ID
+    0x85, HID_MOUSE_REPORT_ID, // Report ID
 
     0x09, 0x01, //   USAGE (Pointer)
     0xA1, 0x00, //   COLLECTION (Physical)
@@ -97,7 +96,7 @@ const uint8_t hid_descriptor[] = {
     0x09, 0x01, // Usage (Consumer Control)
     0xA1, 0x01, // Collection (Application)
 
-    0x85, CONSUMER_REPORT_ID, // Report ID
+    0x85, HID_CONSUMER_REPORT_ID, // Report ID
 
     0x15, 0x00,       // Logical Minimum (0)
     0x26, 0xFF, 0x03, // Logical Maximum (1023)
@@ -133,28 +132,32 @@ void hid_keyboard_to_report(hid_state_t *event,
  * マウスレポートをHID形式に変換し、変換した分のマウスイベントを消費する。
  * @param event 変換されるマウスイベント
  * @param report 変換後のHIDレポート
+ * @param mouse_move_thresh マウス移動量の閾値
+ * @param mouse_wheel_thresh マウスホイール移動量の閾値
  */
 void hid_mouse_to_report_and_consume(hid_state_t *event,
-                                     uint8_t report[HID_MOUSE_REPORT_SIZE]) {
+                                     uint8_t report[HID_MOUSE_REPORT_SIZE],
+                                     int16_t mouse_move_thresh,
+                                     int16_t mouse_wheel_thresh) {
   int16_t x = 0;
   int16_t y = 0;
   int16_t w = 0;
-  mouse_button_code_t buttons = 0;
+  code_mouse_button_t buttons = 0;
 
   for (int i = 0; i < event->pointing_id_max; i++) {
     buttons |= event->mouse[i].buttons;
 
-    int16_t x_step = event->mouse[i].xDelta / MOUSE_MOVE_THRESH;
-    int16_t y_step = event->mouse[i].yDelta / MOUSE_MOVE_THRESH;
-    int16_t w_step = event->mouse[i].wDelta / MOUSE_WHEEL_THRESH;
+    int16_t x_step = event->mouse[i].xDelta / mouse_move_thresh;
+    int16_t y_step = event->mouse[i].yDelta / mouse_move_thresh;
+    int16_t w_step = event->mouse[i].wDelta / mouse_wheel_thresh;
 
     x += x_step;
     y += y_step;
     w += w_step;
 
-    event->mouse[i].xDelta -= x_step * MOUSE_MOVE_THRESH;
-    event->mouse[i].yDelta -= y_step * MOUSE_MOVE_THRESH;
-    event->mouse[i].wDelta -= w_step * MOUSE_WHEEL_THRESH;
+    event->mouse[i].xDelta -= x_step * mouse_move_thresh;
+    event->mouse[i].yDelta -= y_step * mouse_move_thresh;
+    event->mouse[i].wDelta -= w_step * mouse_wheel_thresh;
   }
 
   // ボタン、X移動量、Y移動量、ホイール移動量
@@ -173,7 +176,7 @@ void hid_consumer_to_report(hid_state_t *event,
                             uint8_t report[HID_CONSUMER_REPORT_SIZE]) {
   // キーコードの下位バイト、上位バイト、同様に5つ分のキーコード
   for (int i = 0; i < 6; i++) {
-    consumer_code_t keycode = event->consumer.keycode[i];
+    code_consumer_t keycode = event->consumer.keycode[i];
     report[i * 2] = (uint8_t)(keycode & 0xFF);            // 下位バイト
     report[i * 2 + 1] = (uint8_t)((keycode >> 8) & 0xFF); // 上位バイト
   }

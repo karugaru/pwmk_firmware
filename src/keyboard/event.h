@@ -3,24 +3,39 @@
 
 #include "hid/hid.h"
 #include "keyboard/code.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-void event_init(void);
+typedef struct {
+  uint8_t report_id;
+  uint16_t size;
+  uint8_t data[HID_REPORT_SIZE_MAX];
+} event_hid_report_t;
+
+typedef bool (*event_platform_cb_t)(icode_t icode, bool pressed);
+typedef icode_t (*keymap_get_cb_t)(uint8_t layer, uint8_t row, uint8_t col);
+
+typedef struct {
+  int16_t mouse_move_thresh;
+  int16_t mouse_wheel_thresh;
+  int16_t mouse_move_delta;
+  int16_t mouse_wheel_delta;
+  event_platform_cb_t platform_callback;
+  keymap_get_cb_t keymap_get_callback;
+} event_settings_t;
+
+void event_init(event_settings_t settings);
+
 int8_t event_request_pointing_device_id(void);
 
-bool event_apply_press_keyboard_key(keyboard_modifiered_code_t keycode);
-bool event_apply_release_keyboard_key(keyboard_modifiered_code_t keycode);
-bool event_apply_press_consumer_key(consumer_code_t keycode);
-bool event_apply_release_consumer_key(consumer_code_t keycode);
-void event_accumulate_mouse(uint8_t device_id, mouse_button_code_t buttons,
+void event_accumulate_mouse(uint8_t device_id, code_mouse_button_t buttons,
                             int8_t x, int8_t y, int8_t w);
-
-void event_process_standard(icode_t icode, bool pressed);
-bool event_process_user(icode_t *icode, bool pressed);
+void event_process(uint8_t row, uint8_t col, bool pressed, uint64_t event_time);
 void event_process_periodic(void);
-bool event_has_event(void);
 
-bool event_pop_keyboard_report(uint8_t report[HID_KEYBOARD_REPORT_SIZE]);
-bool event_pop_consumer_report(uint8_t report[HID_CONSUMER_REPORT_SIZE]);
-bool event_pop_mouse_report(uint8_t report[HID_MOUSE_REPORT_SIZE]);
+bool event_has_event(void);
+bool event_pop_hid_report(event_hid_report_t *report);
+
+bool event_process_user_cb(icode_t *icode, bool pressed, uint64_t event_time);
 
 #endif // PWMK_EVENT_H

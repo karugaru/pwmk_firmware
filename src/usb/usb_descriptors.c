@@ -39,20 +39,22 @@ uint8_t const *tud_descriptor_device_cb(void) {
 }
 
 static uint8_t const vial_hid_descriptor[] = {
-    0x06, 0x60, 0xFF, // Usage Page (Vendor Defined 0xFF60)
-    0x09, 0x61,       // Usage (0x61)
-    0xA1, 0x01,       // Collection (Application)
+    0x06, 0x60,
+    0xFF,       // Usage Page (Vendor Defined 0xFF60)
+    0x09, 0x61, // Usage (0x61)
+    0xA1, 0x01, // Collection (Application)
 
-    0x09, 0x62,       // Usage (0x62)
-    0x15, 0x00,       // Logical Minimum (0)
-    0x26, 0xFF, 0x00, // Logical Maximum (255)
-    0x75, 0x08,       // Report Size (8)
+    0x09, 0x62, // Usage (0x62)
+    0x15, 0x00, // Logical Minimum (0)
+    0x26, 0xFF,
+    0x00,                   // Logical Maximum (255)
+    0x75, 0x08,             // Report Size (8)
     0x95, VIAL_PACKET_SIZE, // Report Count (32)
-    0x81, 0x02,       // Input (Data, Variable, Absolute)
+    0x81, 0x02,             // Input (Data, Variable, Absolute)
 
-    0x09, 0x63,       // Usage (0x63)
+    0x09, 0x63,             // Usage (0x63)
     0x95, VIAL_PACKET_SIZE, // Report Count (32)
-    0x91, 0x02,       // Output (Data, Variable, Absolute)
+    0x91, 0x02,             // Output (Data, Variable, Absolute)
 
     0xC0, // End collection
 };
@@ -60,12 +62,12 @@ static uint8_t const vial_hid_descriptor[] = {
 // HIDレポートディスクリプタ
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
   return instance == USB_HID_INSTANCE_VIAL ? vial_hid_descriptor
-                                            : hid_descriptor;
+                                           : hid_descriptor;
 }
 
 enum { ITF_NUM_HID, ITF_NUM_VIAL, ITF_NUM_TOTAL };
 
-#define CONFIG_TOTAL_LEN                                                        \
+#define CONFIG_TOTAL_LEN                                                       \
   (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
 #define EPNUM_HID 0x81
 #define EPNUM_VIAL_OUT 0x02
@@ -87,11 +89,12 @@ static uint8_t desc_configuration[] = {
 
     // Vial専用Raw HIDインターフェース。Report IDなしで32バイトを送受信する。
     TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_VIAL, 0, HID_ITF_PROTOCOL_NONE, 0,
-                 EPNUM_VIAL_OUT, EPNUM_VIAL_IN, VIAL_PACKET_SIZE,
-                 1),
+                             EPNUM_VIAL_OUT, EPNUM_VIAL_IN, VIAL_PACKET_SIZE,
+                             1),
 };
 
-uint8_t const *tud_descriptor_configuration_cb(uint8_t _index) {
+uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
+  (void)index;
   return desc_configuration;
 }
 
@@ -132,7 +135,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
          i < sizeof(VIAL_SERIAL_PREFIX) - 1 && chr_count < max_count; i++) {
       _desc_str[1 + chr_count++] = VIAL_SERIAL_PREFIX[i];
     }
-    for (size_t i = 0;
+    for (uint16_t i = 0;
          i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES && chr_count + 1 < max_count;
          i++) {
       uint8_t byte = board_id.id[i];

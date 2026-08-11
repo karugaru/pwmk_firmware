@@ -3,7 +3,6 @@
 #include "keyboard/event.h"
 #include "keyboard/matrix_scan.h"
 #include "settings/board.h"
-#include "settings/keymap.h"
 #include "settings/settings.h"
 
 #ifndef DEBUG_MATRIX_SCAN
@@ -36,7 +35,7 @@ static volatile absolute_time_t last_change_time = 0;
  * @brief キーマトリクススキャンの初期化を行います。
  *        各行ピンを入力モードに設定し、各列ピンをプルアップ付き入力モードに設定します。
  */
-void matrix_init(void) {
+void matrix_scan_init(void) {
   // GPIO初期化
 
   // すべての行のピンをプル抵抗を無効にして入力モードに設定
@@ -71,7 +70,7 @@ void matrix_init(void) {
  *
  * @param event_user_callback ユーザー定義イベントコールバック関数
  */
-void matrix_process(void) {
+void matrix_scan_process(void) {
   // 現在時刻を取得
   absolute_time_t current_time = get_absolute_time();
 
@@ -106,21 +105,14 @@ void matrix_process(void) {
     for (int col = 0; col < COLS; col++) {
       // 状態が変化していればイベント処理
       if (last_gpio_state[row][col] != prev_gpio_state[row][col]) {
-
-        icode_t icode = keymap_icode_lookup(row, col);
         bool pressed = last_gpio_state[row][col];
 
 #if DEBUG_MATRIX_SCAN
-        printf("Matrix debounced 0x%04lX (%d, %d) %s\n", icode, row, col,
+        printf("Matrix debounced (%d, %d) %s\n", row, col,
                pressed ? "pressed" : "released");
 #endif
 
-        // ユーザー定義イベントコールバックを呼び出し
-        bool process_subsequent = event_process_user(&icode, pressed);
-        // 標準のイベント処理を呼び出し
-        if (process_subsequent) {
-          event_process_standard(icode, pressed);
-        }
+        event_process(row, col, pressed, to_us_since_boot(current_time));
       }
       // 前回の状態を更新
       prev_gpio_state[row][col] = last_gpio_state[row][col];
@@ -134,7 +126,7 @@ void matrix_process(void) {
  * @param col 列番号 (0からCOLS-1)
  * @return bool キーが押されている場合はtrue、そうでない場合はfalse
  */
-bool matrix_is_pressed(uint8_t row, uint8_t col) {
+bool matrix_scan_is_pressed(uint8_t row, uint8_t col) {
   if (row >= ROWS || col >= COLS) {
     return false;
   }

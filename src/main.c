@@ -8,6 +8,7 @@
 #include "ble/ble.h"
 #include "keyboard/code.h"
 #include "keyboard/event.h"
+#include "keyboard/event_platform.h"
 #include "keyboard/matrix_scan.h"
 #include "led/led.h"
 #include "peripheral/peripheral.h"
@@ -24,7 +25,7 @@
 #if DEBUG_MAIN
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
-#define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) ((void)(0))
 #endif
 
 #if PWMK_ENABLE_BLE
@@ -38,13 +39,13 @@ static bool requested_deep_sleep;
  */
 static void pwmk_process_tick(void) {
   // キーマトリクス処理を実行
-  matrix_process();
+  matrix_scan_process();
 
   // 定期処理を実行
   event_process_periodic();
 
   // 接続モードとトランスポートの状態を取得
-  connection_preference_t connection_pref = state_get_connection_preference();
+  state_conn_pref_t connection_pref = state_get_connection_preference();
   bool usb_active = usb_hid_is_active();
   bool ble_enabled = ble_is_enabled();
   bool ble_connected = ble_is_connected();
@@ -114,6 +115,8 @@ static void pwmk_process_tick(void) {
 
 /**
  * @brief CYW43のasync_context向け1ms定期ワーカー。
+ * @param context 非同期コンテキスト
+ * @param worker ワーカー構造体
  */
 #if PWMK_ENABLE_BLE
 static void pwmk_worker_process(async_context_t *context,
@@ -144,10 +147,18 @@ int main() {
   settings_init();
 
   // マトリクススキャン初期化
-  matrix_init();
+  matrix_scan_init();
 
   // イベント処理を初期化
-  event_init();
+  event_settings_t event_settings = {
+      .mouse_move_thresh = MOUSE_MOVE_THRESH,
+      .mouse_wheel_thresh = MOUSE_WHEEL_THRESH,
+      .mouse_move_delta = MOUSE_MOVE_DELTA,
+      .mouse_wheel_delta = MOUSE_WHEEL_DELTA,
+      .platform_callback = event_platform_process,
+      .keymap_get_callback = keymap_get,
+  };
+  event_init(event_settings);
 
   // BLEの初期化
 #if PWMK_ENABLE_BLE

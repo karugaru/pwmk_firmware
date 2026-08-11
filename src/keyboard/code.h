@@ -1,7 +1,7 @@
 #ifndef PWMK_CODE_H
 #define PWMK_CODE_H
 
-#include <pico/stdlib.h>
+#include <stdint.h>
 
 /**
  * @brief
@@ -299,10 +299,9 @@ typedef enum {
 #define ICODE_MOUSE_MOVE_END IMC_MOUSE_WHEEL_DOWN
 #define ICODE_SPECIAL_START ISC_BOOT
 #define ICODE_SPECIAL_END ISC_BLE_SLOT_4
-#define ICODE_USER_START (IUC_RANGE_MIN + 1)
 
-typedef uint8_t keyboard_code_t;
-typedef uint16_t keyboard_modifiered_code_t;
+typedef uint8_t code_t;
+typedef uint16_t code_modded_t;
 
 typedef enum {
   KMC_UNDEFINED = 0x00,
@@ -314,9 +313,9 @@ typedef enum {
   KMC_RIGHT_SHIFT = 0x20,
   KMC_RIGHT_ALT = 0x40,
   KMC_RIGHT_GUI = 0x80,
-} keyboard_modifier_t;
+} code_mod_t;
 
-typedef uint8_t keyboard_modifier_bits_t;
+typedef uint8_t code_mod_bits_t;
 
 typedef enum {
   CC_UNDEFINED = 0x0000,
@@ -334,19 +333,19 @@ typedef enum {
   CC_VOL_UP = 0x00E9,
   CC_VOL_DOWN = 0x00EA,
   CC_RANGE_MAX = 0xFFFF,
-} consumer_code_t;
+} code_consumer_t;
 
 typedef enum {
   MBC_UNDEFINED = 0x00,
   MBC_LEFT = 0x01,
   MBC_RIGHT = 0x02,
   MBC_MIDDLE = 0x04,
-} mouse_button_code_t;
+} code_mouse_button_t;
 
-keyboard_modifier_t code_icode_to_modifier(icode_t ic);
-keyboard_modifier_bits_t code_icode_extract_modifier_bits(icode_t ic);
-consumer_code_t code_icodes_to_consumer(icode_t ic);
-mouse_button_code_t code_icodes_to_mouse_button(icode_t ic);
+code_mod_t code_icode_to_modifier(icode_t ic);
+code_mod_bits_t code_icode_extract_modifier_bits(icode_t ic);
+code_consumer_t code_icodes_to_consumer(icode_t ic);
+code_mouse_button_t code_icodes_to_mouse_button(icode_t ic);
 
 #define APPLY_MOD(X, M) ((((uint16_t)M) << 8) | (X))
 

@@ -6,8 +6,8 @@
 #include <pico/stdlib.h>
 #include <stdbool.h>
 
-void matrix_init(void);
-void matrix_process(void);
-bool matrix_is_pressed(uint8_t row, uint8_t col);
+void matrix_scan_init(void);
+void matrix_scan_process(void);
+bool matrix_scan_is_pressed(uint8_t row, uint8_t col);
 
 #endif // PWMK_MATRIX_SCAN_H

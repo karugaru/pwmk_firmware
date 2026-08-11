@@ -38,7 +38,7 @@ class BoardProfile(BaseModel):
         description="マトリクス走査時にピン状態が安定するまで待つ時間。単位はマイクロ秒。",
     )
     layout: list[tuple[int, int]] = Field(
-        description="物理配列とマトリクス座標の対応。未使用位置は [-1, -1] を指定する。"
+        description="物理配列とマトリクス座標の対応。"
         " 例として、[[1,1],[2,3]]の場合、keymap[0]が行1列1のスイッチ、keymap[1]が行2列3のスイッチに対応する。",
     )
     vial_unlock_combo: list[tuple[int, int]] | None = Field(
@@ -61,8 +61,8 @@ class BoardProfile(BaseModel):
         return self.rows * self.cols
 
     @property
-    def active_layout_count(self) -> int:
-        return sum(1 for row, col in self.layout if row >= 0 and col >= 0)
+    def layout_count(self) -> int:
+        return len(self.layout)
 
     @model_validator(mode="after")
     def validate_layout(self) -> BoardProfile:
@@ -71,11 +71,9 @@ class BoardProfile(BaseModel):
 
         seen_positions: set[tuple[int, int]] = set()
         for row, col in self.layout:
-            if row == -1 and col == -1:
-                continue
             if row < 0 or col < 0:
                 raise ValueError(
-                    "レイアウトの要素は有効な座標か [-1, -1] である必要があります。"
+                    "レイアウトの要素は有効な行列番号の組み合わせである必要があります。"
                 )
             if row >= self.rows or col >= self.cols:
                 raise ValueError("レイアウトの要素がボードの範囲外です。")
@@ -214,9 +212,9 @@ class ProfileConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_keymap(self) -> ProfileConfig:
-        expected = self.board.active_layout_count
+        expected = self.board.layout_count
         if len(self.keymap.keymap) != expected:
             raise ValueError(
-                f"キーマップの要素数がアクティブなレイアウトの要素数と一致する必要があります: 期待値 {expected}, 実際の値 {len(self.keymap.keymap)}"
+                f"キーマップの要素数がレイアウトの要素数と一致する必要があります: 期待値 {expected}, 実際の値 {len(self.keymap.keymap)}"
             )
         return self

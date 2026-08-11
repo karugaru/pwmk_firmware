@@ -18,6 +18,47 @@
             }
         },
         {
+            "label": "Clean CMake",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Clean CMake Build Directory",
+                "Configure CMake"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean CMake Build Directory",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "-E",
+                "remove_directory",
+                "${workspaceFolder}/build"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Configure CMake",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "-G",
+                "Ninja",
+                "-B",
+                "${workspaceFolder}/build",
+                "${workspaceFolder}"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Run Project",
             "type": "process",
             "command": "${env:HOME}/.pico-sdk/picotool/2.3.0/picotool/picotool",

@@ -26,9 +26,35 @@
 #if DEBUG_MAIN
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
-#define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) ((void)(0))
 #endif
 
+/**
+ * @brief ディープスリープに入る前の準備を行う。
+ */
+static void prepare_deep_sleep(void) {
+  // 割り込みを無効化
+  disable_interrupts();
+
+  // LEDを消灯
+  led_put_rgb(0, 0, 0);
+
+  // BLEを無効化
+#if PWMK_ENABLE_BLE
+  ble_power_set(false);
+  gpio_put(CYW43_PIN_WL_REG_ON, false);
+#endif
+
+  // USBを無効化
+#if PWMK_ENABLE_USB
+  usb_hid_deinit();
+#endif
+
+  // stdio をフラッシュ
+  stdio_flush();
+}
+
+#if PICO_RP2040
 /**
  * @brief マトリクス列のGPIOをドーマントウェイクに設定する。
  *        行をLOW出力に固定し、列のLOWエッジで復帰する経路を作る。
@@ -65,35 +91,9 @@ static void matrix_acknowledge_dormant_wakeup(void) {
 }
 
 /**
- * @brief ディープスリープに入る前の準備を行う。
+ * @brief DORMANTを使用してディープスリープに入る。
  */
-static void prepare_deep_sleep(void) {
-  // 割り込みを無効化
-  disable_interrupts();
-
-  // LEDを消灯
-  led_put_rgb(0, 0, 0);
-
-  // BLEを無効化
-#if PWMK_ENABLE_BLE
-  ble_power_set(false);
-  gpio_put(CYW43_PIN_WL_REG_ON, false);
-#endif
-
-  // USBを無効化
-#if PWMK_ENABLE_USB
-  usb_hid_deinit();
-#endif
-
-  // stdio をフラッシュ
-  stdio_flush();
-}
-
-/**
- * @brief ディープスリープに入る。
- */
-void enter_deepsleep(void) {
-#if PICO_RP2040
+void sleep_enter_deep(void) {
   // RP2040では、ディープスリープはDORMANTモードとして実装する。
   DEBUG_PRINT("entering dormant mode\n");
   prepare_deep_sleep();
@@ -141,8 +141,14 @@ void enter_deepsleep(void) {
   while (true) {
     tight_loop_contents();
   }
+}
 
 #elif PICO_RP2350
+
+/**
+ * @brief PSTATEを使用してディープスリープに入る。
+ */
+void sleep_enter_deep(void) {
   // RP2350では、ディープスリープはPSTATE(P1.7)として実装する。
   DEBUG_PRINT("entering pstate mode\n");
   prepare_deep_sleep();
@@ -174,5 +180,5 @@ void enter_deepsleep(void) {
   while (true) {
     __wfi();
   }
-#endif
 }
+#endif

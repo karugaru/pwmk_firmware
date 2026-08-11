@@ -9,6 +9,36 @@ permissions:
   contents: read
 
 jobs:
+  tests:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Restore uv cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ubuntu-24.04-${{ runner.arch }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ubuntu-24.04-${{ runner.arch }}-uv-
+
+      - name: Sync Python environment
+        run: uv sync --frozen
+
+      - name: Run profile tests
+        run: uv run tools/test_profile.py
+
+      - name: Run keyboard tests
+        run: uv run tools/test_keyboard.py
+
   firmware-build:
     runs-on: ubuntu-24.04
     strategy:
@@ -27,15 +57,21 @@ jobs:
       - name: Add uv to PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Cache uv and PWMK assets
+      - name: Restore uv cache
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.cache/uv
-            ~/.pwmk
-          key: ${{ runner.os }}-pwmk-${{ hashFiles('pyproject.toml', 'tools/*.py', 'CMakeLists.txt', 'src/**', 'users/**') }}
+          path: ~/.cache/uv
+          key: ubuntu-24.04-${{ runner.arch }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pwmk-
+            ubuntu-24.04-${{ runner.arch }}-uv-
+
+      - name: Restore PWMK toolchain cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.pwmk
+          key: ubuntu-24.04-${{ runner.arch }}-pwmk-toolchain-${{ hashFiles('tools/pwmk_build_prep.py') }}
+          restore-keys: |
+            ubuntu-24.04-${{ runner.arch }}-pwmk-toolchain-
 
       - name: Sync Python environment
         run: uv sync --frozen

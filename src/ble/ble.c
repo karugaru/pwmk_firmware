@@ -20,7 +20,7 @@
 #if DEBUG_BLE
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
-#define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) ((void)(0))
 #endif
 
 // --------------------------------
@@ -300,21 +300,10 @@ static void packet_handler(uint8_t packet_type, uint16_t channel,
  *        送信すべきレポートがある場合にのみ送信する。
  */
 static void send_report() {
-  uint8_t report[HID_REPORT_SIZE_MAX] = {0};
-
-  if (event_pop_keyboard_report(report)) {
-    hids_device_send_input_report_for_id(con_handle, KEYBOARD_REPORT_ID, report,
-                                         HID_KEYBOARD_REPORT_SIZE);
-  }
-
-  if (event_pop_consumer_report(report)) {
-    hids_device_send_input_report_for_id(con_handle, CONSUMER_REPORT_ID, report,
-                                         HID_CONSUMER_REPORT_SIZE);
-  }
-
-  if (event_pop_mouse_report(report)) {
-    hids_device_send_input_report_for_id(con_handle, MOUSE_REPORT_ID, report,
-                                         HID_MOUSE_REPORT_SIZE);
+  event_hid_report_t report;
+  while (event_pop_hid_report(&report)) {
+    hids_device_send_input_report_for_id(con_handle, report.report_id,
+                                         report.data, report.size);
   }
 }
 
