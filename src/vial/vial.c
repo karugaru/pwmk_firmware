@@ -20,11 +20,11 @@
 #if DEBUG_VIAL
 #define DEBUG_PRINT_PACKET(label, packet)                                      \
   do {                                                                         \
-    DEBUG_PRINT("%s: ", label);                                                \
+    printf("%s: ", label);                                                     \
     for (uint8_t index = 0; index < VIAL_PACKET_SIZE; index++) {               \
-      DEBUG_PRINT("0x%02X ", packet[index]);                                   \
+      printf("0x%02X ", packet[index]);                                        \
     }                                                                          \
-    DEBUG_PRINT("\n");                                                         \
+    printf("\n");                                                              \
   } while (0)
 #else
 #define DEBUG_PRINT_PACKET(...) ((void)(0))
