@@ -51,11 +51,12 @@
 #define PWMK_PERSISTENCE_START                                                 \
   (PICO_FLASH_BANK_STORAGE_OFFSET - PWMK_PERSISTENCE_SIZE)
 
-// シリアル番号のオフセット
-#define PWMK_SERIAL_OFFSET PWMK_ALIGN_UP(0u, FLASH_PAGE_SIZE)
+// 永続化領域を識別するマーカーのオフセット
+#define PWMK_MARKER_OFFSET 0u
+// シリアル番号のオフセット。
+#define PWMK_SERIAL_OFFSET (PWMK_MARKER_OFFSET + PWMK_PERSISTENCE_MARKER_SIZE)
 // 保存進捗のオフセット
-#define PWMK_PROGRESS_OFFSET                                                   \
-  PWMK_ALIGN_UP(PWMK_SERIAL_OFFSET + PWMK_HEADER_SIZE, FLASH_PAGE_SIZE)
+#define PWMK_PROGRESS_OFFSET PWMK_ALIGN_UP(PWMK_HEADER_SIZE, FLASH_PAGE_SIZE)
 // 構築済みデータのオフセット
 #define PWMK_BUILT_DATA_OFFSET                                                 \
   PWMK_ALIGN_UP(PWMK_PROGRESS_OFFSET + PWMK_PROGRESS_SIZE, FLASH_PAGE_SIZE)
@@ -87,9 +88,10 @@ _Static_assert(PWMK_PERSISTENCE_SIZE % FLASH_SECTOR_SIZE == 0u,
 // 永続化領域の開始位置の計算に誤りがある
 _Static_assert(PWMK_PERSISTENCE_START % FLASH_SECTOR_SIZE == 0u,
                "PWMK persistence start must be sector aligned");
-// シリアル番号のオフセット計算に誤りがある
-_Static_assert(PWMK_SERIAL_OFFSET % FLASH_PAGE_SIZE == 0u,
-               "PWMK serial must be page aligned");
+// シリアル番号がヘッダ内に収まらない
+_Static_assert(PWMK_SERIAL_OFFSET + PWMK_FIRMWARE_SERIAL_SIZE <=
+                   PWMK_HEADER_SIZE,
+               "PWMK serial does not fit in header");
 // 保存進捗のオフセット計算に誤りがある
 _Static_assert(PWMK_PROGRESS_OFFSET % FLASH_PAGE_SIZE == 0u,
                "PWMK progress must be page aligned");
@@ -125,6 +127,7 @@ bi_decl(bi_block_device(BINARY_INFO_MAKE_TAG('P', 'W'), "PWMK firmware", 0u,
                         BINARY_INFO_BLOCK_DEV_FLAG_READ));
 
 const persistence_flash_layout_t persistence_flash_layout = {
+    .marker_offset = PWMK_MARKER_OFFSET,
     .serial_offset = PWMK_SERIAL_OFFSET,
     .progress_offset = PWMK_PROGRESS_OFFSET,
     .built_data_offset = PWMK_BUILT_DATA_OFFSET,

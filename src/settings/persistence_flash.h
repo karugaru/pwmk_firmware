@@ -7,6 +7,7 @@
 
 // フラッシュ領域上の永続化データのレイアウトを表す構造体
 typedef struct {
+  size_t marker_offset;     // 永続化領域のマーカーのオフセット
   size_t serial_offset;     // シリアル番号のオフセット
   size_t progress_offset;   // 保存進捗のオフセット
   size_t built_data_offset; // ビルド済みデータのオフセット

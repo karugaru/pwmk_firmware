@@ -7,10 +7,16 @@
 
 // ファームウェアのシリアル番号のサイズ
 #define PWMK_FIRMWARE_SERIAL_SIZE 16u
+// 永続化領域を識別するマーカー
+#define PWMK_PERSISTENCE_MARKER "PWMK"
+// 永続化領域を識別するマーカーのサイズ
+#define PWMK_PERSISTENCE_MARKER_SIZE (sizeof(PWMK_PERSISTENCE_MARKER) - 1u)
 // ヘッダの予約分サイズ
-#define PWMK_HEADER_RESERVED_SIZE 240u
+#define PWMK_HEADER_RESERVED_SIZE 236u
 // ヘッダのサイズ
-#define PWMK_HEADER_SIZE (PWMK_FIRMWARE_SERIAL_SIZE + PWMK_HEADER_RESERVED_SIZE)
+#define PWMK_HEADER_SIZE                                                       \
+  (PWMK_PERSISTENCE_MARKER_SIZE + PWMK_FIRMWARE_SERIAL_SIZE +                  \
+   PWMK_HEADER_RESERVED_SIZE)
 // 進捗保存バイトサイズ
 #define PWMK_PROGRESS_SIZE 512u
 // 進捗保存バイトサイズのビット換算

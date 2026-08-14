@@ -83,6 +83,12 @@ static bool _persistence_rebuild(bool reset_keymap) {
   if (!persistence_flash_erase_all()) {
     return false;
   }
+  // マーカーを書き込む
+  if (!persistence_flash_program(persistence_flash_layout.marker_offset,
+                                 (const uint8_t *)PWMK_PERSISTENCE_MARKER,
+                                 PWMK_PERSISTENCE_MARKER_SIZE)) {
+    return false;
+  }
   // シリアル番号を書き込む
   if (!persistence_flash_program(persistence_flash_layout.serial_offset,
                                  pwmk_firmware_serial,
@@ -133,6 +139,17 @@ static bool _persistence_rebuild(bool reset_keymap) {
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
 static bool _persistence_restore(void) {
+  // フラッシュ上のマーカーを読み込む
+  uint8_t marker[PWMK_PERSISTENCE_MARKER_SIZE];
+  if (!persistence_flash_read(persistence_flash_layout.marker_offset, marker,
+                              sizeof(marker))) {
+    return false;
+  }
+  // マーカーが一致しない場合は復元を失敗させる
+  if (memcmp(marker, PWMK_PERSISTENCE_MARKER, sizeof(marker)) != 0) {
+    return false;
+  }
+
   // フラッシュ上のシリアル番号を読み込む
   uint8_t serial[PWMK_FIRMWARE_SERIAL_SIZE];
   if (!persistence_flash_read(persistence_flash_layout.serial_offset, serial,

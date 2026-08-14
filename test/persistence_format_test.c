@@ -7,6 +7,14 @@ void setUp(void) {}
 
 void tearDown(void) {}
 
+static void test_persistence_marker_is_readable(void) {
+  const uint8_t expected[] = {'P', 'W', 'M', 'K'};
+
+  TEST_ASSERT_EQUAL_UINT(sizeof(expected), PWMK_PERSISTENCE_MARKER_SIZE);
+  TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, PWMK_PERSISTENCE_MARKER,
+                               sizeof(expected));
+}
+
 static void test_progress_accepts_valid_sequences(void) {
   uint8_t progress[PWMK_PROGRESS_SIZE];
   pwmk_progress_info_t info;
@@ -199,6 +207,7 @@ static void test_log_replay_rejects_trailing_or_incomplete_data(void) {
 
 int main(void) {
   UNITY_BEGIN();
+  RUN_TEST(test_persistence_marker_is_readable);
   RUN_TEST(test_progress_accepts_valid_sequences);
   RUN_TEST(test_progress_rejects_invalid_sequences);
   RUN_TEST(test_progress_reports_full_capacity_and_bit_order);
