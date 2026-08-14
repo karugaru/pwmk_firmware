@@ -4,6 +4,7 @@
 #include "settings/persistence_identity.h"
 #include <hardware/flash.h>
 #include <hardware/regs/addressmap.h>
+#include <pico/binary_info.h>
 #include <pico/btstack_flash_bank.h>
 #include <pico/flash.h>
 #include <stddef.h>
@@ -119,9 +120,9 @@ _Static_assert(PWMK_PERSISTENCE_START + PWMK_PERSISTENCE_SIZE <=
                    PICO_FLASH_SIZE_BYTES,
                "PWMK persistence extends beyond flash");
 
-// __attribute__((
-//     used, section(".pwmk_persistence_layout"))) static const volatile
-//     uint32_t pwmk_persistence_start = XIP_BASE + PWMK_PERSISTENCE_OFFSET;
+bi_decl(bi_block_device(BINARY_INFO_MAKE_TAG('P', 'W'), "PWMK firmware", 0u,
+                        PWMK_PERSISTENCE_START, NULL,
+                        BINARY_INFO_BLOCK_DEV_FLAG_READ));
 
 const persistence_flash_layout_t persistence_flash_layout = {
     .serial_offset = PWMK_SERIAL_OFFSET,

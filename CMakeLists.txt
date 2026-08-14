@@ -25,15 +25,22 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     ${PWMK_PROFILE_GENERATION_INPUTS}
 )
 
-# ソース生成用コマンドを構築する。
+# ソース生成・検証用コマンドを構築する。
 if(WIN32)
     set(PWMK_GENERATE_COMMAND
         ${CMAKE_COMMAND} -E env UV_PROJECT_ENVIRONMENT=.venv_win
         uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
     )
+    set(PWMK_VERIFY_COMMAND
+        ${CMAKE_COMMAND} -E env UV_PROJECT_ENVIRONMENT=.venv_win
+        uv run tools/pwmk.py verify-binary
+    )
 else()
     set(PWMK_GENERATE_COMMAND
         uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
+    )
+    set(PWMK_VERIFY_COMMAND
+        uv run tools/pwmk.py verify-binary
     )
 endif()
 
@@ -179,6 +186,16 @@ endif()
 
 # UF2、BIN、HEX、MAPなどの追加出力を生成する。
 pico_add_extra_outputs(pwmk)
+
+# リンク後にpicotoolでファームウェアの使用可能範囲を検査する。
+add_custom_command(TARGET pwmk POST_BUILD
+    COMMAND ${PWMK_VERIFY_COMMAND}
+        --picotool $<TARGET_FILE:picotool>
+        --binary ${CMAKE_CURRENT_BINARY_DIR}/pwmk.bin
+        --name "PWMK firmware"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    VERBATIM
+)
 
 # コンパイル時の機能フラグとデバッグ出力の設定を定義する。
 target_compile_definitions(pwmk PRIVATE
