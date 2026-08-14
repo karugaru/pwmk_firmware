@@ -10,8 +10,8 @@
 #include "usb/usb_hid.h"
 #include "vial/vial.h"
 
-static void usb_hid_send_report_chain(void);
-static void usb_hid_process_vial(void);
+static void _usb_hid_send_report_chain(void);
+static void _usb_hid_process_vial(void);
 
 static bool usb_hid_report_chain_active;
 
@@ -41,7 +41,7 @@ void usb_hid_deinit(void) { tud_deinit(BOARD_TUD_RHPORT); }
  */
 void usb_hid_task(void) {
   tud_task();
-  usb_hid_process_vial();
+  _usb_hid_process_vial();
 }
 
 /**
@@ -54,7 +54,7 @@ void usb_hid_send_reports(void) {
     return;
   }
   usb_hid_report_chain_active = true;
-  usb_hid_send_report_chain();
+  _usb_hid_send_report_chain();
 }
 
 /**
@@ -111,7 +111,7 @@ void tud_hid_report_complete_cb(uint8_t _instance, uint8_t const *report,
     return;
   }
 
-  usb_hid_send_report_chain();
+  _usb_hid_send_report_chain();
 }
 
 /**
@@ -174,7 +174,7 @@ void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
  *        送信すべきレポートがあれば送信して終了する。
  *        （続きはtud_hid_report_complete_cbで処理）
  */
-static void usb_hid_send_report_chain() {
+static void _usb_hid_send_report_chain() {
 
   event_hid_report_t report;
   if (event_pop_hid_report(&report)) {
@@ -187,7 +187,7 @@ static void usb_hid_send_report_chain() {
 /**
  * @brief VIAL要求を通常のメインループ文脈で処理し、応答を送信する。
  */
-static void usb_hid_process_vial(void) {
+static void _usb_hid_process_vial(void) {
   if (!vial_request_pending) {
     return;
   }

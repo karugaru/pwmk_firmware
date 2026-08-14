@@ -48,7 +48,7 @@ static uint32_t unlock_hold_started_at_ms; // アンロックを始めた時刻
  * @param buffer 読み取り元のバッファ
  * @return 16ビットの値
  */
-static uint16_t read_u16_be(const uint8_t *buffer) {
+static uint16_t _read_u16_be(const uint8_t *buffer) {
   return ((uint16_t)buffer[0] << 8) | buffer[1];
 }
 
@@ -57,7 +57,7 @@ static uint16_t read_u16_be(const uint8_t *buffer) {
  * @param buffer 読み取り元のバッファ
  * @return 16ビットの値
  */
-static uint16_t read_u16_le(const uint8_t *buffer) {
+static uint16_t _read_u16_le(const uint8_t *buffer) {
   return ((uint16_t)buffer[1] << 8) | buffer[0];
 }
 
@@ -66,7 +66,7 @@ static uint16_t read_u16_le(const uint8_t *buffer) {
  * @param buffer 書き込み先のバッファ
  * @param value 書き込む16ビットの値
  */
-static void write_u16_be(uint8_t *buffer, uint16_t value) {
+static void _write_u16_be(uint8_t *buffer, uint16_t value) {
   buffer[0] = (uint8_t)(value >> 8);
   buffer[1] = (uint8_t)value;
 }
@@ -76,7 +76,7 @@ static void write_u16_be(uint8_t *buffer, uint16_t value) {
  * @param buffer 書き込み先のバッファ
  * @param value 書き込む32ビットの値
  */
-static void write_u32_le(uint8_t *buffer, uint32_t value) {
+static void _write_u32_le(uint8_t *buffer, uint32_t value) {
   buffer[0] = (uint8_t)value;
   buffer[1] = (uint8_t)(value >> 8);
   buffer[2] = (uint8_t)(value >> 16);
@@ -87,7 +87,7 @@ static void write_u32_le(uint8_t *buffer, uint32_t value) {
  * @brief Vialのアンロックコンボが押されているかどうかを判定する。
  * @return アンロックコンボが押されている場合はtrue、それ以外はfalse。
  */
-static bool vial_unlock_combo_pressed(void) {
+static bool _vial_unlock_combo_pressed(void) {
   for (uint8_t index = 0; index < VIAL_UNLOCK_COMBO_LENGTH; index++) {
     if (!matrix_scan_is_pressed(vial_unlock_combo[index][0],
                                 vial_unlock_combo[index][1])) {
@@ -101,14 +101,14 @@ static bool vial_unlock_combo_pressed(void) {
  * @brief アンロック状態を更新する。
  * @return アンロックコンボが押されている場合は残り時間（秒）を返す。
  */
-static uint8_t vial_update_unlock_state(void) {
+static uint8_t _vial_update_unlock_state(void) {
   // アンロック済みまたはアンロックが進行していない場合は0を返す。
   if (unlocked || !unlock_in_progress) {
     return 0;
   }
 
   // アンロックコンボが押されていない場合は進行をリセットして残り時間を返す。
-  if (!vial_unlock_combo_pressed()) {
+  if (!_vial_unlock_combo_pressed()) {
     unlock_combo_held = false;
     return VIAL_UNLOCK_HOLD_MS / 1000;
   }
@@ -140,8 +140,8 @@ static uint8_t vial_update_unlock_state(void) {
  * @param page コピーするページ番号
  * @param response コピー先のバッファ
  */
-static void copy_keyboard_definition_page(uint16_t page,
-                                          uint8_t response[VIAL_PACKET_SIZE]) {
+static void _copy_keyboard_definition_page(uint16_t page,
+                                           uint8_t response[VIAL_PACKET_SIZE]) {
   // Definition Data Query の応答はヘッダなしの 32 バイトページ。
   uint16_t offset = page * VIAL_PACKET_SIZE;
   if (offset >= VIAL_KEYBOARD_DEFINITION_SIZE) {
@@ -159,7 +159,7 @@ static void copy_keyboard_definition_page(uint16_t page,
  * @param key_index キーインデックス
  * @return キーコード
  */
-static uint16_t keymap_buffer_get_keycode(uint16_t key_index) {
+static uint16_t _keymap_buffer_get_keycode(uint16_t key_index) {
   if (key_index >= KEYMAP_BUFFER_SIZE / 2) {
     return 0;
   }
@@ -183,13 +183,13 @@ static uint16_t keymap_buffer_get_keycode(uint16_t key_index) {
  * @param offset バイトオフセット
  * @return 指定されたオフセットのバイト
  */
-static uint8_t keymap_buffer_get_byte(uint16_t offset) {
+static uint8_t _keymap_buffer_get_byte(uint16_t offset) {
   if (offset >= KEYMAP_BUFFER_SIZE) {
     return 0;
   }
 
   uint16_t key_index = offset / 2;
-  uint16_t keycode = keymap_buffer_get_keycode(key_index);
+  uint16_t keycode = _keymap_buffer_get_keycode(key_index);
   // VIA の Dynamic Keymap Buffer では
   // 16ビットキーコードをビッグエンディアンで送る。
   return offset % 2 == 0 ? (uint8_t)(keycode >> 8) : (uint8_t)keycode;
@@ -200,7 +200,7 @@ static uint8_t keymap_buffer_get_byte(uint16_t offset) {
  * @param keycode 判定するキーコード
  * @return 書き込み可能な場合はtrue、書き込み不可の場合はfalse
  */
-static bool vial_keycode_write_allowed(uint16_t keycode) {
+static bool _vial_keycode_write_allowed(uint16_t keycode) {
   return unlocked || !code_convert_is_dangerous_vial_code(keycode);
 }
 
@@ -208,7 +208,7 @@ static bool vial_keycode_write_allowed(uint16_t keycode) {
  * @brief スイッチマトリクスの状態を応答バッファに書き込む。
  * @param response 応答バッファ
  */
-static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
+static void _write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
   const uint16_t bytes_per_row = (COLS + 7) / 8;
 
   for (uint8_t row = 0; row < ROWS; row++) {
@@ -230,27 +230,27 @@ static void write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]) {
  * @param request 受信したリクエストパケット
  * @param response 応答パケットのバッファ
  */
-static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
-                                uint8_t response[VIAL_PACKET_SIZE]) {
+static void _handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
+                                 uint8_t response[VIAL_PACKET_SIZE]) {
   switch (request[1]) {
   case 0x00: {
     // Keyboard ID / Protocol Query
     // 固有 UID と対応プロトコルを返す。
     pico_unique_board_id_t board_id;
     pico_get_unique_board_id(&board_id);
-    write_u32_le(response, VIAL_PROTOCOL_VERSION);
+    _write_u32_le(response, VIAL_PROTOCOL_VERSION);
     memcpy(&response[4], board_id.id, sizeof(board_id.id));
     break;
   }
 
   case 0x01:
     // Keyboard Definition Size Query
-    write_u32_le(response, VIAL_KEYBOARD_DEFINITION_SIZE);
+    _write_u32_le(response, VIAL_KEYBOARD_DEFINITION_SIZE);
     break;
 
   case 0x02:
     // Keyboard Definition Data Query
-    copy_keyboard_definition_page(read_u16_le(&request[2]), response);
+    _copy_keyboard_definition_page(_read_u16_le(&request[2]), response);
     break;
 
   case 0x03: // Get Encoder Value
@@ -278,7 +278,7 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x07: {
     // Unlock Poll
     // ポーリング時に解除コンボの保持時間を更新する。
-    uint8_t remaining = vial_update_unlock_state();
+    uint8_t remaining = _vial_update_unlock_state();
     response[0] = unlocked ? 1 : 0;
     response[1] = unlock_in_progress ? 1 : 0;
     response[2] = remaining;
@@ -327,11 +327,11 @@ static void handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
  * @param request 受信したリクエストパケット
  * @param response 応答パケットのバッファ
  */
-static void handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
-                                      uint8_t response[VIAL_PACKET_SIZE]) {
+static void _handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
+                                       uint8_t response[VIAL_PACKET_SIZE]) {
   // ホストは byte 0..3 をリクエストのエコー、byte 4.. を実データとして扱う。
   memcpy(response, request, VIAL_KEYMAP_RESPONSE_HEADER_SIZE);
-  uint16_t offset = read_u16_be(&request[1]);
+  uint16_t offset = _read_u16_be(&request[1]);
 
   // パケットが規定の長さを超えないように調整する。
   uint8_t size;
@@ -343,7 +343,7 @@ static void handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
 
   for (uint8_t index = 0; index < size; index++) {
     response[VIAL_KEYMAP_RESPONSE_HEADER_SIZE + index] =
-        keymap_buffer_get_byte(offset + index);
+        _keymap_buffer_get_byte(offset + index);
   }
 }
 
@@ -352,13 +352,13 @@ static void handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
  * @param request 受信したリクエストパケット
  * @param response 応答パケットのバッファ
  */
-static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
-                               uint8_t response[VIAL_PACKET_SIZE]) {
+static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
+                                uint8_t response[VIAL_PACKET_SIZE]) {
   switch (request[0]) {
   case 0x01:
     // Get Protocol Version
     response[0] = request[0];
-    write_u16_be(&response[1], VIA_PROTOCOL_VERSION);
+    _write_u16_be(&response[1], VIA_PROTOCOL_VERSION);
     break;
 
   case 0x02:
@@ -371,7 +371,7 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
         response[0] = 1;
         break;
       }
-      write_switch_matrix_state(response);
+      _write_switch_matrix_state(response);
     }
     break;
 
@@ -386,9 +386,9 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
     icode_t internal = keymap_get(request[1], request[2], request[3]);
     uint16_t vial;
     if (code_convert_to_vial(internal, &vial)) {
-      write_u16_be(&response[3], vial);
+      _write_u16_be(&response[3], vial);
     } else {
-      write_u16_be(&response[3], 0);
+      _write_u16_be(&response[3], 0);
     }
     break;
   }
@@ -397,8 +397,8 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
     // Set Keycode
     response[0] = 1;
 
-    uint16_t vial = read_u16_be(&request[4]);
-    if (!vial_keycode_write_allowed(vial)) {
+    uint16_t vial = _read_u16_be(&request[4]);
+    if (!_vial_keycode_write_allowed(vial)) {
       break;
     }
 
@@ -472,7 +472,7 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x12:
     // Dynamic Keymap Buffer Get
-    handle_dynamic_keymap_get(request, response);
+    _handle_dynamic_keymap_get(request, response);
     break;
 
   default:
@@ -496,9 +496,9 @@ void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
   if (request[0] == VIAL_PREFIX) {
     // 0xFE プレフィックスは Vial 固有コマンド、
     // それ以外は VIA コマンドとして解釈する。
-    handle_vial_command(request, packet);
+    _handle_vial_command(request, packet);
   } else {
-    handle_via_command(request, packet);
+    _handle_via_command(request, packet);
   }
 
   DEBUG_PRINT_PACKET("Vial response", packet);

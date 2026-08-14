@@ -43,7 +43,7 @@ static volatile state_conn_pref_t conn_pref = CONN_PREF_USB;
  * @param state 判定する状態
  * @return stateがランタイム状態の場合はtrue、それ以外はfalse
  */
-static bool state_is_runtime_state(state_system_t state) {
+static bool _state_is_runtime_state(state_system_t state) {
   return state == STATE_USB_WAITING || state == STATE_BLE_WAITING ||
          state == STATE_BLE_CONNECTED || state == STATE_USB_CONNECTED;
 }
@@ -52,7 +52,7 @@ static bool state_is_runtime_state(state_system_t state) {
  * @brief 現在の接続状況と優先接続モードから状態を解決する。
  * @return 解決された状態
  */
-static state_system_t state_resolve_runtime(void) {
+static state_system_t _state_resolve_runtime(void) {
   bool usb_active = usb_hid_is_active();
   bool ble_connected = ble_is_connected();
 
@@ -112,12 +112,12 @@ void state_switch_connection_preference(state_conn_pref_t pref) {
  * @brief 現在の接続状況と優先接続モードから状態を更新する。
  */
 void state_refresh_runtime(void) {
-  if (!state_is_runtime_state(current_state) &&
+  if (!_state_is_runtime_state(current_state) &&
       current_state != STATE_INIT_COMPLETE) {
     return;
   }
 
-  state_set_system(state_resolve_runtime());
+  state_set_system(_state_resolve_runtime());
 }
 
 /**

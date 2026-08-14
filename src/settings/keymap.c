@@ -26,7 +26,7 @@ static int16_t keyswitch_index_lookup[ROWS][COLS];
  * @param index レイアウトインデックス
  * @return キーが存在する場合はtrue、そうでない場合はfalse
  */
-static bool keymap_layout_index_exists(size_t index) {
+static bool _keymap_layout_index_exists(size_t index) {
   const int8_t row = layout[index][0];
   const int8_t col = layout[index][1];
   return row >= 0 && row < ROWS && col >= 0 && col < COLS;
@@ -44,7 +44,7 @@ void keymap_init(void) {
   }
 
   for (uint16_t index = 0; index < KEYMAP_ENTRIES_PER_LAYER; index++) {
-    if (!keymap_layout_index_exists(index)) {
+    if (!_keymap_layout_index_exists(index)) {
       continue;
     }
     const int8_t row = layout[index][0];
@@ -64,7 +64,7 @@ void keymap_reset(void) {
     // 意味が異なるので注意。keymap_layout_index_existsは
     // レイアウトのインデックスを使ってキーが存在するかを判定する。
     const size_t layout_index = index % KEYMAP_ENTRIES_PER_LAYER;
-    if (keymap_layout_index_exists(layout_index)) {
+    if (_keymap_layout_index_exists(layout_index)) {
       dynamic_keymap[index] = keymap[index];
     } else {
       dynamic_keymap[index] = IKC_NOOP;
@@ -151,7 +151,7 @@ bool keymap_export_pwmk(uint8_t *buffer, size_t size) {
   for (size_t index = 0; index < KEYMAP_ENTRY_COUNT; index++) {
     const size_t layout_index = index % KEYMAP_ENTRIES_PER_LAYER;
     uint32_t value;
-    if (keymap_layout_index_exists(layout_index)) {
+    if (_keymap_layout_index_exists(layout_index)) {
       value = (uint32_t)dynamic_keymap[index];
     } else {
       value = IKC_NOOP;
@@ -184,7 +184,7 @@ bool keymap_import_pwmk(const uint8_t *buffer, size_t size) {
                            ((uint32_t)buffer[offset + 1u] << 8u) |
                            ((uint32_t)buffer[offset + 2u] << 16u) |
                            ((uint32_t)buffer[offset + 3u] << 24u);
-    if ((!keymap_layout_index_exists(layout_index) && value != IKC_NOOP) ||
+    if ((!_keymap_layout_index_exists(layout_index) && value != IKC_NOOP) ||
         !keymap_is_valid_keycode((icode_t)value)) {
       return false;
     }

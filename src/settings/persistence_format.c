@@ -7,7 +7,7 @@
  * @param size 配列のサイズ
  * @return すべて0xFFで埋まっている場合はtrue、それ以外の場合はfalse
  */
-static bool all_ff(const uint8_t *data, size_t size) {
+static bool _all_ff(const uint8_t *data, size_t size) {
   for (size_t index = 0; index < size; index++) {
     if (data[index] != 0xFFu) {
       return false;
@@ -303,7 +303,7 @@ bool persistence_format_log_replay(const uint8_t *log, size_t log_size,
 
     // ログのヘッダが規定の長さに満たない場合、またはヘッダがすべて初期値(0xFF)で埋まっている場合は無効とみなす
     if (log_size - position < PWMK_VARIABLE_LOG_HEADER_SIZE ||
-        all_ff(&log[position], PWMK_VARIABLE_LOG_HEADER_SIZE)) {
+        _all_ff(&log[position], PWMK_VARIABLE_LOG_HEADER_SIZE)) {
       return false;
     }
 
@@ -327,7 +327,7 @@ bool persistence_format_log_replay(const uint8_t *log, size_t log_size,
   }
 
   // 予定されているログの数だけ再生した後、残りのログがすべて初期値(0xFF)で埋まっていることを確認する
-  if (!all_ff(&log[position], log_size - position)) {
+  if (!_all_ff(&log[position], log_size - position)) {
     return false;
   }
 

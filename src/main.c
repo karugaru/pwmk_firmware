@@ -37,7 +37,7 @@ static bool requested_deep_sleep;
 /**
  * @brief 1ms周期で実行する事実上のメインループ処理。
  */
-static void pwmk_process_tick(void) {
+static void _pwmk_process_tick(void) {
   // キーマトリクス処理を実行
   matrix_scan_process();
 
@@ -119,9 +119,9 @@ static void pwmk_process_tick(void) {
  * @param worker ワーカー構造体
  */
 #if PWMK_ENABLE_BLE
-static void pwmk_worker_process(async_context_t *context,
-                                async_at_time_worker_t *worker) {
-  pwmk_process_tick();
+static void _pwmk_worker_process(async_context_t *context,
+                                 async_at_time_worker_t *worker) {
+  _pwmk_process_tick();
   async_context_add_at_time_worker_in_ms(context, worker, 1);
 }
 #endif
@@ -188,7 +188,7 @@ int main() {
 
   // 定期処理ワーカーをasync_contextに登録
 #if PWMK_ENABLE_BLE
-  pwmk_worker.do_work = pwmk_worker_process;
+  pwmk_worker.do_work = _pwmk_worker_process;
   async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(),
                                          &pwmk_worker, 1);
 #endif
@@ -204,7 +204,7 @@ int main() {
     async_context_wait_for_work_until(cyw43_arch_async_context(),
                                       at_the_end_of_time);
 #else
-    pwmk_process_tick();
+    _pwmk_process_tick();
     if (requested_deep_sleep) {
       state_set_system(STATE_DEEP_SLEEP);
     }

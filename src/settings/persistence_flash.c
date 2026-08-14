@@ -148,7 +148,7 @@ typedef struct {
  * flash_safe_execute()を経由して安全に実行する必要がある。
  * この関数はflash_safe_execute()のコールバック関数として使用される。
  */
-static void __not_in_flash_func(persistence_flash_operation)(void *parameter) {
+static void __not_in_flash_func(_persistence_flash_operation)(void *parameter) {
   // 実際のフラッシュ書き込み操作を行う
   const persistence_write_param_t *write_param = parameter;
   if (write_param->erase) {
@@ -165,7 +165,7 @@ static void __not_in_flash_func(persistence_flash_operation)(void *parameter) {
  * @param size フラッシュのサイズ
  * @return 有効な範囲の場合はtrue、無効な範囲の場合はfalse
  */
-static bool persistence_flash_range_is_valid(size_t offset, size_t size) {
+static bool _persistence_flash_range_is_valid(size_t offset, size_t size) {
   return offset <= PWMK_PERSISTENCE_SIZE &&
          size <= PWMK_PERSISTENCE_SIZE - offset;
 }
@@ -184,7 +184,7 @@ bool persistence_flash_init(void) { return true; }
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
 bool persistence_flash_read(size_t offset, uint8_t *buffer, size_t size) {
-  if (buffer == NULL || !persistence_flash_range_is_valid(offset, size)) {
+  if (buffer == NULL || !_persistence_flash_range_is_valid(offset, size)) {
     return false;
   }
 
@@ -205,7 +205,7 @@ bool persistence_flash_read(size_t offset, uint8_t *buffer, size_t size) {
 bool persistence_flash_get_view(size_t offset, size_t size,
                                 const uint8_t **read_address_out) {
   if (read_address_out == NULL ||
-      !persistence_flash_range_is_valid(offset, size)) {
+      !_persistence_flash_range_is_valid(offset, size)) {
     return false;
   }
 
@@ -220,7 +220,7 @@ bool persistence_flash_get_view(size_t offset, size_t size,
  * @return 消去済みの場合はtrue、消去されていない場合はfalse
  */
 bool persistence_flash_region_is_erased(size_t offset, size_t size) {
-  if (!persistence_flash_range_is_valid(offset, size)) {
+  if (!_persistence_flash_range_is_valid(offset, size)) {
     return false;
   }
 
@@ -242,7 +242,7 @@ bool persistence_flash_region_is_erased(size_t offset, size_t size) {
  */
 bool persistence_flash_program(size_t offset, const uint8_t *data,
                                size_t size) {
-  if (data == NULL || !persistence_flash_range_is_valid(offset, size)) {
+  if (data == NULL || !_persistence_flash_range_is_valid(offset, size)) {
     return false;
   }
 
@@ -288,7 +288,7 @@ bool persistence_flash_program(size_t offset, const uint8_t *data,
     }
 
     // フラッシュに書き込み、内容を検証する
-    if (flash_safe_execute(persistence_flash_operation, &write_param,
+    if (flash_safe_execute(_persistence_flash_operation, &write_param,
                            UINT32_MAX) != PICO_OK) {
       return false;
     }
@@ -318,7 +318,7 @@ bool persistence_flash_erase_all(void) {
   };
 
   // フラッシュを消去し、内容を検証する
-  if (flash_safe_execute(persistence_flash_operation, &write_param,
+  if (flash_safe_execute(_persistence_flash_operation, &write_param,
                          UINT32_MAX) != PICO_OK) {
     return false;
   }

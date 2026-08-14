@@ -32,7 +32,7 @@
 /**
  * @brief ディープスリープに入る前の準備を行う。
  */
-static void prepare_deep_sleep(void) {
+static void _prepare_deep_sleep(void) {
   // 割り込みを無効化
   disable_interrupts();
 
@@ -59,7 +59,7 @@ static void prepare_deep_sleep(void) {
  * @brief マトリクス列のGPIOをドーマントウェイクに設定する。
  *        行をLOW出力に固定し、列のLOWエッジで復帰する経路を作る。
  */
-static void matrix_enable_dormant_wakeup(void) {
+static void _matrix_enable_dormant_wakeup(void) {
   // 行をLOW出力に固定し、押下時に列がLOWへ落ちる経路を作る。
   for (int row = 0; row < ROWS; row++) {
     uint8_t row_pin = rows_pins[row];
@@ -82,7 +82,7 @@ static void matrix_enable_dormant_wakeup(void) {
 /**
  * @brief ドーマント復帰後にマトリクス列のGPIO割り込みをクリアする。
  */
-static void matrix_acknowledge_dormant_wakeup(void) {
+static void _matrix_acknowledge_dormant_wakeup(void) {
   for (int col = 0; col < COLS; col++) {
     uint8_t col_pin = cols_pins[col];
     gpio_acknowledge_irq(col_pin, GPIO_IRQ_EDGE_FALL);
@@ -96,7 +96,7 @@ static void matrix_acknowledge_dormant_wakeup(void) {
 void sleep_enter_deep(void) {
   // RP2040では、ディープスリープはDORMANTモードとして実装する。
   DEBUG_PRINT("entering dormant mode\n");
-  prepare_deep_sleep();
+  _prepare_deep_sleep();
 
   // クロックをXOSCに切り替え（PLLを停止するため）
   clock_configure(clk_ref, CLOCKS_CLK_REF_CTRL_SRC_VALUE_XOSC_CLKSRC, 0,
@@ -116,7 +116,7 @@ void sleep_enter_deep(void) {
   rosc_disable();
 
   // どのキー押下でも復帰できるよう、マトリクス列のLOWエッジを有効化
-  matrix_enable_dormant_wakeup();
+  _matrix_enable_dormant_wakeup();
 
   // GPIOドーマントウェイク設定 (DR pin, rising edge)
   gpio_set_dormant_irq_enabled(GPIO_DR_PIN, GPIO_IRQ_EDGE_RISE, true);
@@ -130,7 +130,7 @@ void sleep_enter_deep(void) {
   rosc_restart();
 
   // IRQをクリア
-  matrix_acknowledge_dormant_wakeup();
+  _matrix_acknowledge_dormant_wakeup();
   gpio_acknowledge_irq(GPIO_DR_PIN, GPIO_IRQ_EDGE_RISE);
   gpio_set_dormant_irq_enabled(GPIO_DR_PIN, GPIO_IRQ_EDGE_RISE, false);
 
@@ -151,7 +151,7 @@ void sleep_enter_deep(void) {
 void sleep_enter_deep(void) {
   // RP2350では、ディープスリープはPSTATE(P1.7)として実装する。
   DEBUG_PRINT("entering pstate mode\n");
-  prepare_deep_sleep();
+  _prepare_deep_sleep();
 
   // GPIOピンの割り込み起床を設定する。
   powman_enable_gpio_wakeup(0, GPIO_DR_PIN, true, true);

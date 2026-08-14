@@ -23,7 +23,7 @@ static persistence_state_t persistence_state;
  * @param slot 更新する保存進捗スロット番号
  * @param mark_completed 完了済みにするかどうか
  */
-static bool persistence_update_progress(size_t slot, bool mark_completed) {
+static bool _persistence_update_progress(size_t slot, bool mark_completed) {
   size_t byte_offset;
   uint8_t clear_mask;
 
@@ -57,7 +57,7 @@ static bool persistence_update_progress(size_t slot, bool mark_completed) {
  * @param info 進捗情報を格納する構造体へのポインタ
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
-static bool persistence_read_progress(pwmk_progress_info_t *info) {
+static bool _persistence_read_progress(pwmk_progress_info_t *info) {
   uint8_t progress[PWMK_PROGRESS_SIZE];
 
   // フラッシュから保存進捗を読み込む
@@ -76,7 +76,7 @@ static bool persistence_read_progress(pwmk_progress_info_t *info) {
  * @param reset_keymap 規定のキーマップを使用するかどうか
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
-static bool persistence_rebuild(bool reset_keymap) {
+static bool _persistence_rebuild(bool reset_keymap) {
   persistence_state.available = false;
 
   // フラッシュ領域を消去する
@@ -90,7 +90,7 @@ static bool persistence_rebuild(bool reset_keymap) {
     return false;
   }
   // 保存進捗を保存中にする
-  if (!persistence_update_progress(0u, false)) {
+  if (!_persistence_update_progress(0u, false)) {
     return false;
   }
 
@@ -110,12 +110,12 @@ static bool persistence_rebuild(bool reset_keymap) {
     return false;
   }
   // 保存進捗を保存完了にする
-  if (!persistence_update_progress(0u, true)) {
+  if (!_persistence_update_progress(0u, true)) {
     return false;
   }
   // 保存進捗を読み込んで、正しく初期化されたか確認する
   pwmk_progress_info_t progress_info;
-  if (!persistence_read_progress(&progress_info) ||
+  if (!_persistence_read_progress(&progress_info) ||
       progress_info.state != PWMK_PROGRESS_COMPLETE ||
       progress_info.completed_save_count != 1u) {
     return false;
@@ -132,7 +132,7 @@ static bool persistence_rebuild(bool reset_keymap) {
  * 永続化領域を復元する。フラッシュ上のデータを使用してRAM上にキーマップを復元する。
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
-static bool persistence_restore(void) {
+static bool _persistence_restore(void) {
   // フラッシュ上のシリアル番号を読み込む
   uint8_t serial[PWMK_FIRMWARE_SERIAL_SIZE];
   if (!persistence_flash_read(persistence_flash_layout.serial_offset, serial,
@@ -146,7 +146,7 @@ static bool persistence_restore(void) {
 
   // 保存進捗を読み込み、保存完了済みであることを確認する
   pwmk_progress_info_t progress_info;
-  if (!persistence_read_progress(&progress_info) ||
+  if (!_persistence_read_progress(&progress_info) ||
       progress_info.state != PWMK_PROGRESS_COMPLETE ||
       progress_info.completed_save_count == 0u) {
     return false;
@@ -191,7 +191,7 @@ static bool persistence_restore(void) {
  * @param record_size 保存するレコードのサイズ
  * @return 空き容量がある場合はtrue、空き容量がない場合はfalse
  */
-static bool persistence_log_has_space(size_t record_size) {
+static bool _persistence_log_has_space(size_t record_size) {
 
   return persistence_state.log_used_size <=
              persistence_flash_layout.log_data_size &&
@@ -205,7 +205,7 @@ static bool persistence_log_has_space(size_t record_size) {
  * @param record_size 保存するログレコードのサイズ
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
-static bool persistence_append_log(const uint8_t *record, size_t record_size) {
+static bool _persistence_append_log(const uint8_t *record, size_t record_size) {
   if (record == NULL) {
     return false;
   }
@@ -220,12 +220,12 @@ static bool persistence_append_log(const uint8_t *record, size_t record_size) {
     return false;
   }
 
-  if (!persistence_log_has_space(record_size)) {
+  if (!_persistence_log_has_space(record_size)) {
     return false;
   }
 
   // 保存進捗を保存中にする
-  if (!persistence_update_progress(slot, false)) {
+  if (!_persistence_update_progress(slot, false)) {
     return false;
   }
   // 書き込みログをフラッシュに書き込む
@@ -235,13 +235,13 @@ static bool persistence_append_log(const uint8_t *record, size_t record_size) {
     return false;
   }
   // 保存進捗を保存完了にする
-  if (!persistence_update_progress(slot, true)) {
+  if (!_persistence_update_progress(slot, true)) {
     return false;
   }
 
   // 保存進捗を読み込んで、正しく更新されたか確認する
   pwmk_progress_info_t updated_progress;
-  if (!persistence_read_progress(&updated_progress)) {
+  if (!_persistence_read_progress(&updated_progress)) {
     return false;
   }
   if (updated_progress.state != PWMK_PROGRESS_COMPLETE ||
@@ -268,10 +268,10 @@ bool persistence_init(void) {
     return false;
   }
 
-  if (persistence_restore()) {
+  if (_persistence_restore()) {
     return true;
   }
-  return persistence_rebuild(true);
+  return _persistence_rebuild(true);
 }
 
 /**
@@ -328,13 +328,13 @@ bool persistence_set_keycode(uint8_t layer, uint8_t row, uint8_t col,
   }
 
   bool saved;
-  if (persistence_log_has_space(record_size) &&
+  if (_persistence_log_has_space(record_size) &&
       persistence_state.completed_save_count < PWMK_PROGRESS_BIT_COUNT / 2u) {
     // 書き込みログを追加する十分なスペースがある場合は、フラッシュに追記する
-    saved = persistence_append_log(record, record_size);
+    saved = _persistence_append_log(record, record_size);
   } else {
     // スペースがない場合は永続化領域をRAM上のキーマップで初期化して空き容量を確保する
-    saved = persistence_rebuild(false);
+    saved = _persistence_rebuild(false);
   }
 
   if (saved) {
@@ -352,7 +352,7 @@ bool persistence_set_keycode(uint8_t layer, uint8_t row, uint8_t col,
  */
 bool persistence_reset_keymap(void) {
   // 永続化領域を規定のキーマップで初期化する
-  if (persistence_rebuild(true)) {
+  if (_persistence_rebuild(true)) {
     return true;
   }
 
