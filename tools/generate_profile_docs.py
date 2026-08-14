@@ -46,6 +46,21 @@ def build_markdown(schema: dict[str, Any]) -> str:
             continue
         lines.extend(render_section(field_name, field_schema, definitions, level=2))
 
+    lines.extend(
+        [
+            "",
+            "## 相互検証",
+            "",
+            "生成時には、個別項目の型・範囲制約に加えて、次の組み合わせも検証します。",
+            "",
+            "- `board.layout` の要素数が `rows_pins` と `cols_pins` の容量を超えないこと。",
+            "- `board.layout` の座標が範囲内で重複していないこと。",
+            "- `board.vial_unlock_combo` を指定した場合、全座標がレイアウト上にあり重複していないこと。",
+            "- `keymap.keymap` の要素数が `board.layout` の要素数と一致すること。",
+            "- `settings.use_pinnacle` が `true` の場合、`settings.pinnacle` が指定されていること。",
+        ]
+    )
+
     return "\n".join(lines) + "\n"
 
 
