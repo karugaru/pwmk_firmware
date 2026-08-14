@@ -9,6 +9,7 @@
 #include "keyboard/matrix_scan.h"
 #include "settings/board.h"
 #include "settings/keymap.h"
+#include "settings/persistence.h"
 #include "settings/vial_definition.h"
 #include "state/state.h"
 #include "vial/vial.h"
@@ -406,7 +407,8 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
       break;
     }
 
-    if (!keymap_set(request[1], request[2], request[3], internal)) {
+    if (!persistence_set_keycode(request[1], request[2], request[3],
+                                 internal)) {
       break;
     }
 
@@ -416,8 +418,7 @@ static void handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x06:
     // Dynamic Keymap Reset
-    if (unlocked) {
-      keymap_reset();
+    if (unlocked && persistence_reset_keymap()) {
       response[0] = 0;
     } else {
       response[0] = 1;

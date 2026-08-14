@@ -53,6 +53,17 @@ endif()
 # 生成されたプロファイル設定を読み込む。
 include(${CMAKE_BINARY_DIR}/generated/profile/profile.cmake)
 
+# 永続化用のIDはファームウェアをビルドするたびに新しく生成する。
+set(PWMK_PERSISTENCE_IDENTITY_HEADER
+    ${CMAKE_BINARY_DIR}/generated/profile/src/settings/persistence_identity.h
+)
+add_custom_target(pwmk_profile_generation
+    COMMAND ${PWMK_GENERATE_COMMAND}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    BYPRODUCTS ${PWMK_PERSISTENCE_IDENTITY_HEADER}
+    VERBATIM
+)
+
 # == Raspberry Pi Pico VS Code拡張機能の動作に必要なため、以下の行は編集しないでください ==
 # == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
 if(WIN32)
@@ -114,6 +125,7 @@ list(APPEND SRC_FILES
 
 # 収集したソースから実行ファイルを作成する。
 add_executable(pwmk ${SRC_FILES})
+add_dependencies(pwmk pwmk_profile_generation)
 
 # PIOプログラムからCヘッダーを生成する。
 pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWMK_PROFILE_GENERATED_SRC_DIR}/led)
@@ -123,10 +135,13 @@ target_link_libraries(pwmk
     pico_stdlib
     pico_low_power
     hardware_i2c
+    hardware_flash
     hardware_pio
     hardware_rosc
     hardware_xosc
     hardware_watchdog
+    pico_btstack_flash_bank_headers
+    pico_flash
 )
 
 # BLEを有効にした場合だけ、BTstackとCYW43関連のライブラリをリンクする。
@@ -169,6 +184,7 @@ pico_add_extra_outputs(pwmk)
 target_compile_definitions(pwmk PRIVATE
     PWMK_ENABLE_USB=${PWMK_ENABLE_USB_VALUE}
     PWMK_ENABLE_BLE=${PWMK_ENABLE_BLE_VALUE}
+    PICO_FLASH_ASSUME_CORE1_SAFE=1
     #WANT_HCI_DUMP=1 # BTstackのデバッグログを有効にする場合に使用する
     DEBUG_MAIN=0
     DEBUG_BLE=0

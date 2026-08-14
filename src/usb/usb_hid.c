@@ -11,7 +11,12 @@
 #include "vial/vial.h"
 
 static void usb_hid_send_report_chain(void);
+static void usb_hid_process_vial(void);
+
 static bool usb_hid_report_chain_active;
+
+static uint8_t vial_buffer[VIAL_PACKET_SIZE];
+static bool vial_request_pending;
 
 // --------------------------------
 // 公開関数
@@ -34,7 +39,10 @@ void usb_hid_deinit(void) { tud_deinit(BOARD_TUD_RHPORT); }
  * @brief USB HIDのデバイスのタスク処理を行う。
  *        メインループから定期的に呼び出す必要がある。
  */
-void usb_hid_task(void) { tud_task(); }
+void usb_hid_task(void) {
+  tud_task();
+  usb_hid_process_vial();
+}
 
 /**
  * @brief USB HIDレポートの送信を試みる。
@@ -67,7 +75,10 @@ void tud_mount_cb(void) { state_refresh_runtime(); }
 /**
  * @brief USBデバイスがアンマウントされた時のコールバック。
  */
-void tud_umount_cb(void) { state_refresh_runtime(); }
+void tud_umount_cb(void) {
+  vial_request_pending = false;
+  state_refresh_runtime();
+}
 
 /**
  * @brief USBバスがサスペンドされた時のコールバック。
@@ -146,18 +157,12 @@ void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
     return;
   }
 
-  // 受信したパケットをそのまま応答用バッファとして再利用する
-  uint8_t response[VIAL_PACKET_SIZE];
-  memcpy(response, packet, sizeof(response));
-
-  // 受信したパケットを処理する
-  vial_handle_packet(response);
-
-  // 処理結果を応答として送信する
-  if (!tud_hid_n_ready(USB_HID_INSTANCE_VIAL)) {
+  // VIAL要求はフラッシュ操作を含み得るため、メインループで処理する。
+  if (vial_request_pending) {
     return;
   }
-  tud_hid_n_report(USB_HID_INSTANCE_VIAL, 0, response, sizeof(response));
+  memcpy(vial_buffer, packet, sizeof(vial_buffer));
+  vial_request_pending = true;
 }
 
 // --------------------------------
@@ -177,6 +182,25 @@ static void usb_hid_send_report_chain() {
   } else {
     usb_hid_report_chain_active = false;
   }
+}
+
+/**
+ * @brief VIAL要求を通常のメインループ文脈で処理し、応答を送信する。
+ */
+static void usb_hid_process_vial(void) {
+  if (!vial_request_pending) {
+    return;
+  }
+  vial_request_pending = false;
+
+  // 受信したパケットを処理する
+  vial_handle_packet(vial_buffer);
+
+  // 処理結果を応答として送信する
+  if (!tud_hid_n_ready(USB_HID_INSTANCE_VIAL)) {
+    return;
+  }
+  tud_hid_n_report(USB_HID_INSTANCE_VIAL, 0, vial_buffer, sizeof(vial_buffer));
 }
 
 #endif // PWMK_ENABLE_USB

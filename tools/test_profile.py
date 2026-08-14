@@ -192,6 +192,14 @@ class ProfileGenerationTest(unittest.TestCase):
                 / "settings"
                 / "vial_definition.h"
             )
+            persistence_identity_header = (
+                build_dir
+                / "generated"
+                / "profile"
+                / "src"
+                / "settings"
+                / "persistence_identity.h"
+            )
 
             self.assertTrue(profile_cmake.exists())
             self.assertTrue(board_header.exists())
@@ -199,6 +207,7 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertTrue(device_identity_header.exists())
             self.assertTrue(generated_gatt.exists())
             self.assertTrue(vial_definition_header.exists())
+            self.assertTrue(persistence_identity_header.exists())
             for source_name in (
                 "board.c",
                 "keymap.c",
@@ -215,6 +224,9 @@ class ProfileGenerationTest(unittest.TestCase):
             device_identity_text = device_identity_header.read_text(encoding="utf-8")
             gatt_text = generated_gatt.read_text(encoding="utf-8")
             vial_definition_text = vial_definition_header.read_text(encoding="utf-8")
+            persistence_identity_text = persistence_identity_header.read_text(
+                encoding="utf-8"
+            )
 
             self.assertIn("#define ROWS 5", board_text)
             self.assertIn("{ 0, 0 }", board_text)
@@ -224,6 +236,7 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertIn("#define USB_PID 0x4001", settings_text)
             self.assertIn("#define BLE_PERSIST_SELECTED_SLOT 1", settings_text)
             self.assertIn("#define DEVICE_NAME", device_identity_text)
+            self.assertIn("pwmk_firmware_serial", persistence_identity_text)
             self.assertIn('CHARACTERISTIC, GAP_DEVICE_NAME, READ, "', gatt_text)
             definition_bytes = bytes(
                 int(value, 16)
@@ -240,6 +253,24 @@ class ProfileGenerationTest(unittest.TestCase):
                 )
             )
             self.assertEqual(definition["layouts"]["keymap"], expected_layout)
+
+    def test_generate_profile_regenerates_persistence_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, "remopicon_v1")
+            identity_path = (
+                build_dir
+                / "generated"
+                / "profile"
+                / "src"
+                / "settings"
+                / "persistence_identity.h"
+            )
+            first_identity = identity_path.read_text(encoding="utf-8")
+
+            generate_profile(build_dir, "remopicon_v1")
+
+            self.assertNotEqual(first_identity, identity_path.read_text(encoding="utf-8"))
 
     def test_generate_profile_supports_usb_identifier_overrides(self) -> None:
         profile_name = "test_profile_with_usb_identifier_overrides"

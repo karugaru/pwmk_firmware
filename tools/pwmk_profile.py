@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import lzma
+import secrets
 import shutil
 from pathlib import Path
 from typing import Annotated, Any
@@ -277,6 +278,11 @@ def generated_profile_cmake_path(build_dir: Path) -> Path:
     return generated_profile_root(build_dir) / "profile.cmake"
 
 
+def generated_persistence_identity_header_path(build_dir: Path) -> Path:
+    """ビルドごとの永続化識別子ヘッダーのパスを返す。"""
+    return generated_settings_dir(build_dir) / "persistence_identity.h"
+
+
 def generated_device_id_header_path(build_dir: Path) -> Path:
     """ビルドディレクトリ内の生成されたデバイス名ヘッダーのパスを返す。"""
     return generated_src_dir(build_dir) / "device_identity.h"
@@ -354,6 +360,20 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
     write_generated_file(
         settings_dir / "settings.h",
         render_template("settings.h.j2", context),
+    )
+    serial = secrets.token_bytes(16)
+    while serial == b"\xff" * 16:
+        serial = secrets.token_bytes(16)
+    write_generated_file(
+        generated_persistence_identity_header_path(build_dir),
+        render_template(
+            "persistence_identity.h.j2",
+            {
+                "persistence_serial_initializer": ", ".join(
+                    f"0x{value:02X}" for value in serial
+                )
+            },
+        ),
     )
     write_generated_file(
         generated_profile_cmake_path(build_dir),
