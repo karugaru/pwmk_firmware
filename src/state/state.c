@@ -13,9 +13,10 @@
 #define STATE_INIT_COMPLETE_REQUIRED_FROM STATE_SYS_INIT
 #endif
 
+// LEDの状態を定義する構造体
 typedef struct {
   int8_t required_from; // 遷移元の状態。-1の場合はどの状態からでも遷移可能。
-  uint8_t r, g, b;
+  uint8_t r, g, b;      // LEDのRGB値
 } state_led_entry_t;
 
 // clang-format off

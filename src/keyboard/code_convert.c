@@ -12,9 +12,10 @@
 // 変換失敗することと、変換不可能であることを区別する。
 #define FOR_VIAL_KEYCODE_PWMK_ONLY 0x00
 
+// PWMK内部とVIAL側のキーコードの対応
 typedef struct {
-  icode_t internal;
-  uint16_t vial;
+  icode_t internal; // PWMK内部のキーコード
+  uint16_t vial;    // VIAL側のキーコード
 } code_conversion_t;
 
 enum {

@@ -22,49 +22,34 @@
  * @brief 保留中のスロット操作種別。
  */
 typedef enum {
-  /** 操作なし。 */
-  LE_DEVICE_DB_PENDING_NONE = 0,
-  /** 別スロットへの切替を保留中。 */
-  LE_DEVICE_DB_PENDING_SELECT,
-  /** 選択中スロットの削除を保留中。 */
-  LE_DEVICE_DB_PENDING_CLEAR,
+  LE_DEVICE_DB_PENDING_NONE = 0, // 操作なし
+  LE_DEVICE_DB_PENDING_SELECT,   // 別スロットへの切替を保留中
+  LE_DEVICE_DB_PENDING_CLEAR,    // 選択中スロットの削除を保留中
 } le_device_db_pending_action_t;
 
 /**
  * @brief 1スロット分の永続化ボンド情報。
  */
 typedef struct {
-  /** 登録順を表すシーケンス番号。 */
-  uint32_t seq_nr;
-  /** 相手機器のBluetoothアドレス種別。 */
-  int32_t addr_type;
-  /** 相手機器のBluetoothアドレス。 */
-  bd_addr_t addr;
-  /** 相手機器のIRK。 */
-  sm_key_t irk;
-  /** 再暗号化に使うLTK。 */
-  sm_key_t ltk;
-  /** LTKに対応するEDIV。 */
-  uint16_t ediv;
-  /** LTKに対応するRAND。 */
-  uint8_t rand[8];
-  /** 鍵長。 */
-  uint8_t key_size;
-  /** 認証済みかどうか。 */
-  uint8_t authenticated;
-  /** 認可済みかどうか。 */
-  uint8_t authorized;
-  /** Secure Connectionsで確立した鍵かどうか。 */
-  uint8_t secure_connection;
+  uint32_t seq_nr;           // 登録順を表すシーケンス番号
+  int32_t addr_type;         // 相手機器のBluetoothアドレス種別
+  bd_addr_t addr;            // 相手機器のBluetoothアドレス
+  sm_key_t irk;              // 相手機器のIRK
+  sm_key_t ltk;              // 再暗号化に使うLTK
+  uint16_t ediv;             // LTKに対応するEDIV
+  uint8_t rand[8];           // LTKに対応するRAND
+  uint8_t key_size;          // 鍵長
+  uint8_t authenticated;     // 認証済みかどうか
+  uint8_t authorized;        // 認可済みかどうか
+  uint8_t secure_connection; // Secure Connectionsで確立した鍵かどうか
 } le_device_db_persisted_entry_t;
 
 /**
  * @brief 1スロット分のキャッシュ状態。
  */
 typedef struct {
-  /** このスロットに有効なボンド情報があるかどうか。 */
-  uint8_t used;
-  /** スロットに紐づく永続化ボンド情報のキャッシュ。 */
+  uint8_t used; // このスロットに有効なボンド情報があるかどうか
+  // スロットに紐づく永続化ボンド情報のキャッシュ
   le_device_db_persisted_entry_t data;
 } le_device_db_slot_t;
 
@@ -72,15 +57,11 @@ typedef struct {
  * @brief LE Device DB 実装全体のランタイム状態。
  */
 typedef struct {
-  /** 使用中のTLVバックエンド実装。 */
-  const btstack_tlv_t *tlv_impl;
-  /** TLVバックエンドへ渡すコンテキスト。 */
-  void *tlv_context;
-  /** 現在pwmkが選択しているスロット番号。 */
-  int selected_slot;
-  /** 次回適用予定のスロット番号。 */
-  int pending_slot;
-  /** 次回適用予定のスロット操作種別。 */
+  const btstack_tlv_t *tlv_impl; // 使用中のTLVバックエンド実装
+  void *tlv_context;             // TLVバックエンドへ渡すコンテキスト
+  int selected_slot;             // 現在pwmkが選択しているスロット番号
+  int pending_slot;              // 次回適用予定のスロット番号
+  // 次回適用予定のスロット操作種別
   le_device_db_pending_action_t pending_action;
   /** 各スロットのAdvertisingアドレス世代番号。 */
   uint8_t address_generation[LE_DEVICE_DB_SLOT_COUNT];

@@ -31,25 +31,28 @@ extern const uint8_t hid_descriptor_len;
 
 // HID内部状態
 typedef struct {
-  bool has_keyboard_event;
+  bool has_keyboard_event; // キーボードイベントが発生したかどうか
+  // キーボードの状態
   struct {
-    code_mod_bits_t real_modifier;
-    code_mod_bits_t virtual_modifier;
-    code_t keycode[6];
+    code_mod_bits_t real_modifier;    // 実際に押されている修飾子
+    code_mod_bits_t virtual_modifier; // 仮想的に押されている修飾子
+    code_t keycode[6];                // 実際に押されているキーコード
   } keyboard;
 
-  bool has_mouse_event;
+  bool has_mouse_event; // マウスイベントが発生したかどうか
+  // マウスの状態を保持する配列
   struct {
-    code_mouse_button_t buttons;
-    int16_t xDelta;
-    int16_t yDelta;
-    int16_t wDelta;
+    code_mouse_button_t buttons; // マウスボタンの状態
+    int16_t xDelta;              // X軸の移動量
+    int16_t yDelta;              // Y軸の移動量
+    int16_t wDelta;              // スクロールホイールの移動量
   } mouse[HID_POINTING_DEVICE_MAX];
-  int8_t pointing_id_max;
+  int8_t pointing_id_max; // 現在使用中のマウスデバイスIDの最大値
 
-  bool has_consumer_event;
+  bool has_consumer_event; // コンシューマーイベントが発生したかどうか
+  // コンシューマーの状態
   struct {
-    code_consumer_t keycode[6];
+    code_consumer_t keycode[6]; // 実際に押されているコンシューマーキーコード
   } consumer;
 } hid_state_t;
 
