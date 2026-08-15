@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "settings/keymap.h"
+#include "profile/keymap.h"
 #include "unity.h"
 
 const int8_t layout[ROWS * COLS][2] = {

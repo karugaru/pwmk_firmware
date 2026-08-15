@@ -3,8 +3,8 @@
 #include <string.h>
 
 #include "keyboard/code_convert.h"
-#include "settings/board.h"
-#include "settings/keymap.h"
+#include "profile/board.h"
+#include "profile/keymap.h"
 
 #define KEYMAP_ENTRIES_PER_LAYER (ROWS * COLS)
 #define KEYMAP_ENTRY_COUNT (KEYMAP_LAYER_COUNT * KEYMAP_ENTRIES_PER_LAYER)

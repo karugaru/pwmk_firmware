@@ -1,8 +1,8 @@
-#include "settings/persistence.h"
-#include "settings/keymap.h"
-#include "settings/persistence_flash.h"
-#include "settings/persistence_format.h"
-#include "settings/persistence_identity.h"
+#include "persistence/persistence.h"
+#include "profile/keymap.h"
+#include "persistence/persistence_flash.h"
+#include "persistence/persistence_format.h"
+#include "profile/persistence_identity.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>

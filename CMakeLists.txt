@@ -62,7 +62,7 @@ include(${CMAKE_BINARY_DIR}/generated/profile/profile.cmake)
 
 # 永続化用のIDはファームウェアをビルドするたびに新しく生成する。
 set(PWMK_PERSISTENCE_IDENTITY_HEADER
-    ${CMAKE_BINARY_DIR}/generated/profile/src/settings/persistence_identity.h
+    ${CMAKE_BINARY_DIR}/generated/profile/src/profile/persistence_identity.h
 )
 add_custom_target(pwmk_profile_generation
     COMMAND ${PWMK_GENERATE_COMMAND}

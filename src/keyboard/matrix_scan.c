@@ -2,7 +2,7 @@
 
 #include "keyboard/event.h"
 #include "keyboard/matrix_scan.h"
-#include "settings/board.h"
+#include "profile/board.h"
 #include "settings/settings.h"
 
 #ifndef DEBUG_MATRIX_SCAN

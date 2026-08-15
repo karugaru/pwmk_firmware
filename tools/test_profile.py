@@ -74,7 +74,7 @@ class ProfileGenerationTest(unittest.TestCase):
             generate_profile(build_dir, profile_name)
 
             board_header = (
-                build_dir / "generated" / "profile" / "src" / "settings" / "board.h"
+                build_dir / "generated" / "profile" / "src" / "profile" / "board.h"
             )
             self.assertIn(
                 "#define LED_COUNT 2", board_header.read_text(encoding="utf-8")
@@ -128,8 +128,10 @@ class ProfileGenerationTest(unittest.TestCase):
                 build_dir = temporary_root / "build"
                 generate_profile(build_dir, profile_name)
 
-            settings_dir = build_dir / "generated" / "profile" / "src" / "settings"
-            vial_definition_header = settings_dir / "vial_definition.h"
+            profile_headers_dir = (
+                build_dir / "generated" / "profile" / "src" / "profile"
+            )
+            vial_definition_header = profile_headers_dir / "vial_definition.h"
 
             self.assertIn(
                 "#define VIAL_UNLOCK_COMBO_LENGTH 2",
@@ -172,13 +174,13 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertEqual(generated_profile, "remopicon_v1")
             profile_cmake = build_dir / "generated" / "profile" / "profile.cmake"
             board_header = (
-                build_dir / "generated" / "profile" / "src" / "settings" / "board.h"
+                build_dir / "generated" / "profile" / "src" / "profile" / "board.h"
             )
             keymap_header = (
-                build_dir / "generated" / "profile" / "src" / "settings" / "keymap.h"
+                build_dir / "generated" / "profile" / "src" / "profile" / "keymap.h"
             )
             settings_header = (
-                build_dir / "generated" / "profile" / "src" / "settings" / "settings.h"
+                build_dir / "generated" / "profile" / "src" / "profile" / "settings.h"
             )
             device_identity_header = (
                 build_dir / "generated" / "profile" / "src" / "device_identity.h"
@@ -189,7 +191,7 @@ class ProfileGenerationTest(unittest.TestCase):
                 / "generated"
                 / "profile"
                 / "src"
-                / "settings"
+                / "profile"
                 / "vial_definition.h"
             )
             persistence_identity_header = (
@@ -197,7 +199,7 @@ class ProfileGenerationTest(unittest.TestCase):
                 / "generated"
                 / "profile"
                 / "src"
-                / "settings"
+                / "profile"
                 / "persistence_identity.h"
             )
 
@@ -263,14 +265,16 @@ class ProfileGenerationTest(unittest.TestCase):
                 / "generated"
                 / "profile"
                 / "src"
-                / "settings"
+                / "profile"
                 / "persistence_identity.h"
             )
             first_identity = identity_path.read_text(encoding="utf-8")
 
             generate_profile(build_dir, "remopicon_v1")
 
-            self.assertNotEqual(first_identity, identity_path.read_text(encoding="utf-8"))
+            self.assertNotEqual(
+                first_identity, identity_path.read_text(encoding="utf-8")
+            )
 
     def test_generate_profile_supports_usb_identifier_overrides(self) -> None:
         profile_name = "test_profile_with_usb_identifier_overrides"
@@ -294,7 +298,7 @@ class ProfileGenerationTest(unittest.TestCase):
             generate_profile(build_dir, profile_name)
 
             settings_header = (
-                build_dir / "generated" / "profile" / "src" / "settings" / "settings.h"
+                build_dir / "generated" / "profile" / "src" / "profile" / "settings.h"
             )
             settings_text = settings_header.read_text(encoding="utf-8")
             self.assertIn("#define USB_VID 0x1234", settings_text)

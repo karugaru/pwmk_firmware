@@ -1,5 +1,5 @@
-#ifndef PWMK_SETTINGS_H
-#define PWMK_SETTINGS_H
+#ifndef PWMK_PROFILE_SETTINGS_H
+#define PWMK_PROFILE_SETTINGS_H
 
 #define USB_VID {{ settings.usb_vid | c_hex }}
 #define USB_PID {{ settings.usb_pid | c_hex }}
@@ -27,7 +27,5 @@
 #define PINNACLE_SPEED {{ settings.pinnacle.speed | c_float }}
 
 #endif
-
-void settings_init(void);
 
 #endif

@@ -2,7 +2,7 @@
 
 #include "led/led.h"
 #include "led/ws2812.pio.h"
-#include "settings/board.h"
+#include "profile/board.h"
 
 static uint8_t brightness = 255;
 static PIO pio = NULL;

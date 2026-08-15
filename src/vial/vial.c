@@ -7,10 +7,10 @@
 
 #include "keyboard/code_convert.h"
 #include "keyboard/matrix_scan.h"
-#include "settings/board.h"
-#include "settings/keymap.h"
-#include "settings/persistence.h"
-#include "settings/vial_definition.h"
+#include "profile/board.h"
+#include "profile/keymap.h"
+#include "profile/vial_definition.h"
+#include "settings/settings.h"
 #include "state/state.h"
 #include "vial/vial.h"
 
@@ -170,7 +170,7 @@ static uint16_t _keymap_buffer_get_keycode(uint16_t key_index) {
   uint8_t row = (uint8_t)(matrix_index / COLS);
   uint8_t col = (uint8_t)(matrix_index % COLS);
 
-  icode_t internal = keymap_get(layer, row, col);
+  icode_t internal = settings_get_keycode(layer, row, col);
   uint16_t vial;
   if (code_convert_to_vial(internal, &vial)) {
     return vial;
@@ -383,7 +383,7 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x04: {
     // Get Keycode
     memcpy(response, request, 3);
-    icode_t internal = keymap_get(request[1], request[2], request[3]);
+    icode_t internal = settings_get_keycode(request[1], request[2], request[3]);
     uint16_t vial;
     if (code_convert_to_vial(internal, &vial)) {
       _write_u16_be(&response[3], vial);
@@ -407,8 +407,7 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
       break;
     }
 
-    if (!persistence_set_keycode(request[1], request[2], request[3],
-                                 internal)) {
+    if (!settings_set_keycode(request[1], request[2], request[3], internal)) {
       break;
     }
 
@@ -418,7 +417,7 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x06:
     // Dynamic Keymap Reset
-    if (unlocked && persistence_reset_keymap()) {
+    if (unlocked && settings_reset_keymap()) {
       response[0] = 0;
     } else {
       response[0] = 1;

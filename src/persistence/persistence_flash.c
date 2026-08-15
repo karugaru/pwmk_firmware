@@ -1,7 +1,7 @@
-#include "settings/persistence_flash.h"
-#include "settings/keymap.h"
-#include "settings/persistence_format.h"
-#include "settings/persistence_identity.h"
+#include "persistence/persistence_flash.h"
+#include "persistence/persistence_format.h"
+#include "profile/keymap.h"
+#include "profile/persistence_identity.h"
 #include <hardware/flash.h>
 #include <hardware/regs/addressmap.h>
 #include <pico/binary_info.h>

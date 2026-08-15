@@ -15,7 +15,7 @@
 
 #include "ble/ble.h"
 #include "led/led.h"
-#include "settings/board.h"
+#include "profile/board.h"
 #include "state/sleep.h"
 #include "usb/usb_hid.h"
 

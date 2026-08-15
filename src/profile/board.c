@@ -1,4 +1,4 @@
-#include "settings/board.h"
+#include "profile/board.h"
 
 // 各行のGPIOピン番号の配列
 const uint8_t rows_pins[ROWS] = ROWS_PINS;

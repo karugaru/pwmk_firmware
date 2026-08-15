@@ -268,9 +268,9 @@ def generated_src_dir(build_dir: Path) -> Path:
     return generated_profile_root(build_dir) / "src"
 
 
-def generated_settings_dir(build_dir: Path) -> Path:
-    """ビルドディレクトリ内の生成された設定ディレクトリを返す。"""
-    return generated_src_dir(build_dir) / "settings"
+def generated_profile_headers_dir(build_dir: Path) -> Path:
+    """ビルドディレクトリ内の生成されたプロファイルヘッダーのディレクトリを返す。"""
+    return generated_src_dir(build_dir) / "profile"
 
 
 def generated_profile_cmake_path(build_dir: Path) -> Path:
@@ -280,7 +280,7 @@ def generated_profile_cmake_path(build_dir: Path) -> Path:
 
 def generated_persistence_identity_header_path(build_dir: Path) -> Path:
     """ビルドごとの永続化識別子ヘッダーのパスを返す。"""
-    return generated_settings_dir(build_dir) / "persistence_identity.h"
+    return generated_profile_headers_dir(build_dir) / "persistence_identity.h"
 
 
 def generated_device_id_header_path(build_dir: Path) -> Path:
@@ -316,7 +316,7 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
     selected_profile = profile_name or require_active_profile_name()
     config = load_profile_config(selected_profile)
     keymap_layout = load_keyboard_layout(selected_profile)
-    settings_dir = generated_settings_dir(build_dir)
+    profile_headers_dir = generated_profile_headers_dir(build_dir)
     profile_sources = [
         path.resolve().as_posix() for path in profile_c_sources(selected_profile)
     ]
@@ -335,30 +335,29 @@ def generate_profile(build_dir: Path, profile_name: str | None = None) -> str:
         "vial_keyboard_definition": vial_keyboard_definition(config, keymap_layout),
         "vial_unlock_combo": vial_unlock_combo(config),
         "generated_src_dir": generated_src_dir(build_dir).resolve().as_posix(),
-        "settings_dir": settings_dir.resolve().as_posix(),
         "profile_c_sources": profile_sources,
         "device_name": device_name,
         "manufacturer_name": manufacturer_name,
     }
 
     write_generated_file(
-        settings_dir / "board.h",
+        profile_headers_dir / "board.h",
         render_template("board.h.j2", context),
     )
     write_generated_file(
-        settings_dir / "keymap.h",
+        profile_headers_dir / "keymap.h",
         render_template("keymap.h.j2", context),
     )
     write_generated_file(
-        settings_dir / "vial_definition.h",
+        profile_headers_dir / "vial_definition.h",
         render_template("vial_definition.h.j2", context),
     )
     write_generated_file(
-        settings_dir / "vial.json",
+        profile_headers_dir / "vial.json",
         vial_definition_json,
     )
     write_generated_file(
-        settings_dir / "settings.h",
+        profile_headers_dir / "settings.h",
         render_template("settings.h.j2", context),
     )
     serial = secrets.token_bytes(16)

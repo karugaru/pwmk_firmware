@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "settings/persistence_format.h"
+#include "persistence/persistence_format.h"
 #include "unity.h"
 
 void setUp(void) {}
