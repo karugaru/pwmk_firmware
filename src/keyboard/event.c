@@ -49,8 +49,6 @@ static bool _event_apply_press_keyboard_key(code_modded_t keycode);
 static bool _event_apply_release_keyboard_key(code_modded_t keycode);
 static bool _event_apply_press_consumer_key(code_consumer_t keycode);
 static bool _event_apply_release_consumer_key(code_consumer_t keycode);
-static int8_t _mouse_move_icode_to_index(icode_t icode);
-static bool _reached_threshold(int16_t value, int16_t threshold);
 static bool _event_has_mouse_move_event();
 static bool _event_process_key(icode_t icode, bool pressed);
 static bool _event_process_consumer(icode_t icode, bool pressed);

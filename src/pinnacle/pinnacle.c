@@ -26,12 +26,9 @@ static pinnacle_rotate_t rotation = PINNACLE_ROTATE_0;
  * 内部関数宣言
  */
 
-static void _rap_write_bytes(uint8_t address, uint8_t count,
-                             uint8_t values[count]);
 static void _rap_write(uint8_t address, uint8_t value);
 static void _rap_read_bytes(uint8_t address, uint8_t count,
                             uint8_t read_buffer[count]);
-static uint8_t _rap_read(uint8_t address);
 static void _era_write(uint16_t address, uint8_t data);
 static void _era_read_bytes(uint16_t address, uint16_t count,
                             uint8_t read_buffer[count]);

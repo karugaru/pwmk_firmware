@@ -23,13 +23,8 @@ static persistence_state_t persistence_state;
 static bool _persistence_image_is_valid(const uint8_t *image,
                                         size_t image_size);
 static bool _persistence_update_progress(size_t slot, bool mark_completed);
-
 static bool _persistence_read_progress(pwmk_progress_info_t *info);
-
-static bool _persistence_log_has_space(size_t record_size);
-
 static bool _persistence_can_append(size_t record_size);
-
 static bool _persistence_append_log(const uint8_t *record, size_t record_size);
 
 /*

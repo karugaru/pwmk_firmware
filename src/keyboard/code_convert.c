@@ -106,12 +106,6 @@ static const code_conversion_t code_conversion_table[] = {
  * 内部関数宣言
  */
 
-static bool _code_convert_internal_base_to_vial(uint8_t keycode_internal,
-                                                uint8_t *keycode_vial);
-static bool _code_convert_vial_base_to_internal(uint8_t keycode_vial,
-                                                icode_t *keycode_internal);
-static bool _code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
-                                                     uint8_t *modifiers_vial);
 static bool _code_convert_standard_to_vial(icode_t keycode_internal,
                                            uint16_t *keycode_vial);
 static bool _code_convert_standard_to_internal(uint16_t keycode_vial,
@@ -181,17 +175,6 @@ bool code_convert_is_dangerous_vial_code(uint16_t keycode_vial) {
 /*
  * 内部関数
  */
-
-/**
- * @brief VIALの修飾ビット表現を内部用の修飾ビット表現に変換する。
- * @param modifiers_vial 変換するVIALの修飾ビット表現
- * @return 変換に成功した場合はtrue、失敗した場合はfalse
- */
-static uint8_t
-_code_convert_vial_modifiers_to_internal(uint8_t modifiers_vial) {
-  uint8_t modifiers = modifiers_vial & 0x0F;
-  return (modifiers_vial & 0x10) != 0 ? modifiers << 4 : modifiers;
-}
 
 /**
  * @brief 内部用のキーコードの下位8ビット部分をVIALのキーコードに変換する。
@@ -275,6 +258,17 @@ static bool _code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
 
   *modifiers_vial = left_modifiers;
   return true;
+}
+
+/**
+ * @brief VIALの修飾ビット表現を内部用の修飾ビット表現に変換する。
+ * @param modifiers_vial 変換するVIALの修飾ビット表現
+ * @return 変換に成功した場合はtrue、失敗した場合はfalse
+ */
+static uint8_t
+_code_convert_vial_modifiers_to_internal(uint8_t modifiers_vial) {
+  uint8_t modifiers = modifiers_vial & 0x0F;
+  return (modifiers_vial & 0x10) != 0 ? modifiers << 4 : modifiers;
 }
 
 /**

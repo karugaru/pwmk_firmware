@@ -82,24 +82,16 @@ static le_device_db_state_t le_device_db_state = {
  * 内部関数宣言
  */
 
-static uint32_t _le_device_db_tag(char a, char b, char c, uint8_t index);
-static uint32_t _le_device_db_entry_tag(int slot);
-static uint32_t _le_device_db_selected_slot_tag(void);
-static bool _le_device_db_should_persist_selected_slot(void);
-static uint32_t _le_device_db_generation_tag(void);
 static bool _le_device_db_slot_valid(int index);
 static bool _le_device_db_tlv_ready(void);
 static void _le_device_db_zero_entry(le_device_db_persisted_entry_t *entry);
 static void _le_device_db_clear_slot_state(int slot);
-static bool _le_device_db_read_entry(int slot,
-                                     le_device_db_persisted_entry_t *entry);
 static bool
 _le_device_db_write_entry(int slot,
                           const le_device_db_persisted_entry_t *entry);
 static void _le_device_db_delete_entry(int slot);
 static bool _le_device_db_save_selected_slot(void);
 static void _le_device_db_load_selected_slot(void);
-static bool _le_device_db_save_address_generations(void);
 static void _le_device_db_load_address_generations(void);
 static void _le_device_db_load_slots(void);
 static uint32_t _le_device_db_next_seq_nr(void);

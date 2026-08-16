@@ -47,22 +47,8 @@ static uint32_t unlock_hold_started_at_ms; // アンロックを始めた時刻
  * 内部関数宣言
  */
 
-static uint16_t _read_u16_be(const uint8_t *buffer);
-static uint16_t _read_u16_le(const uint8_t *buffer);
-static void _write_u16_be(uint8_t *buffer, uint16_t value);
-static void _write_u32_le(uint8_t *buffer, uint32_t value);
-static bool _vial_unlock_combo_pressed(void);
-static uint8_t _vial_update_unlock_state(void);
-static void _copy_keyboard_definition_page(uint16_t page,
-                                           uint8_t response[VIAL_PACKET_SIZE]);
-static uint16_t _keymap_buffer_get_keycode(uint16_t key_index);
-static uint8_t _keymap_buffer_get_byte(uint16_t offset);
-static bool _vial_keycode_write_allowed(uint16_t keycode);
-static void _write_switch_matrix_state(uint8_t response[VIAL_PACKET_SIZE]);
 static void _handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
                                  uint8_t response[VIAL_PACKET_SIZE]);
-static void _handle_dynamic_keymap_get(const uint8_t request[VIAL_PACKET_SIZE],
-                                       uint8_t response[VIAL_PACKET_SIZE]);
 static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
                                 uint8_t response[VIAL_PACKET_SIZE]);
 
