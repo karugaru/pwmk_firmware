@@ -11,50 +11,17 @@ typedef struct {
 static settings_state_t settings_state;
 static bool persistence_unavailable;
 
-/**
- * @brief 現在の設定状態を永続化領域に保存する
- * @return 設定の更新結果
+/*
+ * 内部関数宣言
  */
-static settings_update_result_t _settings_persist_current_state(void) {
-  if (persistence_unavailable) {
-    return SETTINGS_UPDATE_RAM_ONLY;
-  }
 
-  if (persistence_commit((const uint8_t *)&settings_state,
-                         sizeof(settings_state))) {
-    return SETTINGS_UPDATE_PERSISTED;
-  }
+static settings_update_result_t _settings_persist_current_state(void);
+static settings_update_result_t _settings_rebuild_current_state(void);
+static settings_update_result_t _settings_unchanged_result(void);
 
-  persistence_unavailable = true;
-  return SETTINGS_UPDATE_RAM_ONLY;
-}
-
-/**
- * @brief 現在の設定状態を永続化領域に再構築する
- * @return 設定の更新結果
+/*
+ * 公開関数
  */
-static settings_update_result_t _settings_rebuild_current_state(void) {
-  if (persistence_unavailable) {
-    return SETTINGS_UPDATE_RAM_ONLY;
-  }
-
-  if (persistence_rebuild((const uint8_t *)&settings_state,
-                          sizeof(settings_state))) {
-    return SETTINGS_UPDATE_PERSISTED;
-  }
-
-  persistence_unavailable = true;
-  return SETTINGS_UPDATE_RAM_ONLY;
-}
-
-/**
- * @brief 設定が変更されなかった場合の更新結果を返す
- * @return 設定の更新結果
- */
-static settings_update_result_t _settings_unchanged_result(void) {
-  return persistence_unavailable ? SETTINGS_UPDATE_RAM_ONLY
-                                 : SETTINGS_UPDATE_PERSISTED;
-}
 
 /**
  * @brief 設定を初期化する
@@ -153,4 +120,53 @@ settings_update_result_t settings_reset(settings_id_t id) {
   // 設定状態を更新して、永続化領域に再構築する
   settings_state = reset_state;
   return _settings_rebuild_current_state();
+}
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief 現在の設定状態を永続化領域に保存する
+ * @return 設定の更新結果
+ */
+static settings_update_result_t _settings_persist_current_state(void) {
+  if (persistence_unavailable) {
+    return SETTINGS_UPDATE_RAM_ONLY;
+  }
+
+  if (persistence_commit((const uint8_t *)&settings_state,
+                         sizeof(settings_state))) {
+    return SETTINGS_UPDATE_PERSISTED;
+  }
+
+  persistence_unavailable = true;
+  return SETTINGS_UPDATE_RAM_ONLY;
+}
+
+/**
+ * @brief 現在の設定状態を永続化領域に再構築する
+ * @return 設定の更新結果
+ */
+static settings_update_result_t _settings_rebuild_current_state(void) {
+  if (persistence_unavailable) {
+    return SETTINGS_UPDATE_RAM_ONLY;
+  }
+
+  if (persistence_rebuild((const uint8_t *)&settings_state,
+                          sizeof(settings_state))) {
+    return SETTINGS_UPDATE_PERSISTED;
+  }
+
+  persistence_unavailable = true;
+  return SETTINGS_UPDATE_RAM_ONLY;
+}
+
+/**
+ * @brief 設定が変更されなかった場合の更新結果を返す
+ * @return 設定の更新結果
+ */
+static settings_update_result_t _settings_unchanged_result(void) {
+  return persistence_unavailable ? SETTINGS_UPDATE_RAM_ONLY
+                                 : SETTINGS_UPDATE_PERSISTED;
 }

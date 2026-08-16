@@ -26,11 +26,6 @@
 #define DEBUG_PRINT_REPORT(name, report) ((void)(name), (void)(report))
 #endif
 
-static bool _event_apply_press_keyboard_key(code_modded_t keycode);
-static bool _event_apply_release_keyboard_key(code_modded_t keycode);
-static bool _event_apply_press_consumer_key(code_consumer_t keycode);
-static bool _event_apply_release_consumer_key(code_consumer_t keycode);
-
 static event_settings_t event_settings = {0};
 
 static hid_state_t hid_state = {0};
@@ -46,150 +41,24 @@ typedef enum {
   MOUSE_WHEEL_DOWN,
 } mouse_move_key_index_t;
 
-/**
- * @brief マウス移動キーコードをインデックスに変換する
- * @param icode マウス移動キーコード
- * @return インデックス、対応するキーコードがない場合は-1
+/*
+ * 内部関数宣言
  */
-static int8_t _mouse_move_icode_to_index(icode_t icode) {
-  switch (icode) {
-  case IMC_MOUSE_MOVE_UP:
-    return MOUSE_MOVE_UP;
-  case IMC_MOUSE_MOVE_DOWN:
-    return MOUSE_MOVE_DOWN;
-  case IMC_MOUSE_MOVE_LEFT:
-    return MOUSE_MOVE_LEFT;
-  case IMC_MOUSE_MOVE_RIGHT:
-    return MOUSE_MOVE_RIGHT;
-  case IMC_MOUSE_WHEEL_UP:
-    return MOUSE_WHEEL_UP;
-  case IMC_MOUSE_WHEEL_DOWN:
-    return MOUSE_WHEEL_DOWN;
-  default:
-    return -1;
-  }
-}
 
-/**
- * @brief マウス移動量が閾値を超えたかを判定する
- * @param value マウス移動量
- * @param threshold 閾値
- * @return 超えた場合はtrue、超えていない場合はfalse
+static bool _event_apply_press_keyboard_key(code_modded_t keycode);
+static bool _event_apply_release_keyboard_key(code_modded_t keycode);
+static bool _event_apply_press_consumer_key(code_consumer_t keycode);
+static bool _event_apply_release_consumer_key(code_consumer_t keycode);
+static int8_t _mouse_move_icode_to_index(icode_t icode);
+static bool _reached_threshold(int16_t value, int16_t threshold);
+static bool _event_has_mouse_move_event();
+static bool _event_process_key(icode_t icode, bool pressed);
+static bool _event_process_consumer(icode_t icode, bool pressed);
+static bool _event_process_pointing(icode_t icode, bool pressed);
+
+/*
+ * 公開関数
  */
-static bool _reached_threshold(int16_t value, int16_t threshold) {
-  return value >= threshold || value <= -threshold;
-}
-
-/**
- * @brief マウス移動イベントがあるかを取得する。
- * @return マウス移動イベントがある場合はtrueを返す
- */
-static bool _event_has_mouse_move_event() {
-  for (int i = 0; i < hid_state.pointing_id_max; i++) {
-    if (_reached_threshold(hid_state.mouse[i].xDelta,
-                           event_settings.mouse_move_thresh) ||
-        _reached_threshold(hid_state.mouse[i].yDelta,
-                           event_settings.mouse_move_thresh) ||
-        _reached_threshold(hid_state.mouse[i].wDelta,
-                           event_settings.mouse_wheel_thresh)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * @brief 標準キーコードの処理
- * @param icode キーコード
- * @param pressed 押下状態
- * @return 処理された場合はtrue、処理されなかった場合はfalse
- */
-static bool _event_process_key(icode_t icode, bool pressed) {
-  if (icode >= ICODE_STANDARD_START && icode <= ICODE_STANDARD_END) {
-    code_modded_t keycode = (code_modded_t)icode;
-    bool state_changed = false;
-    if (pressed) {
-      state_changed = _event_apply_press_keyboard_key(keycode);
-    } else {
-      state_changed = _event_apply_release_keyboard_key(keycode);
-    }
-
-    if (state_changed) {
-      hid_state.has_keyboard_event = true;
-    }
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * @brief コンシューマキーコードの処理
- * @param icode キーコード
- * @param pressed 押下状態
- * @return 処理された場合はtrue、処理されなかった場合はfalse
- */
-static bool _event_process_consumer(icode_t icode, bool pressed) {
-  if (icode >= ICODE_CONSUMER_START && icode <= ICODE_CONSUMER_END) {
-    code_consumer_t keycode = code_icodes_to_consumer(icode);
-
-    bool state_changed = false;
-    if (pressed) {
-      state_changed = _event_apply_press_consumer_key(keycode);
-    } else {
-      state_changed = _event_apply_release_consumer_key(keycode);
-    }
-
-    if (state_changed) {
-      hid_state.has_consumer_event = true;
-    }
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * @brief ポインティングデバイスキーコードの処理
- * @param icode キーコード
- * @param pressed 押下状態
- * @return 処理された場合はtrue、処理されなかった場合はfalse
- */
-static bool _event_process_pointing(icode_t icode, bool pressed) {
-  if (icode >= ICODE_MOUSE_BUTTON_START && icode <= ICODE_MOUSE_BUTTON_END) {
-    if (pointing_device_mouse_keys < 0) {
-      return true;
-    }
-
-    code_mouse_button_t state_button =
-        hid_state.mouse[pointing_device_mouse_keys].buttons;
-
-    code_mouse_button_t mouse_button = code_icodes_to_mouse_button(icode);
-    if (pressed) {
-      state_button |= mouse_button;
-    } else {
-      state_button &= ~mouse_button;
-    }
-
-    event_accumulate_mouse(pointing_device_mouse_keys, state_button, 0, 0, 0);
-    return true;
-  }
-
-  // マウス移動キーコードの場合
-  if (icode >= ICODE_MOUSE_MOVE_START && icode <= ICODE_MOUSE_MOVE_END) {
-    if (pointing_device_mouse_keys < 0) {
-      return true;
-    }
-
-    int8_t index = _mouse_move_icode_to_index(icode);
-    if (index >= 0) {
-      mouse_move_key_pressed[index] = pressed;
-    }
-    return true;
-  }
-  return false;
-}
 
 /**
  * @brief イベント処理の初期化
@@ -213,126 +82,6 @@ void event_init(event_settings_t settings) {
  */
 int8_t event_request_pointing_device_id(void) {
   return hid_request_pointing_device_id(&hid_state);
-}
-
-/**
- * @brief キーボードキーを追加
- * @return 内部状態が変化された場合にtrueを返す
- */
-static bool _event_apply_press_keyboard_key(code_modded_t keycode) {
-  // 修飾キーが直接指定された場合
-  if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
-    code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
-    code_mod_bits_t new_real_mod =
-        old_real_mod | code_icode_to_modifier((icode_t)keycode);
-    code_mod_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
-
-    hid_state.keyboard.real_modifier = new_real_mod;
-    return (old_real_mod | virt_mod) != (new_real_mod | virt_mod);
-  }
-
-  // コードから修飾子ビットとキーコードを抽出
-  code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
-  code_mod_bits_t key_bits = 0xFF & keycode;
-  code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
-  hid_state.keyboard.virtual_modifier |= mod_bits;
-
-  bool virt_mod_changed = old_virt_mod != hid_state.keyboard.virtual_modifier;
-
-  // 既に押されているかチェック
-  for (int i = 0; i < 6; i++) {
-    if (hid_state.keyboard.keycode[i] == key_bits) {
-      return virt_mod_changed;
-    }
-  }
-
-  // 空きスロットを探して追加
-  for (int i = 0; i < 6; i++) {
-    if (hid_state.keyboard.keycode[i] == 0) {
-      hid_state.keyboard.keycode[i] = key_bits;
-      return true;
-    }
-  }
-
-  return virt_mod_changed; // スロットが満杯
-}
-
-/**
- * @brief キーボードキーを削除
- * @return 内部状態が変化された場合にtrueを返す
- */
-static bool _event_apply_release_keyboard_key(code_modded_t keycode) {
-  // 修飾キーが直接指定された場合
-  if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
-    code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
-    code_mod_bits_t new_real_mod =
-        old_real_mod & ~code_icode_to_modifier((icode_t)keycode);
-    code_mod_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
-
-    hid_state.keyboard.real_modifier = new_real_mod;
-    return (old_real_mod | virt_mod) != (new_real_mod | virt_mod);
-  }
-
-  // コードから修飾子ビットとキーコードを抽出
-  code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
-  code_mod_bits_t key_bits = 0xFF & keycode;
-  code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
-  hid_state.keyboard.virtual_modifier &= ~mod_bits;
-
-  bool virt_mod_changed = old_virt_mod != hid_state.keyboard.virtual_modifier;
-
-  for (int i = 0; i < 6; i++) {
-    if (hid_state.keyboard.keycode[i] == key_bits) {
-      // 見つかったキーを削除し、後ろのキーを前に詰める
-      for (int j = i; j < 5; j++) {
-        hid_state.keyboard.keycode[j] = hid_state.keyboard.keycode[j + 1];
-      }
-      hid_state.keyboard.keycode[5] = IKC_NOOP;
-      return true;
-    }
-  }
-  return virt_mod_changed; // キーが見つからない
-}
-
-/**
- * @brief コンシューマーキーを追加
- * @return 内部状態が変化された場合にtrueを返す
- */
-static bool _event_apply_press_consumer_key(code_consumer_t keycode) {
-  // 既に押されているかチェック
-  for (int i = 0; i < 6; i++) {
-    if (hid_state.consumer.keycode[i] == keycode) {
-      return false;
-    }
-  }
-
-  // 空きスロットを探して追加
-  for (int i = 0; i < 6; i++) {
-    if (hid_state.consumer.keycode[i] == 0) {
-      hid_state.consumer.keycode[i] = keycode;
-      return true;
-    }
-  }
-
-  return false; // スロットが満杯
-}
-
-/**
- * @brief コンシューマーキーを削除
- * @return 内部状態が変化された場合にtrueを返す
- */
-static bool _event_apply_release_consumer_key(code_consumer_t keycode) {
-  for (int i = 0; i < 6; i++) {
-    if (hid_state.consumer.keycode[i] == keycode) {
-      // 見つかったキーを削除し、後ろのキーを前に詰める
-      for (int j = i; j < 5; j++) {
-        hid_state.consumer.keycode[j] = hid_state.consumer.keycode[j + 1];
-      }
-      hid_state.consumer.keycode[5] = 0;
-      return true;
-    }
-  }
-  return false; // キーが見つからない
 }
 
 /**
@@ -493,4 +242,273 @@ bool event_pop_hid_report(event_hid_report_t *report) {
   }
 
   return false;
+}
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief マウス移動キーコードをインデックスに変換する
+ * @param icode マウス移動キーコード
+ * @return インデックス、対応するキーコードがない場合は-1
+ */
+static int8_t _mouse_move_icode_to_index(icode_t icode) {
+  switch (icode) {
+  case IMC_MOUSE_MOVE_UP:
+    return MOUSE_MOVE_UP;
+  case IMC_MOUSE_MOVE_DOWN:
+    return MOUSE_MOVE_DOWN;
+  case IMC_MOUSE_MOVE_LEFT:
+    return MOUSE_MOVE_LEFT;
+  case IMC_MOUSE_MOVE_RIGHT:
+    return MOUSE_MOVE_RIGHT;
+  case IMC_MOUSE_WHEEL_UP:
+    return MOUSE_WHEEL_UP;
+  case IMC_MOUSE_WHEEL_DOWN:
+    return MOUSE_WHEEL_DOWN;
+  default:
+    return -1;
+  }
+}
+
+/**
+ * @brief マウス移動量が閾値を超えたかを判定する
+ * @param value マウス移動量
+ * @param threshold 閾値
+ * @return 超えた場合はtrue、超えていない場合はfalse
+ */
+static bool _reached_threshold(int16_t value, int16_t threshold) {
+  return value >= threshold || value <= -threshold;
+}
+
+/**
+ * @brief マウス移動イベントがあるかを取得する。
+ * @return マウス移動イベントがある場合はtrueを返す
+ */
+static bool _event_has_mouse_move_event() {
+  for (int i = 0; i < hid_state.pointing_id_max; i++) {
+    if (_reached_threshold(hid_state.mouse[i].xDelta,
+                           event_settings.mouse_move_thresh) ||
+        _reached_threshold(hid_state.mouse[i].yDelta,
+                           event_settings.mouse_move_thresh) ||
+        _reached_threshold(hid_state.mouse[i].wDelta,
+                           event_settings.mouse_wheel_thresh)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * @brief 標準キーコードの処理
+ * @param icode キーコード
+ * @param pressed 押下状態
+ * @return 処理された場合はtrue、処理されなかった場合はfalse
+ */
+static bool _event_process_key(icode_t icode, bool pressed) {
+  if (icode >= ICODE_STANDARD_START && icode <= ICODE_STANDARD_END) {
+    code_modded_t keycode = (code_modded_t)icode;
+    bool state_changed = false;
+    if (pressed) {
+      state_changed = _event_apply_press_keyboard_key(keycode);
+    } else {
+      state_changed = _event_apply_release_keyboard_key(keycode);
+    }
+
+    if (state_changed) {
+      hid_state.has_keyboard_event = true;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief コンシューマキーコードの処理
+ * @param icode キーコード
+ * @param pressed 押下状態
+ * @return 処理された場合はtrue、処理されなかった場合はfalse
+ */
+static bool _event_process_consumer(icode_t icode, bool pressed) {
+  if (icode >= ICODE_CONSUMER_START && icode <= ICODE_CONSUMER_END) {
+    code_consumer_t keycode = code_icodes_to_consumer(icode);
+
+    bool state_changed = false;
+    if (pressed) {
+      state_changed = _event_apply_press_consumer_key(keycode);
+    } else {
+      state_changed = _event_apply_release_consumer_key(keycode);
+    }
+
+    if (state_changed) {
+      hid_state.has_consumer_event = true;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief ポインティングデバイスキーコードの処理
+ * @param icode キーコード
+ * @param pressed 押下状態
+ * @return 処理された場合はtrue、処理されなかった場合はfalse
+ */
+static bool _event_process_pointing(icode_t icode, bool pressed) {
+  if (icode >= ICODE_MOUSE_BUTTON_START && icode <= ICODE_MOUSE_BUTTON_END) {
+    if (pointing_device_mouse_keys < 0) {
+      return true;
+    }
+
+    code_mouse_button_t state_button =
+        hid_state.mouse[pointing_device_mouse_keys].buttons;
+
+    code_mouse_button_t mouse_button = code_icodes_to_mouse_button(icode);
+    if (pressed) {
+      state_button |= mouse_button;
+    } else {
+      state_button &= ~mouse_button;
+    }
+
+    event_accumulate_mouse(pointing_device_mouse_keys, state_button, 0, 0, 0);
+    return true;
+  }
+
+  // マウス移動キーコードの場合
+  if (icode >= ICODE_MOUSE_MOVE_START && icode <= ICODE_MOUSE_MOVE_END) {
+    if (pointing_device_mouse_keys < 0) {
+      return true;
+    }
+
+    int8_t index = _mouse_move_icode_to_index(icode);
+    if (index >= 0) {
+      mouse_move_key_pressed[index] = pressed;
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @brief キーボードキーを追加
+ * @return 内部状態が変化された場合にtrueを返す
+ */
+static bool _event_apply_press_keyboard_key(code_modded_t keycode) {
+  // 修飾キーが直接指定された場合
+  if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
+    code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
+    code_mod_bits_t new_real_mod =
+        old_real_mod | code_icode_to_modifier((icode_t)keycode);
+    code_mod_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
+
+    hid_state.keyboard.real_modifier = new_real_mod;
+    return (old_real_mod | virt_mod) != (new_real_mod | virt_mod);
+  }
+
+  // コードから修飾子ビットとキーコードを抽出
+  code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
+  code_mod_bits_t key_bits = 0xFF & keycode;
+  code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
+  hid_state.keyboard.virtual_modifier |= mod_bits;
+
+  bool virt_mod_changed = old_virt_mod != hid_state.keyboard.virtual_modifier;
+
+  // 既に押されているかチェック
+  for (int i = 0; i < 6; i++) {
+    if (hid_state.keyboard.keycode[i] == key_bits) {
+      return virt_mod_changed;
+    }
+  }
+
+  // 空きスロットを探して追加
+  for (int i = 0; i < 6; i++) {
+    if (hid_state.keyboard.keycode[i] == 0) {
+      hid_state.keyboard.keycode[i] = key_bits;
+      return true;
+    }
+  }
+
+  return virt_mod_changed; // スロットが満杯
+}
+
+/**
+ * @brief キーボードキーを削除
+ * @return 内部状態が変化された場合にtrueを返す
+ */
+static bool _event_apply_release_keyboard_key(code_modded_t keycode) {
+  // 修飾キーが直接指定された場合
+  if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
+    code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
+    code_mod_bits_t new_real_mod =
+        old_real_mod & ~code_icode_to_modifier((icode_t)keycode);
+    code_mod_bits_t virt_mod = hid_state.keyboard.virtual_modifier;
+
+    hid_state.keyboard.real_modifier = new_real_mod;
+    return (old_real_mod | virt_mod) != (new_real_mod | virt_mod);
+  }
+
+  // コードから修飾子ビットとキーコードを抽出
+  code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
+  code_mod_bits_t key_bits = 0xFF & keycode;
+  code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
+  hid_state.keyboard.virtual_modifier &= ~mod_bits;
+
+  bool virt_mod_changed = old_virt_mod != hid_state.keyboard.virtual_modifier;
+
+  for (int i = 0; i < 6; i++) {
+    if (hid_state.keyboard.keycode[i] == key_bits) {
+      // 見つかったキーを削除し、後ろのキーを前に詰める
+      for (int j = i; j < 5; j++) {
+        hid_state.keyboard.keycode[j] = hid_state.keyboard.keycode[j + 1];
+      }
+      hid_state.keyboard.keycode[5] = IKC_NOOP;
+      return true;
+    }
+  }
+  return virt_mod_changed; // キーが見つからない
+}
+
+/**
+ * @brief コンシューマーキーを追加
+ * @return 内部状態が変化された場合にtrueを返す
+ */
+static bool _event_apply_press_consumer_key(code_consumer_t keycode) {
+  // 既に押されているかチェック
+  for (int i = 0; i < 6; i++) {
+    if (hid_state.consumer.keycode[i] == keycode) {
+      return false;
+    }
+  }
+
+  // 空きスロットを探して追加
+  for (int i = 0; i < 6; i++) {
+    if (hid_state.consumer.keycode[i] == 0) {
+      hid_state.consumer.keycode[i] = keycode;
+      return true;
+    }
+  }
+
+  return false; // スロットが満杯
+}
+
+/**
+ * @brief コンシューマーキーを削除
+ * @return 内部状態が変化された場合にtrueを返す
+ */
+static bool _event_apply_release_consumer_key(code_consumer_t keycode) {
+  for (int i = 0; i < 6; i++) {
+    if (hid_state.consumer.keycode[i] == keycode) {
+      // 見つかったキーを削除し、後ろのキーを前に詰める
+      for (int j = i; j < 5; j++) {
+        hid_state.consumer.keycode[j] = hid_state.consumer.keycode[j + 1];
+      }
+      hid_state.consumer.keycode[5] = 0;
+      return true;
+    }
+  }
+  return false; // キーが見つからない
 }

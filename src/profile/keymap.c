@@ -13,17 +13,15 @@ static const icode_t keymap[KEYMAP_ENTRY_COUNT] = KEYMAP;
 // 行番号と列番号は回路的な配置を示すもので、キーの物理的な配置とは異なる場合がある。
 static int16_t keyswitch_index_lookup[ROWS][COLS];
 
-/**
- * @brief
- * 指定されたレイアウトインデックスに対応するキーが存在するかどうかを返す。
- * @param index レイアウトインデックス
- * @return キーが存在する場合はtrue、そうでない場合はfalse
+/*
+ * 内部関数宣言
  */
-static bool _keymap_layout_index_exists(size_t index) {
-  const int8_t row = layout[index][0];
-  const int8_t col = layout[index][1];
-  return row >= 0 && row < ROWS && col >= 0 && col < COLS;
-}
+
+static bool _keymap_layout_index_exists(size_t index);
+
+/*
+ * 公開関数
+ */
 
 /**
  * @brief キーマップ関連機能を初期化する。
@@ -141,4 +139,20 @@ bool keymap_is_valid_keycode(icode_t keycode) {
 
   return (value >= ICC_RECORD && value <= ISC_BLE_SLOT_4) ||
          (value >= IUC_RANGE_MIN && value <= IUC_RANGE_MAX);
+}
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief
+ * 指定されたレイアウトインデックスに対応するキーが存在するかどうかを返す。
+ * @param index レイアウトインデックス
+ * @return キーが存在する場合はtrue、そうでない場合はfalse
+ */
+static bool _keymap_layout_index_exists(size_t index) {
+  const int8_t row = layout[index][0];
+  const int8_t col = layout[index][1];
+  return row >= 0 && row < ROWS && col >= 0 && col < COLS;
 }

@@ -16,149 +16,25 @@ typedef struct {
 
 static persistence_state_t persistence_state;
 
-/**
- * @brief 永続化イメージが有効かどうかを判定する
- * @param image 永続化イメージへのポインタ
- * @param image_size 永続化イメージのサイズ
- * @return 有効なイメージの場合はtrue、無効なイメージの場合はfalse
+/*
+ * 内部関数宣言
  */
+
 static bool _persistence_image_is_valid(const uint8_t *image,
-                                        size_t image_size) {
-  return image != NULL && image_size == persistence_state.image_size &&
-         image_size > 0u;
-}
+                                        size_t image_size);
+static bool _persistence_update_progress(size_t slot, bool mark_completed);
 
-/**
- * @brief 保存進捗を更新する
- * @param slot 更新する保存進捗スロット番号
- * @param mark_completed 完了済みにするかどうか
+static bool _persistence_read_progress(pwmk_progress_info_t *info);
+
+static bool _persistence_log_has_space(size_t record_size);
+
+static bool _persistence_can_append(size_t record_size);
+
+static bool _persistence_append_log(const uint8_t *record, size_t record_size);
+
+/*
+ * 公開関数
  */
-static bool _persistence_update_progress(size_t slot, bool mark_completed) {
-  size_t byte_offset;
-  uint8_t clear_mask;
-
-  // スロットの更新に必要な情報を取得する
-  if (!persistence_format_progress_get_slot_update(slot, mark_completed,
-                                                   &byte_offset, &clear_mask)) {
-    return false;
-  }
-
-  // 現在のスロットの値をフラッシュから読み込む
-  const size_t offset = persistence_flash_layout.progress_offset + byte_offset;
-  uint8_t current_value;
-  if (!persistence_flash_read(offset, &current_value, sizeof(current_value))) {
-    return false;
-  }
-
-  // 更新用の値を計算する
-  uint8_t updated_value;
-  if (!persistence_format_progress_update_slot(
-          current_value, slot, mark_completed, &updated_value)) {
-    return false;
-  }
-
-  // フラッシュに更新後の値を書き込む
-  return persistence_flash_program(offset, &updated_value,
-                                   sizeof(updated_value));
-}
-
-/**
- * @brief 保存進捗を読み込む
- * @param info 進捗情報を格納する構造体へのポインタ
- * @return 成功した場合はtrue、失敗した場合はfalse
- */
-static bool _persistence_read_progress(pwmk_progress_info_t *info) {
-  uint8_t progress[PWMK_PROGRESS_SIZE];
-
-  // フラッシュから保存進捗を読み込む
-  if (!persistence_flash_read(persistence_flash_layout.progress_offset,
-                              progress, sizeof(progress))) {
-    return false;
-  }
-
-  // 読み込んだ保存進捗を解析する
-  return persistence_format_progress_analyze(progress, sizeof(progress), info);
-}
-
-/**
- * @brief ログ領域に保存するための空き容量があるかどうかをチェックする
- * @param record_size 保存するレコードのサイズ
- * @return 空き容量がある場合はtrue、空き容量がない場合はfalse
- */
-static bool _persistence_log_has_space(size_t record_size) {
-  return persistence_state.log_used_size <=
-             persistence_flash_layout.log_data_size &&
-         record_size <= persistence_flash_layout.log_data_size -
-                            persistence_state.log_used_size;
-}
-
-/**
- * @brief フラッシュに書き込みログを追記できるかどうかを判定する
- * @param record_size 追記するレコードのサイズ
- * @return 追記可能な場合はtrue、追記不可能な場合はfalse
- */
-static bool _persistence_can_append(size_t record_size) {
-  pwmk_progress_info_t current_progress = {
-      .state = PWMK_PROGRESS_COMPLETE,
-      .completed_save_count = persistence_state.completed_save_count,
-  };
-  size_t slot;
-  return persistence_format_progress_get_next_slot(&current_progress, &slot) &&
-         _persistence_log_has_space(record_size);
-}
-
-/**
- * @brief 書き込みログをフラッシュに書き込む
- * @param record 書き込むログレコードのバッファ
- * @param record_size 保存するログレコードのサイズ
- * @return 成功した場合はtrue、失敗した場合はfalse
- */
-static bool _persistence_append_log(const uint8_t *record, size_t record_size) {
-  if (record == NULL || !_persistence_can_append(record_size)) {
-    return false;
-  }
-
-  // 次の保存進捗スロットを取得する
-  pwmk_progress_info_t current_progress = {
-      .state = PWMK_PROGRESS_COMPLETE,
-      .completed_save_count = persistence_state.completed_save_count,
-  };
-  size_t slot;
-  if (!persistence_format_progress_get_next_slot(&current_progress, &slot)) {
-    return false;
-  }
-
-  // 保存進捗を保存中にする
-  if (!_persistence_update_progress(slot, false)) {
-    return false;
-  }
-  // 書き込みログをフラッシュに書き込む
-  if (!persistence_flash_program(persistence_flash_layout.log_data_offset +
-                                     persistence_state.log_used_size,
-                                 record, record_size)) {
-    return false;
-  }
-  // 保存進捗を保存完了にする
-  if (!_persistence_update_progress(slot, true)) {
-    return false;
-  }
-
-  // 保存進捗を読み込んで、正しく更新されたか確認する
-  pwmk_progress_info_t updated_progress;
-  if (!_persistence_read_progress(&updated_progress)) {
-    return false;
-  }
-  if (updated_progress.state != PWMK_PROGRESS_COMPLETE ||
-      updated_progress.completed_save_count !=
-          persistence_state.completed_save_count + 1u) {
-    return false;
-  }
-
-  persistence_state.completed_save_count =
-      updated_progress.completed_save_count;
-  persistence_state.log_used_size += record_size;
-  return true;
-}
 
 /**
  * @brief 永続化領域の管理機能を初期化する
@@ -368,5 +244,153 @@ bool persistence_rebuild(const uint8_t *image, size_t image_size) {
   persistence_state.completed_save_count = 1u;
   persistence_state.log_used_size = 0u;
   persistence_state.available = true;
+  return true;
+}
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief 永続化イメージが有効かどうかを判定する
+ * @param image 永続化イメージへのポインタ
+ * @param image_size 永続化イメージのサイズ
+ * @return 有効なイメージの場合はtrue、無効なイメージの場合はfalse
+ */
+static bool _persistence_image_is_valid(const uint8_t *image,
+                                        size_t image_size) {
+  return image != NULL && image_size == persistence_state.image_size &&
+         image_size > 0u;
+}
+
+/**
+ * @brief 保存進捗を更新する
+ * @param slot 更新する保存進捗スロット番号
+ * @param mark_completed 完了済みにするかどうか
+ */
+static bool _persistence_update_progress(size_t slot, bool mark_completed) {
+  size_t byte_offset;
+  uint8_t clear_mask;
+
+  // スロットの更新に必要な情報を取得する
+  if (!persistence_format_progress_get_slot_update(slot, mark_completed,
+                                                   &byte_offset, &clear_mask)) {
+    return false;
+  }
+
+  // 現在のスロットの値をフラッシュから読み込む
+  const size_t offset = persistence_flash_layout.progress_offset + byte_offset;
+  uint8_t current_value;
+  if (!persistence_flash_read(offset, &current_value, sizeof(current_value))) {
+    return false;
+  }
+
+  // 更新用の値を計算する
+  uint8_t updated_value;
+  if (!persistence_format_progress_update_slot(
+          current_value, slot, mark_completed, &updated_value)) {
+    return false;
+  }
+
+  // フラッシュに更新後の値を書き込む
+  return persistence_flash_program(offset, &updated_value,
+                                   sizeof(updated_value));
+}
+
+/**
+ * @brief 保存進捗を読み込む
+ * @param info 進捗情報を格納する構造体へのポインタ
+ * @return 成功した場合はtrue、失敗した場合はfalse
+ */
+static bool _persistence_read_progress(pwmk_progress_info_t *info) {
+  uint8_t progress[PWMK_PROGRESS_SIZE];
+
+  // フラッシュから保存進捗を読み込む
+  if (!persistence_flash_read(persistence_flash_layout.progress_offset,
+                              progress, sizeof(progress))) {
+    return false;
+  }
+
+  // 読み込んだ保存進捗を解析する
+  return persistence_format_progress_analyze(progress, sizeof(progress), info);
+}
+
+/**
+ * @brief ログ領域に保存するための空き容量があるかどうかをチェックする
+ * @param record_size 保存するレコードのサイズ
+ * @return 空き容量がある場合はtrue、空き容量がない場合はfalse
+ */
+static bool _persistence_log_has_space(size_t record_size) {
+  return persistence_state.log_used_size <=
+             persistence_flash_layout.log_data_size &&
+         record_size <= persistence_flash_layout.log_data_size -
+                            persistence_state.log_used_size;
+}
+
+/**
+ * @brief フラッシュに書き込みログを追記できるかどうかを判定する
+ * @param record_size 追記するレコードのサイズ
+ * @return 追記可能な場合はtrue、追記不可能な場合はfalse
+ */
+static bool _persistence_can_append(size_t record_size) {
+  pwmk_progress_info_t current_progress = {
+      .state = PWMK_PROGRESS_COMPLETE,
+      .completed_save_count = persistence_state.completed_save_count,
+  };
+  size_t slot;
+  return persistence_format_progress_get_next_slot(&current_progress, &slot) &&
+         _persistence_log_has_space(record_size);
+}
+
+/**
+ * @brief 書き込みログをフラッシュに書き込む
+ * @param record 書き込むログレコードのバッファ
+ * @param record_size 保存するログレコードのサイズ
+ * @return 成功した場合はtrue、失敗した場合はfalse
+ */
+static bool _persistence_append_log(const uint8_t *record, size_t record_size) {
+  if (record == NULL || !_persistence_can_append(record_size)) {
+    return false;
+  }
+
+  // 次の保存進捗スロットを取得する
+  pwmk_progress_info_t current_progress = {
+      .state = PWMK_PROGRESS_COMPLETE,
+      .completed_save_count = persistence_state.completed_save_count,
+  };
+  size_t slot;
+  if (!persistence_format_progress_get_next_slot(&current_progress, &slot)) {
+    return false;
+  }
+
+  // 保存進捗を保存中にする
+  if (!_persistence_update_progress(slot, false)) {
+    return false;
+  }
+  // 書き込みログをフラッシュに書き込む
+  if (!persistence_flash_program(persistence_flash_layout.log_data_offset +
+                                     persistence_state.log_used_size,
+                                 record, record_size)) {
+    return false;
+  }
+  // 保存進捗を保存完了にする
+  if (!_persistence_update_progress(slot, true)) {
+    return false;
+  }
+
+  // 保存進捗を読み込んで、正しく更新されたか確認する
+  pwmk_progress_info_t updated_progress;
+  if (!_persistence_read_progress(&updated_progress)) {
+    return false;
+  }
+  if (updated_progress.state != PWMK_PROGRESS_COMPLETE ||
+      updated_progress.completed_save_count !=
+          persistence_state.completed_save_count + 1u) {
+    return false;
+  }
+
+  persistence_state.completed_save_count =
+      updated_progress.completed_save_count;
+  persistence_state.log_used_size += record_size;
   return true;
 }

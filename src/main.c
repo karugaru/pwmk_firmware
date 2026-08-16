@@ -35,6 +35,110 @@ static void _pwmk_worker_process(async_context_t *context,
 static absolute_time_t last_activity_time;
 static bool requested_deep_sleep;
 
+/*
+ * 内部関数宣言
+ */
+
+static void _pwmk_process_tick(void);
+
+/*
+ * 公開関数
+ */
+
+/**
+ * @brief メイン関数 エントリーポイント
+ * @return 0
+ */
+int main() {
+  state_set_system(STATE_BOOTING);
+  stdio_init_all();
+
+#if DEBUG_MAIN
+  sleep_ms(2000); // UARTデバッグ用: 接続待ち
+#endif
+  DEBUG_PRINT("pwmk v1 start\n");
+
+  // LEDの初期化
+  led_init(GPIO_LED_PIN, LED_BRIGHTNESS);
+  state_set_system(STATE_SYS_INIT);
+
+  // 設定の初期化
+  settings_init();
+
+  // マトリクススキャン初期化
+  matrix_scan_init();
+
+  // イベント処理を初期化
+  event_settings_t event_settings = {
+      .mouse_move_thresh = MOUSE_MOVE_THRESH,
+      .mouse_wheel_thresh = MOUSE_WHEEL_THRESH,
+      .mouse_move_delta = MOUSE_MOVE_DELTA,
+      .mouse_wheel_delta = MOUSE_WHEEL_DELTA,
+      .platform_callback = event_platform_process,
+      .keymap_get_callback = settings_get_keycode,
+  };
+  event_init(event_settings);
+
+  // BLEの初期化
+#if PWMK_ENABLE_BLE
+  if (cyw43_arch_init()) {
+    DEBUG_PRINT("failed to initialise cyw43_arch\n");
+    return -1;
+  }
+  ble_setup();
+  ble_power_set(true);
+  state_set_system(STATE_BLE_INIT);
+#endif
+
+  // マトリクス以外の周辺機器の初期化
+  peripheral_init();
+
+  // USB HIDの初期化
+#if PWMK_ENABLE_USB
+  usb_hid_init();
+#endif
+
+  // 初期化完了
+  state_set_system(STATE_INIT_COMPLETE);
+  state_refresh_runtime();
+
+  // アクティビティタイマー初期化
+  last_activity_time = get_absolute_time();
+
+  // 定期処理ワーカーをasync_contextに登録
+#if PWMK_ENABLE_BLE
+  pwmk_worker.do_work = _pwmk_worker_process;
+  async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(),
+                                         &pwmk_worker, 1);
+#endif
+
+  // メインループ
+  requested_deep_sleep = false;
+  while (true) {
+#if PWMK_ENABLE_BLE
+    async_context_poll(cyw43_arch_async_context());
+    if (requested_deep_sleep) {
+      state_set_system(STATE_DEEP_SLEEP);
+    }
+    async_context_wait_for_work_until(cyw43_arch_async_context(),
+                                      at_the_end_of_time);
+#else
+    _pwmk_process_tick();
+    if (requested_deep_sleep) {
+      state_set_system(STATE_DEEP_SLEEP);
+    }
+    sleep_ms(1);
+#endif
+  }
+
+  state_set_system(STATE_RESET);
+  return 0;
+}
+
+/*
+ * 内部関数
+ */
+
 /**
  * @brief 1ms周期で実行する事実上のメインループ処理。
  */
@@ -126,93 +230,3 @@ static void _pwmk_worker_process(async_context_t *context,
   async_context_add_at_time_worker_in_ms(context, worker, 1);
 }
 #endif
-
-/**
- * @brief メイン関数 エントリーポイント
- * @return 0
- */
-int main() {
-  state_set_system(STATE_BOOTING);
-  stdio_init_all();
-
-#if DEBUG_MAIN
-  sleep_ms(2000); // UARTデバッグ用: 接続待ち
-#endif
-  DEBUG_PRINT("pwmk v1 start\n");
-
-  // LEDの初期化
-  led_init(GPIO_LED_PIN, LED_BRIGHTNESS);
-  state_set_system(STATE_SYS_INIT);
-
-  // 設定の初期化
-  settings_init();
-
-  // マトリクススキャン初期化
-  matrix_scan_init();
-
-  // イベント処理を初期化
-  event_settings_t event_settings = {
-      .mouse_move_thresh = MOUSE_MOVE_THRESH,
-      .mouse_wheel_thresh = MOUSE_WHEEL_THRESH,
-      .mouse_move_delta = MOUSE_MOVE_DELTA,
-      .mouse_wheel_delta = MOUSE_WHEEL_DELTA,
-      .platform_callback = event_platform_process,
-      .keymap_get_callback = settings_get_keycode,
-  };
-  event_init(event_settings);
-
-  // BLEの初期化
-#if PWMK_ENABLE_BLE
-  if (cyw43_arch_init()) {
-    DEBUG_PRINT("failed to initialise cyw43_arch\n");
-    return -1;
-  }
-  ble_setup();
-  ble_power_set(true);
-  state_set_system(STATE_BLE_INIT);
-#endif
-
-  // マトリクス以外の周辺機器の初期化
-  peripheral_init();
-
-  // USB HIDの初期化
-#if PWMK_ENABLE_USB
-  usb_hid_init();
-#endif
-
-  // 初期化完了
-  state_set_system(STATE_INIT_COMPLETE);
-  state_refresh_runtime();
-
-  // アクティビティタイマー初期化
-  last_activity_time = get_absolute_time();
-
-  // 定期処理ワーカーをasync_contextに登録
-#if PWMK_ENABLE_BLE
-  pwmk_worker.do_work = _pwmk_worker_process;
-  async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(),
-                                         &pwmk_worker, 1);
-#endif
-
-  // メインループ
-  requested_deep_sleep = false;
-  while (true) {
-#if PWMK_ENABLE_BLE
-    async_context_poll(cyw43_arch_async_context());
-    if (requested_deep_sleep) {
-      state_set_system(STATE_DEEP_SLEEP);
-    }
-    async_context_wait_for_work_until(cyw43_arch_async_context(),
-                                      at_the_end_of_time);
-#else
-    _pwmk_process_tick();
-    if (requested_deep_sleep) {
-      state_set_system(STATE_DEEP_SLEEP);
-    }
-    sleep_ms(1);
-#endif
-  }
-
-  state_set_system(STATE_RESET);
-  return 0;
-}

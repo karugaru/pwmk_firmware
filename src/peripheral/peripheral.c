@@ -17,6 +17,10 @@
 
 static int8_t pointing_device_pinnacle = -1;
 
+/*
+ * 公開関数
+ */
+
 /**
  * @brief 周辺機器の初期化を行う。
  * @return bool 初期化に成功した場合にtrueを返す。

@@ -38,45 +38,16 @@ static const state_led_entry_t state_led_table[] = {
 static volatile state_system_t current_state = STATE_RESET;
 static volatile state_conn_pref_t conn_pref = CONN_PREF_USB;
 
-/**
- * @brief 指定された状態がランタイム状態かどうかを返す。
- *        ランタイム状態とは、接続待機中や接続中など、通常運用中のことを指す。
- * @param state 判定する状態
- * @return stateがランタイム状態の場合はtrue、それ以外はfalse
+/*
+ * 内部関数宣言
  */
-static bool _state_is_runtime_state(state_system_t state) {
-  return state == STATE_USB_WAITING || state == STATE_BLE_WAITING ||
-         state == STATE_BLE_CONNECTED || state == STATE_USB_CONNECTED;
-}
 
-/**
- * @brief 現在の接続状況と優先接続モードから状態を解決する。
- * @return 解決された状態
+static bool _state_is_runtime_state(state_system_t state);
+static state_system_t _state_resolve_runtime(void);
+
+/*
+ * 公開関数
  */
-static state_system_t _state_resolve_runtime(void) {
-  bool usb_active = usb_hid_is_active();
-  bool ble_connected = ble_is_connected();
-
-  if (usb_active) {
-    return STATE_USB_CONNECTED;
-  } else if (ble_connected) {
-    return STATE_BLE_CONNECTED;
-  }
-
-#if PWMK_ENABLE_USB && PWMK_ENABLE_BLE
-  if (conn_pref == CONN_PREF_BLE) {
-    return STATE_BLE_WAITING;
-  } else if (conn_pref == CONN_PREF_USB) {
-    return STATE_USB_WAITING;
-  }
-#elif PWMK_ENABLE_BLE
-  return STATE_BLE_WAITING;
-#elif PWMK_ENABLE_USB
-  return STATE_USB_WAITING;
-#endif
-
-  return STATE_INIT_COMPLETE;
-}
 
 /**
  * @brief システムの優先接続モードを設定する。
@@ -158,3 +129,47 @@ void state_set_system(state_system_t new_state) {
  * @return 現在のシステム状態
  */
 state_system_t state_get_system(void) { return current_state; }
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief 指定された状態がランタイム状態かどうかを返す。
+ *        ランタイム状態とは、接続待機中や接続中など、通常運用中のことを指す。
+ * @param state 判定する状態
+ * @return stateがランタイム状態の場合はtrue、それ以外はfalse
+ */
+static bool _state_is_runtime_state(state_system_t state) {
+  return state == STATE_USB_WAITING || state == STATE_BLE_WAITING ||
+         state == STATE_BLE_CONNECTED || state == STATE_USB_CONNECTED;
+}
+
+/**
+ * @brief 現在の接続状況と優先接続モードから状態を解決する。
+ * @return 解決された状態
+ */
+static state_system_t _state_resolve_runtime(void) {
+  bool usb_active = usb_hid_is_active();
+  bool ble_connected = ble_is_connected();
+
+  if (usb_active) {
+    return STATE_USB_CONNECTED;
+  } else if (ble_connected) {
+    return STATE_BLE_CONNECTED;
+  }
+
+#if PWMK_ENABLE_USB && PWMK_ENABLE_BLE
+  if (conn_pref == CONN_PREF_BLE) {
+    return STATE_BLE_WAITING;
+  } else if (conn_pref == CONN_PREF_USB) {
+    return STATE_USB_WAITING;
+  }
+#elif PWMK_ENABLE_BLE
+  return STATE_BLE_WAITING;
+#elif PWMK_ENABLE_USB
+  return STATE_USB_WAITING;
+#endif
+
+  return STATE_INIT_COMPLETE;
+}

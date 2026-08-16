@@ -23,18 +23,6 @@
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
 
-// --------------------------------
-// 関数宣言
-// --------------------------------
-static void _packet_handler(uint8_t packet_type, uint16_t channel,
-                            uint8_t *packet, uint16_t size);
-static void _send_report();
-static void _ble_apply_selected_slot_address(void);
-static void _ble_resume_advertising(void);
-
-// --------------------------------
-// BLE系変数定義
-// --------------------------------
 static btstack_packet_callback_registration_t hci_event_callback_registration;
 static btstack_packet_callback_registration_t sm_event_callback_registration;
 
@@ -43,9 +31,19 @@ static hci_con_handle_t con_handle = HCI_CON_HANDLE_INVALID;
 static bool ble_enabled = false;
 static bool ble_restart_pending = false;
 
-// --------------------------------
-// 関数定義
-// --------------------------------
+/*
+ * 内部関数宣言
+ */
+
+static void _packet_handler(uint8_t packet_type, uint16_t channel,
+                            uint8_t *packet, uint16_t size);
+static void _send_report();
+static void _ble_apply_selected_slot_address(void);
+static void _ble_resume_advertising(void);
+
+/*
+ * 公開関数
+ */
 
 /**
  * @brief BLEの初期化を行う。
@@ -190,9 +188,9 @@ bool ble_unpair_selected_slot(void) {
   return updated;
 }
 
-// ---------------------------------
-// 静的関数
-// ---------------------------------
+/*
+ * 内部関数
+ */
 
 /**
  * @brief btstackのイベントハンドラ

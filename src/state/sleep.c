@@ -36,6 +36,10 @@ static void _matrix_enable_dormant_wakeup(void);
 static void _matrix_acknowledge_dormant_wakeup(void);
 #endif
 
+/*
+ * 公開関数
+ */
+
 #if PICO_RP2040
 /**
  * @brief DORMANTを使用してディープスリープに入る。
@@ -129,6 +133,10 @@ void sleep_enter_deep(void) {
   }
 }
 #endif
+
+/*
+ * 内部関数
+ */
 
 /**
  * @brief ディープスリープに入る前の準備を行う。

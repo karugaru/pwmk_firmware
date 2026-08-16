@@ -1,5 +1,9 @@
 #include "usb/usb_hid.h"
 
+/*
+ * 公開関数
+ */
+
 __attribute__((weak)) void usb_hid_init(void) {}
 
 __attribute__((weak)) void usb_hid_deinit(void) {}

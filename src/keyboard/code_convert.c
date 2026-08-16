@@ -102,6 +102,97 @@ static const code_conversion_t code_conversion_table[] = {
     {KEYCODE_NOT_FOUND, VIAL_KEYCODE_BLE_SLOT_5},
 };
 
+/*
+ * 内部関数宣言
+ */
+
+static bool _code_convert_internal_base_to_vial(uint8_t keycode_internal,
+                                                uint8_t *keycode_vial);
+static bool _code_convert_vial_base_to_internal(uint8_t keycode_vial,
+                                                icode_t *keycode_internal);
+static bool _code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
+                                                     uint8_t *modifiers_vial);
+static bool _code_convert_standard_to_vial(icode_t keycode_internal,
+                                           uint16_t *keycode_vial);
+static bool _code_convert_standard_to_internal(uint16_t keycode_vial,
+                                               icode_t *keycode_internal);
+static bool _code_convert_mapped_to_vial(icode_t keycode_internal,
+                                         uint16_t *keycode_vial);
+static bool _code_convert_mapped_to_internal(uint16_t keycode_vial,
+                                             icode_t *keycode_internal);
+static bool _code_convert_user_to_vial(icode_t keycode_internal,
+                                       uint16_t *keycode_vial);
+static bool _code_convert_user_to_internal(uint16_t keycode_vial,
+                                           icode_t *keycode_internal);
+
+/*
+ * 公開関数
+ */
+
+/**
+ * @brief 内部用キーコードをVIALのキーコードに変換する。
+ * @param keycode_internal 変換する内部用キーコード
+ * @param keycode_vial 変換後のVIALのキーコードを格納するポインタ
+ * @return 変換に成功した場合はtrue、失敗した場合はfalse
+ */
+bool code_convert_to_vial(icode_t keycode_internal, uint16_t *keycode_vial) {
+  if (_code_convert_mapped_to_vial(keycode_internal, keycode_vial)) {
+    return true;
+  }
+  if (_code_convert_user_to_vial(keycode_internal, keycode_vial)) {
+    return true;
+  }
+  if (_code_convert_standard_to_vial(keycode_internal, keycode_vial)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @brief VIALのキーコードを内部用キーコードに変換する。
+ * @param keycode_vial 変換するVIALのキーコード
+ * @param keycode_internal 変換後の内部用のキーコードを格納するポインタ
+ * @return 変換に成功した場合はtrue、失敗した場合はfalse
+ */
+bool code_convert_to_internal(uint16_t keycode_vial,
+                              icode_t *keycode_internal) {
+  if (_code_convert_mapped_to_internal(keycode_vial, keycode_internal)) {
+    return true;
+  }
+  if (_code_convert_user_to_internal(keycode_vial, keycode_internal)) {
+    return true;
+  }
+  if (_code_convert_standard_to_internal(keycode_vial, keycode_internal)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @brief
+ * 指定したVIALのキーコードがブートローダー起動用のキーコードかどうかを判定する。
+ * @param keycode_vial VIALのキーコード
+ * @return ブートローダー起動用のキーコードの場合はtrue、そうでない場合はfalse
+ */
+bool code_convert_is_dangerous_vial_code(uint16_t keycode_vial) {
+  return keycode_vial == VIAL_KEYCODE_BOOTLOADER;
+}
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief VIALの修飾ビット表現を内部用の修飾ビット表現に変換する。
+ * @param modifiers_vial 変換するVIALの修飾ビット表現
+ * @return 変換に成功した場合はtrue、失敗した場合はfalse
+ */
+static uint8_t
+_code_convert_vial_modifiers_to_internal(uint8_t modifiers_vial) {
+  uint8_t modifiers = modifiers_vial & 0x0F;
+  return (modifiers_vial & 0x10) != 0 ? modifiers << 4 : modifiers;
+}
+
 /**
  * @brief 内部用のキーコードの下位8ビット部分をVIALのキーコードに変換する。
  *        基本的に下位8ビット部分はPWMKとVIALで同じ値を持つが、
@@ -184,17 +275,6 @@ static bool _code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
 
   *modifiers_vial = left_modifiers;
   return true;
-}
-
-/**
- * @brief VIALの修飾ビット表現を内部用の修飾ビット表現に変換する。
- * @param modifiers_vial 変換するVIALの修飾ビット表現
- * @return 変換に成功した場合はtrue、失敗した場合はfalse
- */
-static uint8_t
-_code_convert_vial_modifiers_to_internal(uint8_t modifiers_vial) {
-  uint8_t modifiers = modifiers_vial & 0x0F;
-  return (modifiers_vial & 0x10) != 0 ? modifiers << 4 : modifiers;
 }
 
 /**
@@ -320,6 +400,7 @@ static bool _code_convert_mapped_to_internal(uint16_t keycode_vial,
 
   return false;
 }
+
 /**
  * @brief 内部用のユーザー定義キーコードをVIALのキーコードに変換する。
  * @param keycode_internal 変換する内部用のユーザー定義キーコード
@@ -358,53 +439,4 @@ static bool _code_convert_user_to_internal(uint16_t keycode_vial,
   const uint16_t index = keycode_vial - VIAL_KEYCODE_USER_0;
   *keycode_internal = IUC_RANGE_MIN + index;
   return true;
-}
-
-/**
- * @brief 内部用キーコードをVIALのキーコードに変換する。
- * @param keycode_internal 変換する内部用キーコード
- * @param keycode_vial 変換後のVIALのキーコードを格納するポインタ
- * @return 変換に成功した場合はtrue、失敗した場合はfalse
- */
-bool code_convert_to_vial(icode_t keycode_internal, uint16_t *keycode_vial) {
-  if (_code_convert_mapped_to_vial(keycode_internal, keycode_vial)) {
-    return true;
-  }
-  if (_code_convert_user_to_vial(keycode_internal, keycode_vial)) {
-    return true;
-  }
-  if (_code_convert_standard_to_vial(keycode_internal, keycode_vial)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * @brief VIALのキーコードを内部用キーコードに変換する。
- * @param keycode_vial 変換するVIALのキーコード
- * @param keycode_internal 変換後の内部用のキーコードを格納するポインタ
- * @return 変換に成功した場合はtrue、失敗した場合はfalse
- */
-bool code_convert_to_internal(uint16_t keycode_vial,
-                              icode_t *keycode_internal) {
-  if (_code_convert_mapped_to_internal(keycode_vial, keycode_internal)) {
-    return true;
-  }
-  if (_code_convert_user_to_internal(keycode_vial, keycode_internal)) {
-    return true;
-  }
-  if (_code_convert_standard_to_internal(keycode_vial, keycode_internal)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * @brief
- * 指定したVIALのキーコードがブートローダー起動用のキーコードかどうかを判定する。
- * @param keycode_vial VIALのキーコード
- * @return ブートローダー起動用のキーコードの場合はtrue、そうでない場合はfalse
- */
-bool code_convert_is_dangerous_vial_code(uint16_t keycode_vial) {
-  return keycode_vial == VIAL_KEYCODE_BOOTLOADER;
 }

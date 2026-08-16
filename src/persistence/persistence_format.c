@@ -1,20 +1,15 @@
 #include "persistence/persistence_format.h"
 #include <string.h>
 
-/**
- * @brief 配列がすべて0xFFで埋まっているかを確認する
- * @param data 確認する配列
- * @param size 配列のサイズ
- * @return すべて0xFFで埋まっている場合はtrue、それ以外の場合はfalse
+/*
+ * 内部関数宣言
  */
-static bool _all_ff(const uint8_t *data, size_t size) {
-  for (size_t index = 0; index < size; index++) {
-    if (data[index] != 0xFFu) {
-      return false;
-    }
-  }
-  return true;
-}
+
+static bool _all_ff(const uint8_t *data, size_t size);
+
+/*
+ * 公開関数
+ */
 
 /**
  * @brief 保存進捗の状態を解析する
@@ -336,5 +331,24 @@ bool persistence_format_log_replay(const uint8_t *log, size_t log_size,
     *used_size = position;
   }
 
+  return true;
+}
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief 配列がすべて0xFFで埋まっているかを確認する
+ * @param data 確認する配列
+ * @param size 配列のサイズ
+ * @return すべて0xFFで埋まっている場合はtrue、それ以外の場合はfalse
+ */
+static bool _all_ff(const uint8_t *data, size_t size) {
+  for (size_t index = 0; index < size; index++) {
+    if (data[index] != 0xFFu) {
+      return false;
+    }
+  }
   return true;
 }

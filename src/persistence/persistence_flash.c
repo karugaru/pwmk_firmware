@@ -105,35 +105,17 @@ typedef struct {
   size_t size; // 書き込むデータのサイズ（消去の場合は消去する範囲のサイズ）
 } persistence_write_param_t;
 
-/**
- * @brief フラッシュ書き込み操作を行うコールバック関数
- * @param parameter persistence_write_param_t構造体へのポインタ
- * @details
- * RP2040およびRP2350では、フラッシュの書き込み操作はいくつかの制約があるため、
- * flash_safe_execute()を経由して安全に実行する必要がある。
- * この関数はflash_safe_execute()のコールバック関数として使用される。
+/*
+ * 内部関数宣言
  */
-static void __not_in_flash_func(_persistence_flash_operation)(void *parameter) {
-  // 実際のフラッシュ書き込み操作を行う
-  const persistence_write_param_t *write_param = parameter;
-  if (write_param->erase) {
-    flash_range_erase(WRITE_ADDRESS(write_param->offset), write_param->size);
-  } else {
-    flash_range_program(WRITE_ADDRESS(write_param->offset), write_param->data,
-                        write_param->size);
-  }
-}
 
-/**
- * @brief 指定した範囲が有効なフラッシュの領域かどうかをチェックする
- * @param offset フラッシュの相対オフセット
- * @param size フラッシュのサイズ
- * @return 有効な範囲の場合はtrue、無効な範囲の場合はfalse
+static void __not_in_flash_func(_persistence_flash_operation)(void *parameter);
+
+static bool _persistence_flash_range_is_valid(size_t offset, size_t size);
+
+/*
+ * 公開関数
  */
-static bool _persistence_flash_range_is_valid(size_t offset, size_t size) {
-  return persistence_flash_ready && offset <= PWMK_PERSISTENCE_SIZE &&
-         size <= PWMK_PERSISTENCE_SIZE - offset;
-}
 
 /**
  * @brief フラッシュの初期化を行う
@@ -334,4 +316,38 @@ bool persistence_flash_erase_all(void) {
   }
 
   return true;
+}
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief フラッシュ書き込み操作を行うコールバック関数
+ * @param parameter persistence_write_param_t構造体へのポインタ
+ * @details
+ * RP2040およびRP2350では、フラッシュの書き込み操作はいくつかの制約があるため、
+ * flash_safe_execute()を経由して安全に実行する必要がある。
+ * この関数はflash_safe_execute()のコールバック関数として使用される。
+ */
+static void __not_in_flash_func(_persistence_flash_operation)(void *parameter) {
+  // 実際のフラッシュ書き込み操作を行う
+  const persistence_write_param_t *write_param = parameter;
+  if (write_param->erase) {
+    flash_range_erase(WRITE_ADDRESS(write_param->offset), write_param->size);
+  } else {
+    flash_range_program(WRITE_ADDRESS(write_param->offset), write_param->data,
+                        write_param->size);
+  }
+}
+
+/**
+ * @brief 指定した範囲が有効なフラッシュの領域かどうかをチェックする
+ * @param offset フラッシュの相対オフセット
+ * @param size フラッシュのサイズ
+ * @return 有効な範囲の場合はtrue、無効な範囲の場合はfalse
+ */
+static bool _persistence_flash_range_is_valid(size_t offset, size_t size) {
+  return persistence_flash_ready && offset <= PWMK_PERSISTENCE_SIZE &&
+         size <= PWMK_PERSISTENCE_SIZE - offset;
 }

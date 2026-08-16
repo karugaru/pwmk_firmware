@@ -112,6 +112,10 @@ const uint8_t hid_descriptor[] = {
 
 const uint8_t hid_descriptor_len = sizeof(hid_descriptor);
 
+/*
+ * 公開関数
+ */
+
 /**
  * @brief キーボードレポートをHID形式に変換する。
  * @param event 変換されるキーボードイベント
