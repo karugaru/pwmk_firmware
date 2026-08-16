@@ -177,10 +177,10 @@ static void _wait_for_release_before_calibration(void) {
 /**
  * @brief  Cirque Pinnacle トラックパッドを初期化します。
  *         I2Cインスタンスと対応して、scl_pinとsda_pinは使用できるピンが限られていますので注意してください。
- * @param  i2c_inst: 使用するI2Cインスタンス
- * @param  scl_pin: I2CのSCLピン番号
- * @param  sda_pin: I2CのSDAピン番号
- * @param  dr_pin: データレディピンの番号
+ * @param i2c_inst 使用するI2Cインスタンス
+ * @param scl_pin I2CのSCLピン番号
+ * @param sda_pin I2CのSDAピン番号
+ * @param data_ready_pin データレディピンの番号
  */
 bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
                    uint8_t data_ready_pin) {

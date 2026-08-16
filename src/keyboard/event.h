@@ -40,6 +40,13 @@ void event_process_periodic(void);
 bool event_has_event(void);
 bool event_pop_hid_report(event_hid_report_t *report);
 
+/**
+ * @brief ユーザー定義イベントを処理する。
+ * @param icode 内部コード。上書きされた場合、その内容が標準イベント処理に渡される。
+ * @param pressed 押されたか離されたか
+ * @param event_time イベントの発生時刻
+ * @return 標準イベント処理を続行する場合はtrue、しない場合はfalse
+ */
 bool event_process_user_cb(icode_t *icode, bool pressed, uint64_t event_time);
 
 #endif // PWMK_EVENT_H

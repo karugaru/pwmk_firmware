@@ -68,7 +68,6 @@ void matrix_scan_init(void) {
  *        ユーザー定義イベントコールバック関数が設定されている場合、最初にそれを呼び出します。
  *        続いて標準のイベント処理を呼び出します。
  *
- * @param event_user_callback ユーザー定義イベントコールバック関数
  */
 void matrix_scan_process(void) {
   // 現在時刻を取得

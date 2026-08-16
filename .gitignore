@@ -1,5 +1,6 @@
 log/
 build/
+site/
 TODO.md
 tmp/
 __pycache__/
