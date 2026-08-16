@@ -29,67 +29,14 @@
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
 
-/**
- * @brief ディープスリープに入る前の準備を行う。
- */
-static void _prepare_deep_sleep(void) {
-  // 割り込みを無効化
-  disable_interrupts();
-
-  // LEDを消灯
-  led_put_rgb(0, 0, 0);
-
-  // BLEを無効化
-#if PWMK_ENABLE_BLE
-  ble_power_set(false);
-  gpio_put(CYW43_PIN_WL_REG_ON, false);
-#endif
-
-  // USBを無効化
-#if PWMK_ENABLE_USB
-  usb_hid_deinit();
-#endif
-
-  // stdio をフラッシュ
-  stdio_flush();
-}
+static void _prepare_deep_sleep(void);
 
 #if PICO_RP2040
-/**
- * @brief マトリクス列のGPIOをドーマントウェイクに設定する。
- *        行をLOW出力に固定し、列のLOWエッジで復帰する経路を作る。
- */
-static void _matrix_enable_dormant_wakeup(void) {
-  // 行をLOW出力に固定し、押下時に列がLOWへ落ちる経路を作る。
-  for (int row = 0; row < ROWS; row++) {
-    uint8_t row_pin = rows_pins[row];
-    gpio_set_function(row_pin, GPIO_FUNC_SIO);
-    gpio_disable_pulls(row_pin);
-    gpio_put(row_pin, 0);
-    gpio_set_dir(row_pin, GPIO_OUT);
-  }
+static void _matrix_enable_dormant_wakeup(void);
+static void _matrix_acknowledge_dormant_wakeup(void);
+#endif
 
-  // 列はプルアップ入力にし、LOWエッジでドーマント復帰を有効化する。
-  for (int col = 0; col < COLS; col++) {
-    uint8_t col_pin = cols_pins[col];
-    gpio_set_function(col_pin, GPIO_FUNC_SIO);
-    gpio_set_dir(col_pin, GPIO_IN);
-    gpio_pull_up(col_pin);
-    gpio_set_dormant_irq_enabled(col_pin, GPIO_IRQ_EDGE_FALL, true);
-  }
-}
-
-/**
- * @brief ドーマント復帰後にマトリクス列のGPIO割り込みをクリアする。
- */
-static void _matrix_acknowledge_dormant_wakeup(void) {
-  for (int col = 0; col < COLS; col++) {
-    uint8_t col_pin = cols_pins[col];
-    gpio_acknowledge_irq(col_pin, GPIO_IRQ_EDGE_FALL);
-    gpio_set_dormant_irq_enabled(col_pin, GPIO_IRQ_EDGE_FALL, false);
-  }
-}
-
+#if PICO_RP2040
 /**
  * @brief DORMANTを使用してディープスリープに入る。
  */
@@ -179,6 +126,68 @@ void sleep_enter_deep(void) {
   // 電源断が実行されるまで待機する。GPIO割り込みで復帰すると電源再起動と同じ状態になる。
   while (true) {
     __wfi();
+  }
+}
+#endif
+
+/**
+ * @brief ディープスリープに入る前の準備を行う。
+ */
+static void _prepare_deep_sleep(void) {
+  // 割り込みを無効化
+  disable_interrupts();
+
+  // LEDを消灯
+  led_put_rgb(0, 0, 0);
+
+  // BLEを無効化
+#if PWMK_ENABLE_BLE
+  ble_power_set(false);
+  gpio_put(CYW43_PIN_WL_REG_ON, false);
+#endif
+
+  // USBを無効化
+#if PWMK_ENABLE_USB
+  usb_hid_deinit();
+#endif
+
+  // stdio をフラッシュ
+  stdio_flush();
+}
+
+#if PICO_RP2040
+/**
+ * @brief マトリクス列のGPIOをドーマントウェイクに設定する。
+ *        行をLOW出力に固定し、列のLOWエッジで復帰する経路を作る。
+ */
+static void _matrix_enable_dormant_wakeup(void) {
+  // 行をLOW出力に固定し、押下時に列がLOWへ落ちる経路を作る。
+  for (int row = 0; row < ROWS; row++) {
+    uint8_t row_pin = rows_pins[row];
+    gpio_set_function(row_pin, GPIO_FUNC_SIO);
+    gpio_disable_pulls(row_pin);
+    gpio_put(row_pin, 0);
+    gpio_set_dir(row_pin, GPIO_OUT);
+  }
+
+  // 列はプルアップ入力にし、LOWエッジでドーマント復帰を有効化する。
+  for (int col = 0; col < COLS; col++) {
+    uint8_t col_pin = cols_pins[col];
+    gpio_set_function(col_pin, GPIO_FUNC_SIO);
+    gpio_set_dir(col_pin, GPIO_IN);
+    gpio_pull_up(col_pin);
+    gpio_set_dormant_irq_enabled(col_pin, GPIO_IRQ_EDGE_FALL, true);
+  }
+}
+
+/**
+ * @brief ドーマント復帰後にマトリクス列のGPIO割り込みをクリアする。
+ */
+static void _matrix_acknowledge_dormant_wakeup(void) {
+  for (int col = 0; col < COLS; col++) {
+    uint8_t col_pin = cols_pins[col];
+    gpio_acknowledge_irq(col_pin, GPIO_IRQ_EDGE_FALL);
+    gpio_set_dormant_irq_enabled(col_pin, GPIO_IRQ_EDGE_FALL, false);
   }
 }
 #endif

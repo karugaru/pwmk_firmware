@@ -29,6 +29,8 @@
 
 #if PWMK_ENABLE_BLE
 static async_at_time_worker_t pwmk_worker;
+static void _pwmk_worker_process(async_context_t *context,
+                                 async_at_time_worker_t *worker);
 #endif
 static absolute_time_t last_activity_time;
 static bool requested_deep_sleep;
