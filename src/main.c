@@ -13,7 +13,6 @@
 #include "led/led.h"
 #include "peripheral/peripheral.h"
 #include "profile/board.h"
-#include "profile/keymap.h"
 #include "settings/settings.h"
 #include "state/state.h"
 #include "usb/usb_hid.h"
@@ -156,7 +155,7 @@ int main() {
       .mouse_move_delta = MOUSE_MOVE_DELTA,
       .mouse_wheel_delta = MOUSE_WHEEL_DELTA,
       .platform_callback = event_platform_process,
-      .keymap_get_callback = keymap_get,
+      .keymap_get_callback = settings_get_keycode,
   };
   event_init(event_settings);
 

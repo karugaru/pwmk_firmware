@@ -1,7 +1,5 @@
 #include "persistence/persistence_flash.h"
 #include "persistence/persistence_format.h"
-#include "profile/keymap.h"
-#include "profile/persistence_identity.h"
 #include <hardware/flash.h>
 #include <hardware/regs/addressmap.h>
 #include <pico/binary_info.h>
@@ -55,17 +53,6 @@
 #define PWMK_MARKER_OFFSET 0u
 // シリアル番号のオフセット。
 #define PWMK_SERIAL_OFFSET (PWMK_MARKER_OFFSET + PWMK_PERSISTENCE_MARKER_SIZE)
-// 保存進捗のオフセット
-#define PWMK_PROGRESS_OFFSET PWMK_ALIGN_UP(PWMK_HEADER_SIZE, FLASH_PAGE_SIZE)
-// 構築済みデータのオフセット
-#define PWMK_BUILT_DATA_OFFSET                                                 \
-  PWMK_ALIGN_UP(PWMK_PROGRESS_OFFSET + PWMK_PROGRESS_SIZE, FLASH_PAGE_SIZE)
-#define PWMK_BUILT_DATA_SIZE PWMK_KEYMAP_DATA_SIZE
-// 書き込みログデータのオフセット
-#define PWMK_LOG_DATA_OFFSET                                                   \
-  PWMK_ALIGN_UP(PWMK_BUILT_DATA_OFFSET + PWMK_BUILT_DATA_SIZE, FLASH_PAGE_SIZE)
-#define PWMK_LOG_DATA_SIZE (PWMK_PERSISTENCE_SIZE - PWMK_LOG_DATA_OFFSET)
-
 // 読み込みに使用するフラッシュの基準アドレス
 #if PICO_RP2040
 #define PWMK_FLASH_READ_BASE XIP_NOCACHE_NOALLOC_BASE
@@ -92,25 +79,6 @@ _Static_assert(PWMK_PERSISTENCE_START % FLASH_SECTOR_SIZE == 0u,
 _Static_assert(PWMK_SERIAL_OFFSET + PWMK_FIRMWARE_SERIAL_SIZE <=
                    PWMK_HEADER_SIZE,
                "PWMK serial does not fit in header");
-// 保存進捗のオフセット計算に誤りがある
-_Static_assert(PWMK_PROGRESS_OFFSET % FLASH_PAGE_SIZE == 0u,
-               "PWMK progress must be page aligned");
-// 構築済みデータのオフセット計算に誤りがある
-_Static_assert(PWMK_BUILT_DATA_OFFSET % FLASH_PAGE_SIZE == 0u,
-               "PWMK built data must be page aligned");
-// 書き込みログデータのオフセット計算に誤りがある
-_Static_assert(PWMK_LOG_DATA_OFFSET % FLASH_PAGE_SIZE == 0u,
-               "PWMK log data must be page aligned");
-// 構築済みデータ領域のサイズ計算に誤りがある
-_Static_assert(PWMK_BUILT_DATA_SIZE <=
-                   PWMK_PERSISTENCE_SIZE - PWMK_BUILT_DATA_OFFSET,
-               "PWMK built data does not fit in persistence storage");
-// 書き込みログ領域サイズが小さすぎる
-_Static_assert(PWMK_LOG_DATA_SIZE >= PWMK_FIXED_LOG_RECORD_SIZE,
-               "PWMK log does not fit a fixed record");
-// 書き込みログ領域サイズが小さすぎる
-_Static_assert(PWMK_LOG_DATA_SIZE >= PWMK_VARIABLE_LOG_HEADER_SIZE + 1u,
-               "PWMK log does not fit a variable record");
 // 書き込みログ1つの大きさがページ境界をまたぐ
 _Static_assert(PWMK_FIXED_LOG_RECORD_SIZE <= FLASH_PAGE_SIZE,
                "PWMK fixed log record exceeds a flash page");
@@ -126,14 +94,8 @@ bi_decl(bi_block_device(BINARY_INFO_MAKE_TAG('P', 'W'), "PWMK firmware", 0u,
                         PWMK_PERSISTENCE_START, NULL,
                         BINARY_INFO_BLOCK_DEV_FLAG_READ));
 
-const persistence_flash_layout_t persistence_flash_layout = {
-    .marker_offset = PWMK_MARKER_OFFSET,
-    .serial_offset = PWMK_SERIAL_OFFSET,
-    .progress_offset = PWMK_PROGRESS_OFFSET,
-    .built_data_offset = PWMK_BUILT_DATA_OFFSET,
-    .log_data_offset = PWMK_LOG_DATA_OFFSET,
-    .log_data_size = PWMK_LOG_DATA_SIZE,
-};
+persistence_flash_layout_t persistence_flash_layout;
+static bool persistence_flash_ready;
 
 // フラッシュ書き込み操作のパラメータを表す構造体
 typedef struct {
@@ -169,15 +131,53 @@ static void __not_in_flash_func(_persistence_flash_operation)(void *parameter) {
  * @return 有効な範囲の場合はtrue、無効な範囲の場合はfalse
  */
 static bool _persistence_flash_range_is_valid(size_t offset, size_t size) {
-  return offset <= PWMK_PERSISTENCE_SIZE &&
+  return persistence_flash_ready && offset <= PWMK_PERSISTENCE_SIZE &&
          size <= PWMK_PERSISTENCE_SIZE - offset;
 }
 
 /**
  * @brief フラッシュの初期化を行う
+ * @param image_size 保存イメージのサイズ
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
-bool persistence_flash_init(void) { return true; }
+bool persistence_flash_init(size_t image_size) {
+  // フラッシュのレイアウトを計算する
+
+  // 不変のレイアウト部分を初期化する
+  persistence_flash_layout_t layout = {
+      .marker_offset = PWMK_MARKER_OFFSET,
+      .serial_offset = PWMK_SERIAL_OFFSET,
+      .progress_offset = PWMK_ALIGN_UP(PWMK_HEADER_SIZE, FLASH_PAGE_SIZE),
+  };
+
+  // 構築済みデータのオフセットを計算する
+  const size_t built_data_offset = PWMK_ALIGN_UP(
+      layout.progress_offset + PWMK_PROGRESS_SIZE, FLASH_PAGE_SIZE);
+  if (image_size == 0u || built_data_offset > PWMK_PERSISTENCE_SIZE ||
+      image_size > PWMK_PERSISTENCE_SIZE - built_data_offset) {
+    persistence_flash_ready = false;
+    return false;
+  }
+  layout.built_data_offset = built_data_offset;
+
+  // ログデータのオフセットとサイズを計算する
+  layout.log_data_offset =
+      PWMK_ALIGN_UP(built_data_offset + image_size, FLASH_PAGE_SIZE);
+  if (layout.log_data_offset > PWMK_PERSISTENCE_SIZE) {
+    persistence_flash_ready = false;
+    return false;
+  }
+  layout.log_data_size = PWMK_PERSISTENCE_SIZE - layout.log_data_offset;
+  if (layout.log_data_size < PWMK_FIXED_LOG_RECORD_SIZE ||
+      layout.log_data_size < PWMK_VARIABLE_LOG_HEADER_SIZE + 1u) {
+    persistence_flash_ready = false;
+    return false;
+  }
+
+  persistence_flash_layout = layout;
+  persistence_flash_ready = true;
+  return true;
+}
 
 /**
  * @brief フラッシュからデータを読み込む
@@ -313,6 +313,10 @@ bool persistence_flash_program(size_t offset, const uint8_t *data,
  * @return 成功した場合はtrue、失敗した場合はfalse
  */
 bool persistence_flash_erase_all(void) {
+  if (!persistence_flash_ready) {
+    return false;
+  }
+
   persistence_write_param_t write_param = {
       .erase = true,
       .offset = 0u,

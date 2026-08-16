@@ -59,3 +59,17 @@ target_include_directories(keymap_persistence_test PRIVATE
 )
 
 add_test(NAME keymap_persistence_test COMMAND keymap_persistence_test)
+
+add_executable(settings_test
+    settings_test.c
+    unity.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/settings/settings.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/profile/keymap.c
+)
+
+target_include_directories(settings_test PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/../src
+)
+
+add_test(NAME settings_test COMMAND settings_test)

@@ -15,9 +15,9 @@ typedef struct {
   size_t log_data_size;     // ログデータのサイズ
 } persistence_flash_layout_t;
 
-extern const persistence_flash_layout_t persistence_flash_layout;
+extern persistence_flash_layout_t persistence_flash_layout;
 
-bool persistence_flash_init(void);
+bool persistence_flash_init(size_t image_size);
 bool persistence_flash_read(size_t offset, uint8_t *buffer, size_t size);
 bool persistence_flash_get_view(size_t offset, size_t size,
                                 const uint8_t **read_address_out);

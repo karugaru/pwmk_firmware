@@ -407,7 +407,8 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
       break;
     }
 
-    if (!settings_set_keycode(request[1], request[2], request[3], internal)) {
+    if (settings_set_keycode(request[1], request[2], request[3], internal) !=
+        SETTINGS_UPDATE_PERSISTED) {
       break;
     }
 
@@ -417,7 +418,8 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x06:
     // Dynamic Keymap Reset
-    if (unlocked && settings_reset_keymap()) {
+    if (unlocked &&
+        settings_reset(SETTINGS_ID_KEYMAP) == SETTINGS_UPDATE_PERSISTED) {
       response[0] = 0;
     } else {
       response[0] = 1;

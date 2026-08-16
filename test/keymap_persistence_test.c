@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "profile/keymap.h"
 #include "unity.h"
 
@@ -10,60 +8,34 @@ const int8_t layout[ROWS * COLS][2] = {
     {-1, -1},
 };
 
-void setUp(void) { keymap_init(); }
+static icode_t dynamic_keymap[KEYMAP_ENTRY_COUNT];
+
+void setUp(void) {
+  keymap_init();
+  keymap_reset(dynamic_keymap, KEYMAP_ENTRY_COUNT);
+}
 
 void tearDown(void) {}
 
-static void test_keymap_exports_pwmk_little_endian_data(void) {
-  uint8_t data[PWMK_KEYMAP_DATA_SIZE];
-  const uint8_t expected[] = {
-      0x04, 0x00, 0x00, 0x00, 0x05, 0x02, 0x00, 0x00,
-      0x0C, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-  };
-
-  TEST_ASSERT_TRUE(keymap_export_pwmk(data, sizeof(data)));
-  TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, data, sizeof(expected));
+static void test_keymap_resets_caller_owned_state(void) {
+  TEST_ASSERT_EQUAL_UINT32(IKC_A, keymap_get(dynamic_keymap, 0, 0, 0));
+  TEST_ASSERT_EQUAL_UINT32(LEFT_SHIFT(IKC_B),
+                           keymap_get(dynamic_keymap, 0, 0, 1));
+  TEST_ASSERT_EQUAL_UINT32(ICC_VOL_UP, keymap_get(dynamic_keymap, 0, 1, 0));
+  TEST_ASSERT_EQUAL_UINT32(IKC_NOOP, keymap_get(dynamic_keymap, 0, 1, 1));
 }
 
-static void test_keymap_imports_pwmk_data_after_validation(void) {
-  uint8_t data[PWMK_KEYMAP_DATA_SIZE];
-  const uint8_t imported[] = {
-      0x06, 0x00, 0x00, 0x00, 0x07, 0x02, 0x00, 0x00,
-      0x0D, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-  };
-
-  memcpy(data, imported, sizeof(data));
-  TEST_ASSERT_TRUE(keymap_import_pwmk(data, sizeof(data)));
-  TEST_ASSERT_EQUAL_UINT32(IKC_C, keymap_get(0, 0, 0));
-  TEST_ASSERT_EQUAL_UINT32(LEFT_SHIFT(IKC_D), keymap_get(0, 0, 1));
-  TEST_ASSERT_EQUAL_UINT32(ICC_VOL_DOWN, keymap_get(0, 1, 0));
-
-  data[0] = 0x01;
-  TEST_ASSERT_FALSE(keymap_import_pwmk(data, sizeof(data)));
-  TEST_ASSERT_EQUAL_UINT32(IKC_C, keymap_get(0, 0, 0));
-
-  memcpy(data, imported, sizeof(data));
-  data[PWMK_KEYCODE_SIZE * 3] = IKC_A;
-  TEST_ASSERT_FALSE(keymap_import_pwmk(data, sizeof(data)));
-  TEST_ASSERT_EQUAL_UINT32(IKC_C, keymap_get(0, 0, 0));
-}
-
-static void test_keymap_reports_layout_relative_offsets(void) {
-  size_t offset;
-
-  TEST_ASSERT_TRUE(keymap_get_pwmk_offset(0, 0, 0, &offset));
-  TEST_ASSERT_EQUAL_UINT(0, offset);
-  TEST_ASSERT_TRUE(keymap_get_pwmk_offset(0, 0, 1, &offset));
-  TEST_ASSERT_EQUAL_UINT(PWMK_KEYCODE_SIZE, offset);
-  TEST_ASSERT_TRUE(keymap_get_pwmk_offset(0, 1, 0, &offset));
-  TEST_ASSERT_EQUAL_UINT(PWMK_KEYCODE_SIZE * 2, offset);
-  TEST_ASSERT_FALSE(keymap_get_pwmk_offset(0, 1, 1, &offset));
+static void test_keymap_validates_position_and_updates_state(void) {
+  TEST_ASSERT_TRUE(keymap_is_valid_position(0, 0, 0));
+  TEST_ASSERT_FALSE(keymap_is_valid_position(0, 1, 1));
+  TEST_ASSERT_TRUE(keymap_set(dynamic_keymap, 0, 0, 0, IKC_C));
+  TEST_ASSERT_EQUAL_UINT32(IKC_C, keymap_get(dynamic_keymap, 0, 0, 0));
+  TEST_ASSERT_FALSE(keymap_set(dynamic_keymap, 0, 1, 1, IKC_C));
 }
 
 int main(void) {
   UNITY_BEGIN();
-  RUN_TEST(test_keymap_exports_pwmk_little_endian_data);
-  RUN_TEST(test_keymap_imports_pwmk_data_after_validation);
-  RUN_TEST(test_keymap_reports_layout_relative_offsets);
+  RUN_TEST(test_keymap_resets_caller_owned_state);
+  RUN_TEST(test_keymap_validates_position_and_updates_state);
   return UNITY_END();
 }
