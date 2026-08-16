@@ -9,15 +9,7 @@ typedef struct {
 } settings_state_t;
 
 static settings_state_t settings_state;
-static uint8_t settings_image[sizeof(settings_state_t)];
 static bool persistence_unavailable;
-
-/**
- * @brief 設定の状態を永続化イメージにコピーする
- */
-static void _settings_copy_to_image(void) {
-  memcpy(settings_image, &settings_state, sizeof(settings_state));
-}
 
 /**
  * @brief 現在の設定状態を永続化領域に保存する
@@ -28,8 +20,8 @@ static settings_update_result_t _settings_persist_current_state(void) {
     return SETTINGS_UPDATE_RAM_ONLY;
   }
 
-  _settings_copy_to_image();
-  if (persistence_commit(settings_image, sizeof(settings_image))) {
+  if (persistence_commit((const uint8_t *)&settings_state,
+                         sizeof(settings_state))) {
     return SETTINGS_UPDATE_PERSISTED;
   }
 
@@ -46,8 +38,8 @@ static settings_update_result_t _settings_rebuild_current_state(void) {
     return SETTINGS_UPDATE_RAM_ONLY;
   }
 
-  _settings_copy_to_image();
-  if (persistence_rebuild(settings_image, sizeof(settings_image))) {
+  if (persistence_rebuild((const uint8_t *)&settings_state,
+                          sizeof(settings_state))) {
     return SETTINGS_UPDATE_PERSISTED;
   }
 
@@ -81,14 +73,14 @@ void settings_init(void) {
     persistence_unavailable = true;
     return;
   }
-  if (persistence_restore(settings_image, sizeof(settings_image))) {
-    memcpy(&settings_state, settings_image, sizeof(settings_state));
+  if (persistence_restore((uint8_t *)&settings_state, sizeof(settings_state))) {
     return;
   }
 
-  // 復元できない場合は永続化領域を初期値で再構築する
-  _settings_copy_to_image();
-  if (!persistence_rebuild(settings_image, sizeof(settings_image))) {
+  // 復元できない場合は設定を初期値に戻して永続化領域を再構築する
+  keymap_reset(settings_state.dynamic_keymap, KEYMAP_ENTRY_COUNT);
+  if (!persistence_rebuild((const uint8_t *)&settings_state,
+                           sizeof(settings_state))) {
     persistence_unavailable = true;
   }
 }
