@@ -12,9 +12,10 @@
 // 変換失敗することと、変換不可能であることを区別する。
 #define FOR_VIAL_KEYCODE_PWMK_ONLY 0x00
 
+// PWMK内部とVIAL側のキーコードの対応
 typedef struct {
-  icode_t internal;
-  uint16_t vial;
+  icode_t internal; // PWMK内部のキーコード
+  uint16_t vial;    // VIAL側のキーコード
 } code_conversion_t;
 
 enum {
@@ -109,8 +110,8 @@ static const code_conversion_t code_conversion_table[] = {
  * @param keycode_vial 変換後のVIALのキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_internal_base_to_vial(uint8_t keycode_internal,
-                                               uint8_t *keycode_vial) {
+static bool _code_convert_internal_base_to_vial(uint8_t keycode_internal,
+                                                uint8_t *keycode_vial) {
   // 0x00はHID標準ではreserved領域であり、PWMKとVIALはNOOPとして扱う。
   // 0x01から0x03の範囲はHID標準で特殊な扱いになっている。
   if (IKC_NOOP < keycode_internal && keycode_internal < IKC_A) {
@@ -137,8 +138,8 @@ static bool code_convert_internal_base_to_vial(uint8_t keycode_internal,
  * @param keycode_internal 変換後の内部用のキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_vial_base_to_internal(uint8_t keycode_vial,
-                                               icode_t *keycode_internal) {
+static bool _code_convert_vial_base_to_internal(uint8_t keycode_vial,
+                                                icode_t *keycode_internal) {
   // 将来的にはIKC_NOOP+1(0x01)はTRANSPARENTになる
   if (IKC_NOOP < keycode_vial && keycode_vial < IKC_A) {
     return false;
@@ -164,8 +165,8 @@ static bool code_convert_vial_base_to_internal(uint8_t keycode_vial,
  * @param modifiers_vial 変換後のVIALの修飾ビット表現を格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
-                                                    uint8_t *modifiers_vial) {
+static bool _code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
+                                                     uint8_t *modifiers_vial) {
   // VIALは左右の修飾キーを完全に重ねない。
   // 0x10の有無で左右の修飾キーを区別する。
 
@@ -191,7 +192,8 @@ static bool code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
  * @param modifiers_internal 変換後の内部用の修飾ビット表現を格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static uint8_t code_convert_vial_modifiers_to_internal(uint8_t modifiers_vial) {
+static uint8_t
+_code_convert_vial_modifiers_to_internal(uint8_t modifiers_vial) {
   uint8_t modifiers = modifiers_vial & 0x0F;
   return (modifiers_vial & 0x10) != 0 ? modifiers << 4 : modifiers;
 }
@@ -202,8 +204,8 @@ static uint8_t code_convert_vial_modifiers_to_internal(uint8_t modifiers_vial) {
  * @param keycode_vial 変換後のVIALのキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_standard_to_vial(icode_t keycode_internal,
-                                          uint16_t *keycode_vial) {
+static bool _code_convert_standard_to_vial(icode_t keycode_internal,
+                                           uint16_t *keycode_vial) {
   uint32_t keycode = (uint32_t)keycode_internal;
 
   // 上位16ビットが0でない場合は、標準キーコードではないためここでは変換できないとする。
@@ -215,7 +217,7 @@ static bool code_convert_standard_to_vial(icode_t keycode_internal,
   // 変換に失敗する場合は、標準キーコードではないためここでは変換できないとする。
   uint8_t base_internal = (uint8_t)keycode;
   uint8_t base_vial;
-  if (!code_convert_internal_base_to_vial(base_internal, &base_vial)) {
+  if (!_code_convert_internal_base_to_vial(base_internal, &base_vial)) {
     return false;
   }
 
@@ -230,8 +232,8 @@ static bool code_convert_standard_to_vial(icode_t keycode_internal,
   // 修飾キーコードをVIALの修飾キーコードに変換する。
   // 変換に失敗する場合は、標準キーコードではないためここでは変換できないとする。
   uint8_t modifiers_vial;
-  if (!code_convert_internal_modifiers_to_vial(modifiers_internal,
-                                               &modifiers_vial)) {
+  if (!_code_convert_internal_modifiers_to_vial(modifiers_internal,
+                                                &modifiers_vial)) {
     return false;
   }
 
@@ -246,8 +248,8 @@ static bool code_convert_standard_to_vial(icode_t keycode_internal,
  * @param keycode_internal 変換後の内部用のキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_standard_to_internal(uint16_t keycode_vial,
-                                              icode_t *keycode_internal) {
+static bool _code_convert_standard_to_internal(uint16_t keycode_vial,
+                                               icode_t *keycode_internal) {
   uint8_t modifiers_vial = (uint8_t)(keycode_vial >> 8);
   if (modifiers_vial > 0x1F || modifiers_vial == 0x10) {
     return false;
@@ -255,12 +257,12 @@ static bool code_convert_standard_to_internal(uint16_t keycode_vial,
 
   uint8_t base_vial = (uint8_t)keycode_vial;
   icode_t base_internal;
-  if (!code_convert_vial_base_to_internal(base_vial, &base_internal)) {
+  if (!_code_convert_vial_base_to_internal(base_vial, &base_internal)) {
     return false;
   }
 
   *keycode_internal =
-      ((icode_t)code_convert_vial_modifiers_to_internal(modifiers_vial) << 8) |
+      ((icode_t)_code_convert_vial_modifiers_to_internal(modifiers_vial) << 8) |
       base_internal;
   return true;
 }
@@ -271,8 +273,8 @@ static bool code_convert_standard_to_internal(uint16_t keycode_vial,
  * @param keycode_vial 変換後のVIALのキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_mapped_to_vial(icode_t keycode_internal,
-                                        uint16_t *keycode_vial) {
+static bool _code_convert_mapped_to_vial(icode_t keycode_internal,
+                                         uint16_t *keycode_vial) {
   if (keycode_internal == KEYCODE_NOT_FOUND) {
     return false;
   }
@@ -299,8 +301,8 @@ static bool code_convert_mapped_to_vial(icode_t keycode_internal,
  * @param keycode_internal 変換後の内部用のキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_mapped_to_internal(uint16_t keycode_vial,
-                                            icode_t *keycode_internal) {
+static bool _code_convert_mapped_to_internal(uint16_t keycode_vial,
+                                             icode_t *keycode_internal) {
   if (keycode_vial == KEYCODE_NOT_FOUND) {
     return false;
   }
@@ -325,8 +327,8 @@ static bool code_convert_mapped_to_internal(uint16_t keycode_vial,
  * @param keycode_vial 変換後のVIALのキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_user_to_vial(icode_t keycode_internal,
-                                      uint16_t *keycode_vial) {
+static bool _code_convert_user_to_vial(icode_t keycode_internal,
+                                       uint16_t *keycode_vial) {
   if (keycode_internal < IUC_RANGE_MIN || keycode_internal > IUC_RANGE_MAX) {
     return false;
   }
@@ -347,8 +349,8 @@ static bool code_convert_user_to_vial(icode_t keycode_internal,
  * @param keycode_internal 変換後の内部用のキーコードを格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
-static bool code_convert_user_to_internal(uint16_t keycode_vial,
-                                          icode_t *keycode_internal) {
+static bool _code_convert_user_to_internal(uint16_t keycode_vial,
+                                           icode_t *keycode_internal) {
   if (keycode_vial < VIAL_KEYCODE_USER_0 ||
       keycode_vial > VIAL_KEYCODE_USER_31) {
     return false;
@@ -366,13 +368,13 @@ static bool code_convert_user_to_internal(uint16_t keycode_vial,
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
 bool code_convert_to_vial(icode_t keycode_internal, uint16_t *keycode_vial) {
-  if (code_convert_mapped_to_vial(keycode_internal, keycode_vial)) {
+  if (_code_convert_mapped_to_vial(keycode_internal, keycode_vial)) {
     return true;
   }
-  if (code_convert_user_to_vial(keycode_internal, keycode_vial)) {
+  if (_code_convert_user_to_vial(keycode_internal, keycode_vial)) {
     return true;
   }
-  if (code_convert_standard_to_vial(keycode_internal, keycode_vial)) {
+  if (_code_convert_standard_to_vial(keycode_internal, keycode_vial)) {
     return true;
   }
   return false;
@@ -386,13 +388,13 @@ bool code_convert_to_vial(icode_t keycode_internal, uint16_t *keycode_vial) {
  */
 bool code_convert_to_internal(uint16_t keycode_vial,
                               icode_t *keycode_internal) {
-  if (code_convert_mapped_to_internal(keycode_vial, keycode_internal)) {
+  if (_code_convert_mapped_to_internal(keycode_vial, keycode_internal)) {
     return true;
   }
-  if (code_convert_user_to_internal(keycode_vial, keycode_internal)) {
+  if (_code_convert_user_to_internal(keycode_vial, keycode_internal)) {
     return true;
   }
-  if (code_convert_standard_to_internal(keycode_vial, keycode_internal)) {
+  if (_code_convert_standard_to_internal(keycode_vial, keycode_internal)) {
     return true;
   }
   return false;

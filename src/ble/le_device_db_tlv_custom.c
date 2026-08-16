@@ -22,49 +22,34 @@
  * @brief 保留中のスロット操作種別。
  */
 typedef enum {
-  /** 操作なし。 */
-  LE_DEVICE_DB_PENDING_NONE = 0,
-  /** 別スロットへの切替を保留中。 */
-  LE_DEVICE_DB_PENDING_SELECT,
-  /** 選択中スロットの削除を保留中。 */
-  LE_DEVICE_DB_PENDING_CLEAR,
+  LE_DEVICE_DB_PENDING_NONE = 0, // 操作なし
+  LE_DEVICE_DB_PENDING_SELECT,   // 別スロットへの切替を保留中
+  LE_DEVICE_DB_PENDING_CLEAR,    // 選択中スロットの削除を保留中
 } le_device_db_pending_action_t;
 
 /**
  * @brief 1スロット分の永続化ボンド情報。
  */
 typedef struct {
-  /** 登録順を表すシーケンス番号。 */
-  uint32_t seq_nr;
-  /** 相手機器のBluetoothアドレス種別。 */
-  int32_t addr_type;
-  /** 相手機器のBluetoothアドレス。 */
-  bd_addr_t addr;
-  /** 相手機器のIRK。 */
-  sm_key_t irk;
-  /** 再暗号化に使うLTK。 */
-  sm_key_t ltk;
-  /** LTKに対応するEDIV。 */
-  uint16_t ediv;
-  /** LTKに対応するRAND。 */
-  uint8_t rand[8];
-  /** 鍵長。 */
-  uint8_t key_size;
-  /** 認証済みかどうか。 */
-  uint8_t authenticated;
-  /** 認可済みかどうか。 */
-  uint8_t authorized;
-  /** Secure Connectionsで確立した鍵かどうか。 */
-  uint8_t secure_connection;
+  uint32_t seq_nr;           // 登録順を表すシーケンス番号
+  int32_t addr_type;         // 相手機器のBluetoothアドレス種別
+  bd_addr_t addr;            // 相手機器のBluetoothアドレス
+  sm_key_t irk;              // 相手機器のIRK
+  sm_key_t ltk;              // 再暗号化に使うLTK
+  uint16_t ediv;             // LTKに対応するEDIV
+  uint8_t rand[8];           // LTKに対応するRAND
+  uint8_t key_size;          // 鍵長
+  uint8_t authenticated;     // 認証済みかどうか
+  uint8_t authorized;        // 認可済みかどうか
+  uint8_t secure_connection; // Secure Connectionsで確立した鍵かどうか
 } le_device_db_persisted_entry_t;
 
 /**
  * @brief 1スロット分のキャッシュ状態。
  */
 typedef struct {
-  /** このスロットに有効なボンド情報があるかどうか。 */
-  uint8_t used;
-  /** スロットに紐づく永続化ボンド情報のキャッシュ。 */
+  uint8_t used; // このスロットに有効なボンド情報があるかどうか
+  // スロットに紐づく永続化ボンド情報のキャッシュ
   le_device_db_persisted_entry_t data;
 } le_device_db_slot_t;
 
@@ -72,15 +57,11 @@ typedef struct {
  * @brief LE Device DB 実装全体のランタイム状態。
  */
 typedef struct {
-  /** 使用中のTLVバックエンド実装。 */
-  const btstack_tlv_t *tlv_impl;
-  /** TLVバックエンドへ渡すコンテキスト。 */
-  void *tlv_context;
-  /** 現在pwmkが選択しているスロット番号。 */
-  int selected_slot;
-  /** 次回適用予定のスロット番号。 */
-  int pending_slot;
-  /** 次回適用予定のスロット操作種別。 */
+  const btstack_tlv_t *tlv_impl; // 使用中のTLVバックエンド実装
+  void *tlv_context;             // TLVバックエンドへ渡すコンテキスト
+  int selected_slot;             // 現在pwmkが選択しているスロット番号
+  int pending_slot;              // 次回適用予定のスロット番号
+  // 次回適用予定のスロット操作種別
   le_device_db_pending_action_t pending_action;
   /** 各スロットのAdvertisingアドレス世代番号。 */
   uint8_t address_generation[LE_DEVICE_DB_SLOT_COUNT];
@@ -105,7 +86,7 @@ static le_device_db_state_t le_device_db_state = {
  * @param index タグ末尾に入れるインデックス値。
  * @return 生成したタグ値。
  */
-static uint32_t le_device_db_tag(char a, char b, char c, uint8_t index) {
+static uint32_t _le_device_db_tag(char a, char b, char c, uint8_t index) {
   return ((uint32_t)(uint8_t)a << 24) | ((uint32_t)(uint8_t)b << 16) |
          ((uint32_t)(uint8_t)c << 8) | index;
 }
@@ -115,23 +96,23 @@ static uint32_t le_device_db_tag(char a, char b, char c, uint8_t index) {
  * @param slot 対象スロット番号。
  * @return ボンド情報用のTLVタグ。
  */
-static uint32_t le_device_db_entry_tag(int slot) {
-  return le_device_db_tag('B', 'S', 'D', (uint8_t)slot);
+static uint32_t _le_device_db_entry_tag(int slot) {
+  return _le_device_db_tag('B', 'S', 'D', (uint8_t)slot);
 }
 
 /**
  * @brief 現在選択中スロットを保存するTLVタグを返す。
  * @return selected_slot 保存用のTLVタグ。
  */
-static uint32_t le_device_db_selected_slot_tag(void) {
-  return le_device_db_tag('B', 'S', 'L', 0);
+static uint32_t _le_device_db_selected_slot_tag(void) {
+  return _le_device_db_tag('B', 'S', 'L', 0);
 }
 
 /**
  * @brief 現在選択中スロットを永続化する設定かを返す。
  * @return 永続化する場合は true。
  */
-static bool le_device_db_should_persist_selected_slot(void) {
+static bool _le_device_db_should_persist_selected_slot(void) {
 #if BLE_PERSIST_SELECTED_SLOT
   return true;
 #else
@@ -143,8 +124,8 @@ static bool le_device_db_should_persist_selected_slot(void) {
  * @brief スロットごとのAdvertisingアドレス世代を保存するTLVタグを返す。
  * @return address_generation 保存用のTLVタグ。
  */
-static uint32_t le_device_db_generation_tag(void) {
-  return le_device_db_tag('B', 'S', 'G', 0);
+static uint32_t _le_device_db_generation_tag(void) {
+  return _le_device_db_tag('B', 'S', 'G', 0);
 }
 
 /**
@@ -152,7 +133,7 @@ static uint32_t le_device_db_generation_tag(void) {
  * @param index 検査対象スロット番号。
  * @return 有効な場合は true。
  */
-static bool le_device_db_slot_valid(int index) {
+static bool _le_device_db_slot_valid(int index) {
   return (index >= 0) && (index < LE_DEVICE_DB_SLOT_COUNT);
 }
 
@@ -160,7 +141,7 @@ static bool le_device_db_slot_valid(int index) {
  * @brief TLVバックエンドが利用可能な状態かを判定する。
  * @return 利用可能な場合は true。
  */
-static bool le_device_db_tlv_ready(void) {
+static bool _le_device_db_tlv_ready(void) {
   return (le_device_db_state.tlv_impl != 0) &&
          (le_device_db_state.tlv_impl->get_tag != 0) &&
          (le_device_db_state.tlv_impl->store_tag != 0) &&
@@ -171,7 +152,7 @@ static bool le_device_db_tlv_ready(void) {
  * @brief 永続化エントリを未使用状態として初期化する。
  * @param entry 初期化対象エントリ。
  */
-static void le_device_db_zero_entry(le_device_db_persisted_entry_t *entry) {
+static void _le_device_db_zero_entry(le_device_db_persisted_entry_t *entry) {
   // 未使用エントリと判別できるよう、全体をゼロ化した後に addr_type を unknown
   // にする。
   memset(entry, 0, sizeof(*entry));
@@ -182,13 +163,13 @@ static void le_device_db_zero_entry(le_device_db_persisted_entry_t *entry) {
  * @brief 指定スロットのキャッシュ状態を未使用に戻す。
  * @param slot 対象スロット番号。
  */
-static void le_device_db_clear_slot_state(int slot) {
-  if (!le_device_db_slot_valid(slot)) {
+static void _le_device_db_clear_slot_state(int slot) {
+  if (!_le_device_db_slot_valid(slot)) {
     return;
   }
   // 永続領域ではなくメモリ上のキャッシュだけを消す。
   le_device_db_state.slots[slot].used = 0;
-  le_device_db_zero_entry(&le_device_db_state.slots[slot].data);
+  _le_device_db_zero_entry(&le_device_db_state.slots[slot].data);
 }
 
 /**
@@ -197,19 +178,19 @@ static void le_device_db_clear_slot_state(int slot) {
  * @param entry 読み出し先。
  * @return 読み出し成功時は true。
  */
-static bool le_device_db_read_entry(int slot,
-                                    le_device_db_persisted_entry_t *entry) {
+static bool _le_device_db_read_entry(int slot,
+                                     le_device_db_persisted_entry_t *entry) {
   int size;
 
-  if (!le_device_db_slot_valid(slot) || (entry == 0) ||
-      !le_device_db_tlv_ready()) {
+  if (!_le_device_db_slot_valid(slot) || (entry == 0) ||
+      !_le_device_db_tlv_ready()) {
     return false;
   }
 
   // 読み出し失敗時にゴミが残らないよう、先に既定値で初期化しておく。
-  le_device_db_zero_entry(entry);
+  _le_device_db_zero_entry(entry);
   size = le_device_db_state.tlv_impl->get_tag(le_device_db_state.tlv_context,
-                                              le_device_db_entry_tag(slot),
+                                              _le_device_db_entry_tag(slot),
                                               (uint8_t *)entry, sizeof(*entry));
   if (size != (int)sizeof(*entry)) {
     return false;
@@ -224,17 +205,17 @@ static bool le_device_db_read_entry(int slot,
  * @return 保存成功時は true。
  */
 static bool
-le_device_db_write_entry(int slot,
-                         const le_device_db_persisted_entry_t *entry) {
+_le_device_db_write_entry(int slot,
+                          const le_device_db_persisted_entry_t *entry) {
   int status;
 
-  if (!le_device_db_slot_valid(slot) || (entry == 0) ||
-      !le_device_db_tlv_ready()) {
+  if (!_le_device_db_slot_valid(slot) || (entry == 0) ||
+      !_le_device_db_tlv_ready()) {
     return false;
   }
 
   status = le_device_db_state.tlv_impl->store_tag(
-      le_device_db_state.tlv_context, le_device_db_entry_tag(slot),
+      le_device_db_state.tlv_context, _le_device_db_entry_tag(slot),
       (const uint8_t *)entry, sizeof(*entry));
   if (status != 0) {
     return false;
@@ -250,82 +231,82 @@ le_device_db_write_entry(int slot,
  * @brief 指定スロットのボンド情報を削除する。
  * @param slot 対象スロット番号。
  */
-static void le_device_db_delete_entry(int slot) {
-  if (!le_device_db_slot_valid(slot)) {
+static void _le_device_db_delete_entry(int slot) {
+  if (!_le_device_db_slot_valid(slot)) {
     return;
   }
 
-  if (le_device_db_tlv_ready()) {
+  if (_le_device_db_tlv_ready()) {
     // 永続領域から削除できる場合は先にTLVを削除する。
     le_device_db_state.tlv_impl->delete_tag(le_device_db_state.tlv_context,
-                                            le_device_db_entry_tag(slot));
+                                            _le_device_db_entry_tag(slot));
   }
   // TLV削除可否にかかわらず、キャッシュは未使用状態へ揃える。
-  le_device_db_clear_slot_state(slot);
+  _le_device_db_clear_slot_state(slot);
 }
 
 /**
  * @brief 現在の selected_slot をTLVへ保存する。
  * @return 保存成功時は true。
  */
-static bool le_device_db_save_selected_slot(void) {
+static bool _le_device_db_save_selected_slot(void) {
   uint8_t value;
 
-  if (!le_device_db_should_persist_selected_slot()) {
+  if (!_le_device_db_should_persist_selected_slot()) {
     return true;
   }
 
-  if (!le_device_db_tlv_ready()) {
+  if (!_le_device_db_tlv_ready()) {
     return false;
   }
 
   value = (uint8_t)le_device_db_state.selected_slot;
   return le_device_db_state.tlv_impl->store_tag(
-             le_device_db_state.tlv_context, le_device_db_selected_slot_tag(),
+             le_device_db_state.tlv_context, _le_device_db_selected_slot_tag(),
              &value, sizeof(value)) == 0;
 }
 
 /**
  * @brief 現在選択中スロットをTLVから読み込む。
  */
-static void le_device_db_load_selected_slot(void) {
+static void _le_device_db_load_selected_slot(void) {
   uint8_t value = 0;
   int size;
 
   // TLVに値がない場合も slot 0 を既定値として扱う。
   le_device_db_state.selected_slot = 0;
-  if (!le_device_db_should_persist_selected_slot()) {
+  if (!_le_device_db_should_persist_selected_slot()) {
     return;
   }
 
-  if (!le_device_db_tlv_ready()) {
+  if (!_le_device_db_tlv_ready()) {
     return;
   }
 
   size = le_device_db_state.tlv_impl->get_tag(le_device_db_state.tlv_context,
-                                              le_device_db_selected_slot_tag(),
+                                              _le_device_db_selected_slot_tag(),
                                               &value, sizeof(value));
-  if ((size == (int)sizeof(value)) && le_device_db_slot_valid((int)value)) {
+  if ((size == (int)sizeof(value)) && _le_device_db_slot_valid((int)value)) {
     le_device_db_state.selected_slot = (int)value;
     return;
   }
 
   le_device_db_state.selected_slot = 0;
   // 無効値しかない場合は既定値を書き戻し、以後の動作を安定させる。
-  (void)le_device_db_save_selected_slot();
+  (void)_le_device_db_save_selected_slot();
 }
 
 /**
  * @brief スロットごとのAdvertisingアドレス世代をTLVへ保存する。
  * @return 保存成功時は true。
  */
-static bool le_device_db_save_address_generations(void) {
-  if (!le_device_db_tlv_ready()) {
+static bool _le_device_db_save_address_generations(void) {
+  if (!_le_device_db_tlv_ready()) {
     return false;
   }
 
   return le_device_db_state.tlv_impl->store_tag(
-             le_device_db_state.tlv_context, le_device_db_generation_tag(),
+             le_device_db_state.tlv_context, _le_device_db_generation_tag(),
              le_device_db_state.address_generation,
              sizeof(le_device_db_state.address_generation)) == 0;
 }
@@ -333,18 +314,18 @@ static bool le_device_db_save_address_generations(void) {
 /**
  * @brief スロットごとのAdvertisingアドレス世代をTLVから読み込む。
  */
-static void le_device_db_load_address_generations(void) {
+static void _le_device_db_load_address_generations(void) {
   int size;
 
   // 読み出し失敗時に古い値を残さないよう、先にゼロ初期化する。
   memset(le_device_db_state.address_generation, 0,
          sizeof(le_device_db_state.address_generation));
-  if (!le_device_db_tlv_ready()) {
+  if (!_le_device_db_tlv_ready()) {
     return;
   }
 
   size = le_device_db_state.tlv_impl->get_tag(
-      le_device_db_state.tlv_context, le_device_db_generation_tag(),
+      le_device_db_state.tlv_context, _le_device_db_generation_tag(),
       le_device_db_state.address_generation,
       sizeof(le_device_db_state.address_generation));
   if (size == (int)sizeof(le_device_db_state.address_generation)) {
@@ -354,19 +335,19 @@ static void le_device_db_load_address_generations(void) {
   memset(le_device_db_state.address_generation, 0,
          sizeof(le_device_db_state.address_generation));
   // 未保存時は全スロット世代 0 を永続化して扱いを明示する。
-  (void)le_device_db_save_address_generations();
+  (void)_le_device_db_save_address_generations();
 }
 
 /**
  * @brief 全スロットのボンド情報をTLVから読み込み、キャッシュを再構築する。
  */
-static void le_device_db_load_slots(void) {
+static void _le_device_db_load_slots(void) {
   int slot;
 
   for (slot = 0; slot < LE_DEVICE_DB_SLOT_COUNT; slot++) {
     // 毎回キャッシュを消してからTLVの実内容で復元する。
-    le_device_db_clear_slot_state(slot);
-    if (le_device_db_read_entry(slot, &le_device_db_state.slots[slot].data)) {
+    _le_device_db_clear_slot_state(slot);
+    if (_le_device_db_read_entry(slot, &le_device_db_state.slots[slot].data)) {
       le_device_db_state.slots[slot].used = 1;
     }
   }
@@ -376,7 +357,7 @@ static void le_device_db_load_slots(void) {
  * @brief 次に採番するシーケンス番号を求める。
  * @return 次に使う seq_nr。
  */
-static uint32_t le_device_db_next_seq_nr(void) {
+static uint32_t _le_device_db_next_seq_nr(void) {
   int slot;
   uint32_t max_seq = 0;
 
@@ -396,8 +377,8 @@ static uint32_t le_device_db_next_seq_nr(void) {
  * @param index 判定対象インデックス。
  * @return 選択中スロットに一致する場合は true。
  */
-static bool le_device_db_visible_index(int index) {
-  return le_device_db_slot_valid(index) &&
+static bool _le_device_db_visible_index(int index) {
+  return _le_device_db_slot_valid(index) &&
          (index == le_device_db_state.selected_slot);
 }
 
@@ -405,11 +386,11 @@ static bool le_device_db_visible_index(int index) {
  * @brief 現在選択中スロットのボンド情報を即時削除し、世代番号を進める。
  * @return 実行できた場合は true。
  */
-static bool le_device_db_clear_selected_slot_now(void) {
+static bool _le_device_db_clear_selected_slot_now(void) {
   int slot = le_device_db_state.selected_slot;
   le_device_db_persisted_entry_t *entry;
 
-  if (!le_device_db_slot_valid(slot)) {
+  if (!_le_device_db_slot_valid(slot)) {
     return false;
   }
 
@@ -420,18 +401,18 @@ static bool le_device_db_clear_selected_slot_now(void) {
       gap_delete_bonding((bd_addr_type_t)entry->addr_type, entry->addr);
     } else {
       // アドレス種別不明のエントリはローカル保存だけ削除する。
-      le_device_db_delete_entry(slot);
+      _le_device_db_delete_entry(slot);
     }
 
     if (entry->addr_type != BD_ADDR_TYPE_UNKNOWN) {
       // bonding削除後に、この実装のTLVエントリも必ず消す。
-      le_device_db_delete_entry(slot);
+      _le_device_db_delete_entry(slot);
     }
   }
 
   // 次回Advertisingで旧ホストに同一個体と見なされないよう世代を進める。
   le_device_db_state.address_generation[slot]++;
-  (void)le_device_db_save_address_generations();
+  (void)_le_device_db_save_address_generations();
   return true;
 }
 
@@ -456,7 +437,7 @@ void le_device_db_tlv_configure(const btstack_tlv_t *btstack_tlv_impl,
  * @details 想定呼び出し元は pwmk。
  */
 bool le_device_db_tlv_schedule_select_slot(int index) {
-  if (!le_device_db_slot_valid(index)) {
+  if (!_le_device_db_slot_valid(index)) {
     return false;
   }
 
@@ -472,7 +453,7 @@ bool le_device_db_tlv_schedule_select_slot(int index) {
  * @details 想定呼び出し元は pwmk。
  */
 bool le_device_db_tlv_schedule_clear_selected_slot(void) {
-  if (!le_device_db_slot_valid(le_device_db_state.selected_slot)) {
+  if (!_le_device_db_slot_valid(le_device_db_state.selected_slot)) {
     return false;
   }
 
@@ -494,19 +475,19 @@ bool le_device_db_tlv_apply_pending_slot_action(void) {
   case LE_DEVICE_DB_PENDING_NONE:
     return false;
   case LE_DEVICE_DB_PENDING_SELECT:
-    if (!le_device_db_slot_valid(le_device_db_state.pending_slot)) {
+    if (!_le_device_db_slot_valid(le_device_db_state.pending_slot)) {
       return false;
     }
     // 切替先を確定し、永続領域にも反映する。
     le_device_db_state.selected_slot = le_device_db_state.pending_slot;
-    (void)le_device_db_save_selected_slot();
+    (void)_le_device_db_save_selected_slot();
     changed = true;
     break;
   case LE_DEVICE_DB_PENDING_CLEAR:
-    if (!le_device_db_slot_valid(le_device_db_state.selected_slot)) {
+    if (!_le_device_db_slot_valid(le_device_db_state.selected_slot)) {
       return false;
     }
-    changed = le_device_db_clear_selected_slot_now();
+    changed = _le_device_db_clear_selected_slot_now();
     break;
   default:
     return false;
@@ -536,7 +517,7 @@ int le_device_db_tlv_get_selected_slot(void) {
  * @details 想定呼び出し元は pwmk。
  */
 uint8_t le_device_db_tlv_get_slot_address_generation(int index) {
-  if (!le_device_db_slot_valid(index)) {
+  if (!_le_device_db_slot_valid(index)) {
     return 0;
   }
   return le_device_db_state.address_generation[index];
@@ -553,10 +534,10 @@ void le_device_db_init(void) {
   le_device_db_state.pending_action = LE_DEVICE_DB_PENDING_NONE;
   le_device_db_state.pending_slot = le_device_db_state.selected_slot;
   for (slot = 0; slot < LE_DEVICE_DB_SLOT_COUNT; slot++) {
-    le_device_db_clear_slot_state(slot);
+    _le_device_db_clear_slot_state(slot);
   }
 
-  if (!le_device_db_tlv_ready()) {
+  if (!_le_device_db_tlv_ready()) {
     // TLV未設定時は揮発状態だけ既定値に戻して終了する。
     le_device_db_state.selected_slot = 0;
     memset(le_device_db_state.address_generation, 0,
@@ -565,9 +546,9 @@ void le_device_db_init(void) {
   }
 
   // 永続化済みの selected slot / generation / bond 情報を順に復元する。
-  le_device_db_load_selected_slot();
-  le_device_db_load_address_generations();
-  le_device_db_load_slots();
+  _le_device_db_load_selected_slot();
+  _le_device_db_load_address_generations();
+  _le_device_db_load_slots();
   le_device_db_state.pending_slot = le_device_db_state.selected_slot;
 }
 
@@ -586,7 +567,7 @@ void le_device_db_set_local_bd_addr(bd_addr_t bd_addr) { UNUSED(bd_addr); }
 int le_device_db_count(void) {
   int slot = le_device_db_state.selected_slot;
 
-  if (!le_device_db_slot_valid(slot)) {
+  if (!_le_device_db_slot_valid(slot)) {
     return 0;
   }
   return le_device_db_state.slots[slot].used ? 1 : 0;
@@ -605,14 +586,14 @@ int le_device_db_max_count(void) { return LE_DEVICE_DB_SLOT_COUNT; }
  * @details 想定呼び出し元は BTstack。
  */
 void le_device_db_remove(int index) {
-  if (!le_device_db_visible_index(index)) {
+  if (!_le_device_db_visible_index(index)) {
     return;
   }
   if (!le_device_db_state.slots[index].used) {
     return;
   }
   // BTstackから見えるのは選択中スロットのみなので、その1件だけ削除する。
-  le_device_db_delete_entry(index);
+  _le_device_db_delete_entry(index);
 }
 
 /**
@@ -627,7 +608,7 @@ int le_device_db_add(int addr_type, bd_addr_t addr, sm_key_t irk) {
   int slot = le_device_db_state.selected_slot;
   le_device_db_persisted_entry_t entry;
 
-  if (!le_device_db_slot_valid(slot) || !le_device_db_tlv_ready()) {
+  if (!_le_device_db_slot_valid(slot) || !_le_device_db_tlv_ready()) {
     return -1;
   }
 
@@ -635,16 +616,16 @@ int le_device_db_add(int addr_type, bd_addr_t addr, sm_key_t irk) {
     // 同じスロットを上書き再利用し、既存の暗号化情報も必要なら引き継ぐ。
     entry = le_device_db_state.slots[slot].data;
   } else {
-    le_device_db_zero_entry(&entry);
+    _le_device_db_zero_entry(&entry);
   }
 
   // スロット単位で最新のボンド情報に置き換える。
-  entry.seq_nr = le_device_db_next_seq_nr();
+  entry.seq_nr = _le_device_db_next_seq_nr();
   entry.addr_type = addr_type;
   BD_ADDR_COPY(entry.addr, addr);
   memcpy(entry.irk, irk, sizeof(entry.irk));
 
-  if (!le_device_db_write_entry(slot, &entry)) {
+  if (!_le_device_db_write_entry(slot, &entry)) {
     return -1;
   }
   return slot;
@@ -671,7 +652,7 @@ void le_device_db_info(int index, int *addr_type, bd_addr_t addr,
     memset(irk, 0, sizeof(sm_key_t));
   }
 
-  if (!le_device_db_visible_index(index) ||
+  if (!_le_device_db_visible_index(index) ||
       !le_device_db_state.slots[index].used) {
     return;
   }
@@ -705,7 +686,7 @@ void le_device_db_encryption_set(int index, uint16_t ediv, uint8_t rand[8],
                                  int authorized, int secure_connection) {
   le_device_db_persisted_entry_t entry;
 
-  if (!le_device_db_visible_index(index) ||
+  if (!_le_device_db_visible_index(index) ||
       !le_device_db_state.slots[index].used) {
     return;
   }
@@ -719,7 +700,7 @@ void le_device_db_encryption_set(int index, uint16_t ediv, uint8_t rand[8],
   entry.authenticated = (uint8_t)authenticated;
   entry.authorized = (uint8_t)authorized;
   entry.secure_connection = (uint8_t)secure_connection;
-  (void)le_device_db_write_entry(index, &entry);
+  (void)_le_device_db_write_entry(index, &entry);
 }
 
 /**
@@ -761,7 +742,7 @@ void le_device_db_encryption_get(int index, uint16_t *ediv, uint8_t rand[8],
     *secure_connection = 0;
   }
 
-  if (!le_device_db_visible_index(index) ||
+  if (!_le_device_db_visible_index(index) ||
       !le_device_db_state.slots[index].used) {
     return;
   }

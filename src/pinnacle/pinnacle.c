@@ -32,8 +32,8 @@ static pinnacle_rotate_t rotation = PINNACLE_ROTATE_0;
  * @param count 書き込みバイト数
  * @param values 書き込みデータ配列
  */
-static void rapWriteBytes(uint8_t address, uint8_t count,
-                          uint8_t values[count]) {
+static void _rap_write_bytes(uint8_t address, uint8_t count,
+                             uint8_t values[count]) {
   uint8_t write_buffer[count * 2];
   for (uint8_t i = 0; i < count; ++i) {
     write_buffer[i * 2] = 0x80 | (address + i);
@@ -48,8 +48,8 @@ static void rapWriteBytes(uint8_t address, uint8_t count,
  * @param address 書き込みレジスタアドレス
  * @param value 書き込みデータ
  */
-static void rapWrite(uint8_t address, uint8_t value) {
-  rapWriteBytes(address, 1, &value);
+static void _rap_write(uint8_t address, uint8_t value) {
+  _rap_write_bytes(address, 1, &value);
 }
 
 // <address>から始まるPinnacleレジスタから<count>バイト読み込み
@@ -60,8 +60,8 @@ static void rapWrite(uint8_t address, uint8_t value) {
  * @param count 読み込みバイト数
  * @param read_buffer 読み込みデータ配列
  */
-static void rapReadBytes(uint8_t address, uint8_t count,
-                         uint8_t read_buffer[count]) {
+static void _rap_read_bytes(uint8_t address, uint8_t count,
+                            uint8_t read_buffer[count]) {
   address |= 0xA0;
   i2c_write_blocking(i2c, PINNACLE_I2C_TARGET_ADDRESS, &address,
                      sizeof(address), false);
@@ -73,38 +73,38 @@ static void rapReadBytes(uint8_t address, uint8_t count,
  * @brief RAPでレジスタから1バイト読み込みを行う。
  * @param address 読み込みレジスタアドレス
  */
-static uint8_t rapRead(uint8_t address) {
+static uint8_t _rap_read(uint8_t address) {
   uint8_t read_buffer[1] = {0};
-  rapReadBytes(address, 1, read_buffer);
+  _rap_read_bytes(address, 1, read_buffer);
   return read_buffer[0];
 }
 
 /**
  * @brief ERA(Extended Register Access)でレジスタに1バイト書き込みを行う。
  */
-static void eraWrite(uint16_t address, uint8_t data) {
+static void _era_write(uint16_t address, uint8_t data) {
   // データフィードを無効化
-  uint8_t feedConfig1 = rapRead(PINNACLE_I2C_FEED_CONFIG_1);
-  rapWrite(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1 & 0xFE);
+  uint8_t feedConfig1 = _rap_read(PINNACLE_I2C_FEED_CONFIG_1);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1 & 0xFE);
 
   // ERA用のレジスタに書き込み
-  rapWrite(PINNACLE_I2C_ERA_VALUE, data);
-  rapWrite(PINNACLE_I2C_ERA_ADDR_HIGH, (uint8_t)(address >> 8));
-  rapWrite(PINNACLE_I2C_ERA_ADDR_LOW, (uint8_t)(address & 0x00FF));
+  _rap_write(PINNACLE_I2C_ERA_VALUE, data);
+  _rap_write(PINNACLE_I2C_ERA_ADDR_HIGH, (uint8_t)(address >> 8));
+  _rap_write(PINNACLE_I2C_ERA_ADDR_LOW, (uint8_t)(address & 0x00FF));
   // ERA書き込み開始
-  rapWrite(PINNACLE_I2C_ERA_CONTROL, 0x02);
+  _rap_write(PINNACLE_I2C_ERA_CONTROL, 0x02);
 
   // 書き込み完了待ち
-  while (rapRead(PINNACLE_I2C_ERA_CONTROL) != 0x00) {
+  while (_rap_read(PINNACLE_I2C_ERA_CONTROL) != 0x00) {
     sleep_us(1);
   }
   DEBUG_PRINT("era write 0x%04x <= 0x%02x\n", address, data);
 
   // ステータスフラグをクリア
-  rapWrite(PINNACLE_I2C_STATUS, 0x00);
+  _rap_write(PINNACLE_I2C_STATUS, 0x00);
 
   // データフィードを元に戻す
-  rapWrite(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
 }
 
 /**
@@ -113,39 +113,39 @@ static void eraWrite(uint16_t address, uint8_t data) {
  * @param count 読み込みバイト数
  * @param read_buffer 読み込みデータ配列
  */
-static void eraReadBytes(uint16_t address, uint16_t count,
-                         uint8_t read_buffer[count]) {
+static void _era_read_bytes(uint16_t address, uint16_t count,
+                            uint8_t read_buffer[count]) {
   // データフィードを無効化
-  uint8_t feedConfig1 = rapRead(PINNACLE_I2C_FEED_CONFIG_1);
-  rapWrite(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1 & 0xFE);
+  uint8_t feedConfig1 = _rap_read(PINNACLE_I2C_FEED_CONFIG_1);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1 & 0xFE);
 
   // ERA用のレジスタに書き込み
-  rapWrite(PINNACLE_I2C_ERA_ADDR_HIGH, (uint8_t)(address >> 8));
-  rapWrite(PINNACLE_I2C_ERA_ADDR_LOW, (uint8_t)(address & 0x00FF));
+  _rap_write(PINNACLE_I2C_ERA_ADDR_HIGH, (uint8_t)(address >> 8));
+  _rap_write(PINNACLE_I2C_ERA_ADDR_LOW, (uint8_t)(address & 0x00FF));
 
   for (uint16_t i = 0; i < count; i++) {
     // ERA読み込み開始
-    rapWrite(PINNACLE_I2C_ERA_CONTROL, 0x05);
+    _rap_write(PINNACLE_I2C_ERA_CONTROL, 0x05);
     // 読み込み完了待ち
-    while (rapRead(PINNACLE_I2C_ERA_CONTROL) != 0x00) {
+    while (_rap_read(PINNACLE_I2C_ERA_CONTROL) != 0x00) {
       sleep_us(1);
     }
 
     // データ読み込み
-    read_buffer[i] = rapRead(PINNACLE_I2C_ERA_VALUE);
+    read_buffer[i] = _rap_read(PINNACLE_I2C_ERA_VALUE);
     DEBUG_PRINT("era read 0x%04x => 0x%02x\n", address, read_buffer[i]);
 
     // ステータスフラグをクリア
-    rapWrite(PINNACLE_I2C_STATUS, 0x00);
+    _rap_write(PINNACLE_I2C_STATUS, 0x00);
   }
   // データフィードを元に戻す
-  rapWrite(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
 }
 
 /**
  * @brief 復帰直後の接触残りを避けるため、一定時間DRが静かな状態を待つ。
  */
-static void wait_for_release_before_calibration(void) {
+static void _wait_for_release_before_calibration(void) {
   absolute_time_t start = get_absolute_time();
   absolute_time_t released_since = {0};
   bool release_started = false;
@@ -154,7 +154,7 @@ static void wait_for_release_before_calibration(void) {
          (int64_t)PINNACLE_CALIBRATION_RELEASE_TIMEOUT_MS * 1000) {
     if (pinnacle_check_DR()) {
       // pendingデータを捨て、接触/動作が落ち着くのを待つ
-      rapWrite(PINNACLE_I2C_STATUS, 0x00);
+      _rap_write(PINNACLE_I2C_STATUS, 0x00);
       release_started = false;
     } else {
       if (!release_started) {
@@ -202,7 +202,7 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
 
   // ターゲットデバイスが接続されていることを確認
   uint8_t firmware[2] = {0};
-  rapReadBytes(PINNACLE_I2C_FIRMWARE_ID, 2, firmware);
+  _rap_read_bytes(PINNACLE_I2C_FIRMWARE_ID, 2, firmware);
   DEBUG_PRINT("Cirque Firmware ID: %02x %02x\n", firmware[0], firmware[1]);
   if (firmware[0] != 0x07 || firmware[1] != 0x3A) {
     return false;
@@ -210,18 +210,18 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
 
   // 初期化シーケンス
   // システムをリセット
-  rapWrite(PINNACLE_I2C_SYS_CONFIG, 0x01);
+  _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x01);
   DEBUG_PRINT("Cirque reset\n");
   while (!pinnacle_check_DR()) {
     sleep_ms(1);
   }
-  rapWrite(PINNACLE_I2C_STATUS, 0x00);
+  _rap_write(PINNACLE_I2C_STATUS, 0x00);
   DEBUG_PRINT("Cirque reset complete\n");
 
 #if DEBUG_PINNACLE
   // リセット後のレジスタダンプ
   uint8_t register_dump[32];
-  rapReadBytes(0x00, 32, register_dump);
+  _rap_read_bytes(0x00, 32, register_dump);
   DEBUG_PRINT("Cirque register dump after reset:\n");
   for (int i = 0; i < 32; i++) {
     if (i % 8 == 0) {
@@ -236,42 +236,43 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
 
   DEBUG_PRINT("Cirque init start\n");
   // システム設定を初期化
-  rapWrite(PINNACLE_I2C_SYS_CONFIG, 0x00);
-  rapWrite(PINNACLE_I2C_FEED_CONFIG_1, 0x00);
-  rapWrite(PINNACLE_I2C_FEED_CONFIG_2, 0x00);
+  _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x00);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, 0x00);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_2, 0x00);
   // フィードレートを100Hzに設定
-  rapWrite(PINNACLE_I2C_SAMPLE_RATE, 100);
+  _rap_write(PINNACLE_I2C_SAMPLE_RATE, 100);
   // Z-idle packets の数を設定（リフトオフ検出後に送信される）
-  rapWrite(PINNACLE_I2C_Z_IDLE, 30);
+  _rap_write(PINNACLE_I2C_Z_IDLE, 30);
 
   // ステータスフラグをクリア
   while (pinnacle_check_DR()) {
-    rapWrite(PINNACLE_I2C_STATUS, 0x00);
+    _rap_write(PINNACLE_I2C_STATUS, 0x00);
   }
 
   // 感度設定
   uint8_t sensitivity = 0;
-  eraReadBytes(0x0187, 1, &sensitivity);
-  eraWrite(0x0187, (sensitivity & 0x3F) | (PINNACLE_DEFAULT_SENSITIVITY << 6));
+  _era_read_bytes(0x0187, 1, &sensitivity);
+  _era_write(0x0187,
+             (sensitivity & 0x3F) | (PINNACLE_DEFAULT_SENSITIVITY << 6));
 
   // 復帰トリガー直後の接触中キャリブレーションを避ける
-  wait_for_release_before_calibration();
+  _wait_for_release_before_calibration();
 
   // キャリブレーション
-  rapWrite(PINNACLE_I2C_CAL_CONFIG, 0b00011111);
+  _rap_write(PINNACLE_I2C_CAL_CONFIG, 0b00011111);
   while (!pinnacle_check_DR()) {
     sleep_ms(1);
   }
-  rapWrite(PINNACLE_I2C_STATUS, 0x00);
+  _rap_write(PINNACLE_I2C_STATUS, 0x00);
 
   // フィード機能を有効にしてrelativeモードに設定
   uint8_t feedConfig1 = 0b00000001;
-  rapWrite(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
 
   // スリープへ移行することを許可
-  rapWrite(PINNACLE_I2C_SYS_CONFIG, 0x04);
-  rapWrite(PINNACLE_I2C_SLEEP_INTERVAL, 0x80);
-  rapWrite(PINNACLE_I2C_SLEEP_TIMER, 0x08);
+  _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x04);
+  _rap_write(PINNACLE_I2C_SLEEP_INTERVAL, 0x80);
+  _rap_write(PINNACLE_I2C_SLEEP_TIMER, 0x08);
   DEBUG_PRINT("Cirque init complete\n");
 
   return true;
@@ -323,9 +324,9 @@ bool pinnacle_read_data(pinnacle_data_t *data) {
 
   // データパケットを読み込み
   uint8_t packet_data[4];
-  rapReadBytes(PINNACLE_I2C_PACKET_BYTE_0, 4, packet_data);
+  _rap_read_bytes(PINNACLE_I2C_PACKET_BYTE_0, 4, packet_data);
   // ステータスフラグをクリア
-  rapWrite(PINNACLE_I2C_STATUS, 0x00);
+  _rap_write(PINNACLE_I2C_STATUS, 0x00);
 
   // relativeモードのデータ解析
   data->buttons = packet_data[0] & 0x07; // 下位3ビットがボタン情報

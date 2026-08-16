@@ -43,10 +43,10 @@
  * @brief Pinnacleのデータ構造体
  */
 typedef struct {
-  uint8_t buttons;
-  int8_t xDelta;
-  int8_t yDelta;
-  int8_t wDelta;
+  uint8_t buttons; // 下位3ビットがボタン情報
+  int8_t xDelta;   // X軸の移動量
+  int8_t yDelta;   // Y軸の移動量
+  int8_t wDelta;   // スクロールホイール量
 } pinnacle_data_t;
 
 /**

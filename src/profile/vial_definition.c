@@ -1,4 +1,4 @@
-#include "settings/vial_definition.h"
+#include "profile/vial_definition.h"
 
 // VIALのキーボード定義データのバイト列
 const uint8_t vial_keyboard_definition[VIAL_KEYBOARD_DEFINITION_SIZE] =

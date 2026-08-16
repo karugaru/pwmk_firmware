@@ -5,3 +5,5 @@ tmp/
 __pycache__/
 .venv*/
 users/.current_profile
+.github/copilot-limiter/
+.github/hooks/

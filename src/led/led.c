@@ -2,7 +2,7 @@
 
 #include "led/led.h"
 #include "led/ws2812.pio.h"
-#include "settings/board.h"
+#include "profile/board.h"
 
 static uint8_t brightness = 255;
 static PIO pio = NULL;
@@ -46,5 +46,5 @@ void led_init(uint8_t pin, uint8_t bright) {
   pio = pio0;
 
   uint offset = pio_add_program(pio, &ws2812_program);
-  ws2812_program_init(pio, 0, offset, pin, 800000, false);
+  _ws2812_program_init(pio, 0, offset, pin, 800000, false);
 }

@@ -35,10 +35,18 @@
 
 コードレビューを行う際は以下のルールに従ってください。
 
+## 開発環境・実行境界のルール
+
+- `tools/` の CLI とキーボードテストは Linux で実行する。PowerShell から WSL を呼ぶ場合は、各コマンドを個別に `wsl.exe --` で実行する。
+- Windows の VS Code では `.venv_win`、WSL/Linux では既定の `.venv` を使用する。Linux/WSL のビルドは Windows の `PATH` にある SDK や picotool に依存せず、Linux 側の `$HOME/.pwmk` キャッシュを使用する。
+
 ### レビュー対象
 
 特に言及がない限り、ステージングされたすべての変更がレビュー対象となります。
 レビューはコードの品質、可読性、保守性を向上させることを目的としています。
+
+- 現行の CTest ターゲットは `event_keyboard_test`、`code_convert_test`、`persistence_format_test`、`keymap_persistence_test` の4つです。
+- キーボードテストは configure、build、ctest の順に実行し、CTest だけで古いバイナリを実行しないようにします。
 
 ### レビューのポイント
 
@@ -62,9 +70,11 @@ wsl.exe -- uv run tools/test_profile.py
 ### CLI (WSL2)
 
 ```powershell
-wsl.exe -- uv run tools/pwmk.py profile remopicon_v1; uv run tools/pwmk.py build
+wsl.exe -- uv run tools/pwmk.py profile remopicon_v1
+wsl.exe -- uv run tools/pwmk.py build
 # or
-wsl.exe -- uv run tools/pwmk.py profile remopicon_v2_beta; uv run tools/pwmk.py build
+wsl.exe -- uv run tools/pwmk.py profile remopicon_v2_beta
+wsl.exe -- uv run tools/pwmk.py build
 ```
 
 ### CLI (Docker on WSL2)
@@ -76,3 +86,8 @@ wsl.exe -- uv run tools/test_build.py ubuntu_26_04
 ### VS Code (Windows)
 
 `uv run tools/pwmk.py profile remopicon_v1` の後に VS Code タスクの`Clean CMake`、`Compile Project`でビルド
+
+## gitのルール
+
+gitの状態を変更する操作を行わないでください。
+`git diff`など、状態を変更しないコマンドでの確認は問題ありません。

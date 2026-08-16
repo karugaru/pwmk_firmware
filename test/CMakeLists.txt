@@ -34,3 +34,42 @@ target_include_directories(code_convert_test PRIVATE
 )
 
 add_test(NAME code_convert_test COMMAND code_convert_test)
+
+add_executable(persistence_format_test
+    persistence_format_test.c
+    unity.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/persistence/persistence_format.c
+)
+
+target_include_directories(persistence_format_test PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/../src
+)
+
+add_test(NAME persistence_format_test COMMAND persistence_format_test)
+
+add_executable(keymap_persistence_test
+    keymap_persistence_test.c
+    unity.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/profile/keymap.c
+)
+
+target_include_directories(keymap_persistence_test PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/../src
+)
+
+add_test(NAME keymap_persistence_test COMMAND keymap_persistence_test)
+
+add_executable(settings_test
+    settings_test.c
+    unity.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/settings/settings.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/profile/keymap.c
+)
+
+target_include_directories(settings_test PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/../src
+)
+
+add_test(NAME settings_test COMMAND settings_test)

@@ -1,0 +1,14 @@
+#ifndef PWMK_PERSISTENCE_IDENTITY_H
+#define PWMK_PERSISTENCE_IDENTITY_H
+
+#include <stdint.h>
+
+#ifndef PWMK_FIRMWARE_SERIAL_SIZE
+#define PWMK_FIRMWARE_SERIAL_SIZE 16u
+#endif
+
+static const uint8_t pwmk_firmware_serial[PWMK_FIRMWARE_SERIAL_SIZE] = {
+    {{ persistence_serial_initializer }}
+};
+
+#endif // PWMK_PERSISTENCE_IDENTITY_H

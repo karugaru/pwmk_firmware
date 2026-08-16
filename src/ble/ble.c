@@ -26,11 +26,11 @@
 // --------------------------------
 // 関数宣言
 // --------------------------------
-static void packet_handler(uint8_t packet_type, uint16_t channel,
-                           uint8_t *packet, uint16_t size);
-static void send_report();
-static void ble_apply_selected_slot_address(void);
-static void ble_resume_advertising(void);
+static void _packet_handler(uint8_t packet_type, uint16_t channel,
+                            uint8_t *packet, uint16_t size);
+static void _send_report();
+static void _ble_apply_selected_slot_address(void);
+static void _ble_resume_advertising(void);
 
 // --------------------------------
 // BLE系変数定義
@@ -78,7 +78,7 @@ void ble_setup(void) {
   uint8_t adv_type = 0;
   bd_addr_t null_addr;
   memset(null_addr, 0, 6);
-  ble_apply_selected_slot_address();
+  _ble_apply_selected_slot_address();
   advertising_data_init();
   gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0,
                                 null_addr, 0x07, 0x00);
@@ -86,11 +86,11 @@ void ble_setup(void) {
   gap_advertisements_enable(1);
 
   // Initialize Event Handlers
-  hci_event_callback_registration.callback = &packet_handler;
+  hci_event_callback_registration.callback = &_packet_handler;
   hci_add_event_handler(&hci_event_callback_registration);
-  sm_event_callback_registration.callback = &packet_handler;
+  sm_event_callback_registration.callback = &_packet_handler;
   sm_add_event_handler(&sm_event_callback_registration);
-  hids_device_register_packet_handler(packet_handler);
+  hids_device_register_packet_handler(_packet_handler);
 
   DEBUG_PRINT("BLE setup complete\n");
 }
@@ -201,8 +201,8 @@ bool ble_unpair_selected_slot(void) {
  * @param packet パケットデータ
  * @param size パケットサイズ
  */
-static void packet_handler(uint8_t packet_type, uint16_t channel,
-                           uint8_t *packet, uint16_t size) {
+static void _packet_handler(uint8_t packet_type, uint16_t channel,
+                            uint8_t *packet, uint16_t size) {
   UNUSED(channel);
   UNUSED(size);
 
@@ -220,7 +220,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel,
       case HCI_STATE_WORKING:
         // BLE再起動のためにONになった場合は保留中のスロット操作を適用して再接続待ちに戻す
         le_device_db_tlv_apply_pending_slot_action();
-        ble_resume_advertising();
+        _ble_resume_advertising();
         ble_restart_pending = false;
         state_refresh_runtime();
         break;
@@ -237,7 +237,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel,
     } else {
       // BLE再起動のために切断されていない場合は保留中のスロット操作を適用して再接続待ちに戻す
       le_device_db_tlv_apply_pending_slot_action();
-      ble_resume_advertising();
+      _ble_resume_advertising();
     }
     DEBUG_PRINT("Disconnected\n");
     state_refresh_runtime();
@@ -281,7 +281,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel,
       state_refresh_runtime();
       break;
     case HIDS_SUBEVENT_CAN_SEND_NOW:
-      send_report();
+      _send_report();
       break;
     default:
       DEBUG_PRINT("Unhandled HIDS subevent 0x%02X\n",
@@ -299,7 +299,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel,
  * @brief HIDレポートを送信する。
  *        送信すべきレポートがある場合にのみ送信する。
  */
-static void send_report() {
+static void _send_report() {
   event_hid_report_t report;
   while (event_pop_hid_report(&report)) {
     hids_device_send_input_report_for_id(con_handle, report.report_id,
@@ -310,7 +310,7 @@ static void send_report() {
 /**
  * @brief 選択中スロットに応じてAdvertising用の自己アドレスを設定する。
  */
-static void ble_apply_selected_slot_address(void) {
+static void _ble_apply_selected_slot_address(void) {
   // 選択中スロット番号とそのAdvertisingアドレス世代を取得する
   int selected_slot = le_device_db_tlv_get_selected_slot();
   uint8_t address_generation =
@@ -345,12 +345,12 @@ static void ble_apply_selected_slot_address(void) {
 /**
  * @brief BLE Advertising を有効化して再接続待ちに戻す。
  */
-static void ble_resume_advertising(void) {
+static void _ble_resume_advertising(void) {
   if (!ble_enabled) {
     return;
   }
 
-  ble_apply_selected_slot_address();
+  _ble_apply_selected_slot_address();
   gap_advertisements_enable(0);
   gap_advertisements_enable(1);
 }

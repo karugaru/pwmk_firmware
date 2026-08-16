@@ -6,21 +6,25 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// HIDレポートのデータ構造
 typedef struct {
-  uint8_t report_id;
-  uint16_t size;
-  uint8_t data[HID_REPORT_SIZE_MAX];
+  uint8_t report_id;                 // HIDレポートID
+  uint16_t size;                     // HIDレポートのサイズ
+  uint8_t data[HID_REPORT_SIZE_MAX]; // HIDレポートのデータ
 } event_hid_report_t;
 
 typedef bool (*event_platform_cb_t)(icode_t icode, bool pressed);
 typedef icode_t (*keymap_get_cb_t)(uint8_t layer, uint8_t row, uint8_t col);
 
+// イベント処理の設定
 typedef struct {
-  int16_t mouse_move_thresh;
-  int16_t mouse_wheel_thresh;
-  int16_t mouse_move_delta;
-  int16_t mouse_wheel_delta;
+  int16_t mouse_move_thresh;  // マウス移動イベントを発生させるための閾値
+  int16_t mouse_wheel_thresh; // マウスホイールイベントを発生させるための閾値
+  int16_t mouse_move_delta;   // マウス移動イベントの1回あたりの移動量
+  int16_t mouse_wheel_delta;  // マウスホイールイベントの1回あたりの移動量
+  // プラットフォーム固有のイベント処理コールバック
   event_platform_cb_t platform_callback;
+  // キーマップから内部用のキーコードを取得するコールバック
   keymap_get_cb_t keymap_get_callback;
 } event_settings_t;
 

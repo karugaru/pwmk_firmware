@@ -2,7 +2,7 @@
 
 #include "keyboard/event.h"
 #include "keyboard/matrix_scan.h"
-#include "settings/board.h"
+#include "profile/board.h"
 #include "settings/settings.h"
 
 #ifndef DEBUG_MATRIX_SCAN
@@ -13,8 +13,8 @@
 #define DEBUG_MATRIX_SCAN_DEEP 0
 #endif
 
-static bool scan_each_lines();
-static bool scan_line(int row);
+static bool _scan_each_lines();
+static bool _scan_line(int row);
 
 //----------------------------------------------------------------
 // 静的変数
@@ -75,7 +75,7 @@ void matrix_scan_process(void) {
   absolute_time_t current_time = get_absolute_time();
 
   // すべての行をスキャン
-  bool matrix_changed = scan_each_lines();
+  bool matrix_changed = _scan_each_lines();
 
   // 状態が変化した場合
   if (matrix_changed) {
@@ -142,11 +142,11 @@ bool matrix_scan_is_pressed(uint8_t row, uint8_t col) {
  *       各行を順にスキャンし、状態の変化があればtrueを返します。
  * @return bool 一つ以上のキーの状態が変更されている場合にtrueを返します。
  */
-static bool scan_each_lines() {
+static bool _scan_each_lines() {
   bool any_changed = false;
   // 各行を順にスキャン
   for (int row = 0; row < ROWS; row++) {
-    if (scan_line(row)) {
+    if (_scan_line(row)) {
       any_changed = true;
     }
   }
@@ -161,7 +161,7 @@ static bool scan_each_lines() {
  * @param row スキャンする行番号 (0からROWS-1)
  * @return bool 一つ以上のキーの状態が変更されている場合にtrueを返します。
  */
-static bool scan_line(int row) {
+static bool _scan_line(int row) {
   bool changed = false;
 
   // 選択行のピンをLOWで出力モードに設定

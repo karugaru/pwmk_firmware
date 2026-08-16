@@ -2,7 +2,7 @@
 #include "hid/hid.h"
 #include "keyboard/event.h"
 #include "pinnacle/pinnacle.h"
-#include "settings/board.h"
+#include "profile/board.h"
 #include "settings/settings.h"
 
 #ifndef DEBUG_PERIPHERAL

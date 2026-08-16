@@ -25,15 +25,22 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     ${PWMK_PROFILE_GENERATION_INPUTS}
 )
 
-# ソース生成用コマンドを構築する。
+# ソース生成・検証用コマンドを構築する。
 if(WIN32)
     set(PWMK_GENERATE_COMMAND
         ${CMAKE_COMMAND} -E env UV_PROJECT_ENVIRONMENT=.venv_win
         uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
     )
+    set(PWMK_VERIFY_COMMAND
+        ${CMAKE_COMMAND} -E env UV_PROJECT_ENVIRONMENT=.venv_win
+        uv run tools/pwmk.py verify-binary
+    )
 else()
     set(PWMK_GENERATE_COMMAND
         uv run tools/pwmk.py generate --build-dir ${CMAKE_BINARY_DIR}
+    )
+    set(PWMK_VERIFY_COMMAND
+        uv run tools/pwmk.py verify-binary
     )
 endif()
 
@@ -52,6 +59,17 @@ endif()
 
 # 生成されたプロファイル設定を読み込む。
 include(${CMAKE_BINARY_DIR}/generated/profile/profile.cmake)
+
+# 永続化用のIDはファームウェアをビルドするたびに新しく生成する。
+set(PWMK_PERSISTENCE_IDENTITY_HEADER
+    ${CMAKE_BINARY_DIR}/generated/profile/src/profile/persistence_identity.h
+)
+add_custom_target(pwmk_profile_generation
+    COMMAND ${PWMK_GENERATE_COMMAND}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    BYPRODUCTS ${PWMK_PERSISTENCE_IDENTITY_HEADER}
+    VERBATIM
+)
 
 # == Raspberry Pi Pico VS Code拡張機能の動作に必要なため、以下の行は編集しないでください ==
 # == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
@@ -114,6 +132,7 @@ list(APPEND SRC_FILES
 
 # 収集したソースから実行ファイルを作成する。
 add_executable(pwmk ${SRC_FILES})
+add_dependencies(pwmk pwmk_profile_generation)
 
 # PIOプログラムからCヘッダーを生成する。
 pico_generate_pio_header(pwmk ${PWMK_SOURCE_DIR}/led/ws2812.pio OUTPUT_DIR ${PWMK_PROFILE_GENERATED_SRC_DIR}/led)
@@ -123,10 +142,13 @@ target_link_libraries(pwmk
     pico_stdlib
     pico_low_power
     hardware_i2c
+    hardware_flash
     hardware_pio
     hardware_rosc
     hardware_xosc
     hardware_watchdog
+    pico_btstack_flash_bank_headers
+    pico_flash
 )
 
 # BLEを有効にした場合だけ、BTstackとCYW43関連のライブラリをリンクする。
@@ -165,10 +187,21 @@ endif()
 # UF2、BIN、HEX、MAPなどの追加出力を生成する。
 pico_add_extra_outputs(pwmk)
 
+# リンク後にpicotoolでファームウェアの使用可能範囲を検査する。
+add_custom_command(TARGET pwmk POST_BUILD
+    COMMAND ${PWMK_VERIFY_COMMAND}
+        --picotool $<TARGET_FILE:picotool>
+        --binary ${CMAKE_CURRENT_BINARY_DIR}/pwmk.bin
+        --name "PWMK firmware"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    VERBATIM
+)
+
 # コンパイル時の機能フラグとデバッグ出力の設定を定義する。
 target_compile_definitions(pwmk PRIVATE
     PWMK_ENABLE_USB=${PWMK_ENABLE_USB_VALUE}
     PWMK_ENABLE_BLE=${PWMK_ENABLE_BLE_VALUE}
+    PICO_FLASH_ASSUME_CORE1_SAFE=1
     #WANT_HCI_DUMP=1 # BTstackのデバッグログを有効にする場合に使用する
     DEBUG_MAIN=0
     DEBUG_BLE=0
