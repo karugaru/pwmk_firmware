@@ -37,6 +37,18 @@ class BuildTestMatrixTest(unittest.TestCase):
 
         self.assertIn(f"--profile {test_case.profile}", command)
 
+    def test_shell_command_does_not_preserve_unsupported_metadata(self) -> None:
+        target = BuildTestTarget(
+            name="example_linux",
+            image="example:latest",
+            bootstrap_command="bootstrap",
+        )
+        test_case = build_test_matrix([target])[0]
+
+        command = shell_command(test_case)
+
+        self.assertIn("cp -r --no-preserve=all /workspace/.", command)
+
 
 if __name__ == "__main__":
     unittest.main()
