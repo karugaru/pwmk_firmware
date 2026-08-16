@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 import lzma
 import re
-import shutil
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from pwmk_common import safe_rmtree
 from pwmk_profile import (
     current_profile_path,
     generate_profile,
@@ -58,10 +58,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         yaml_text = source_yaml.read_text(encoding="utf-8").replace(
             "  gpio_led_pin: 16",
             "  gpio_led_pin: 16\n  led_count: 2",
@@ -152,10 +152,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -282,10 +282,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         yaml_text = source_yaml.read_text(encoding="utf-8").replace(
             "  usb_vid: 0xCAFE\n  usb_pid: 0x4001",
             "  usb_vid: 0x1234\n  usb_pid: 0xABCD",
@@ -310,10 +310,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -345,10 +345,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -372,10 +372,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )

@@ -3,14 +3,13 @@ from __future__ import annotations
 import json
 import lzma
 import secrets
-import shutil
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
-from pwmk_common import ensure_directory, repo_root
+from pwmk_common import ensure_directory, repo_root, safe_rmtree
 from pwmk_profile_schema import ProfileConfig
 from pydantic import ValidationError
 
@@ -129,7 +128,7 @@ def clean_build_directory() -> None:
     """ビルドディレクトリを削除する。"""
     build_root = repo_root() / "build"
     if build_root.exists():
-        shutil.rmtree(build_root)
+        safe_rmtree(build_root)
 
 
 def select_profile(profile_name: str) -> None:

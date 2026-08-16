@@ -6,12 +6,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Literal
 
+import typer
 from pwmk_common import (
     completed_process,
     ensure_command,
     ensure_directory,
+    pwmk_cache_root,
     repo_root,
     run,
+    safe_rmtree,
 )
 
 DEFAULT_SDK_TAG = "2.3.0"
@@ -164,16 +167,6 @@ PACKAGE_MANAGERS = [
 ]
 
 
-def cache_root() -> Path:
-    """
-    外部依存物のキャッシュルートディレクトリを返す。
-
-    :return: キャッシュルートディレクトリ
-    """
-
-    return Path.home() / ".pwmk"
-
-
 def sanitized_tag(tag: str) -> str:
     """
     キャッシュディレクトリ名に使えるようタグ文字列をサニタイズする。
@@ -196,7 +189,7 @@ def sdk_cache_dir(sdk_tag: str) -> Path:
     :return: SDK キャッシュディレクトリの Path オブジェクト
     """
 
-    return cache_root() / f"pico-sdk-{sanitized_tag(sdk_tag)}"
+    return pwmk_cache_root() / f"pico-sdk-{sanitized_tag(sdk_tag)}"
 
 
 def picotool_cache_dir(picotool_tag: str) -> Path:
@@ -207,7 +200,7 @@ def picotool_cache_dir(picotool_tag: str) -> Path:
     :return: picotool キャッシュディレクトリの Path オブジェクト
     """
 
-    return cache_root() / f"picotool-{sanitized_tag(picotool_tag)}"
+    return pwmk_cache_root() / f"picotool-{sanitized_tag(picotool_tag)}"
 
 
 def detected_package_manager() -> PackageManager:
@@ -444,9 +437,7 @@ def ensure_sdk_source_dir(args: BuildCommandArgs, *, env: dict[str, str]) -> Pat
     )
 
 
-def ensure_picotool_source_dir(
-    args: BuildCommandArgs, *, env: dict[str, str]
-) -> Path:
+def ensure_picotool_source_dir(args: BuildCommandArgs, *, env: dict[str, str]) -> Path:
     """
     picotool ソースを確保する。
 
@@ -525,9 +516,9 @@ def ensure_picotool(
         return config_dir
 
     if build_dir.exists():
-        shutil.rmtree(build_dir)
+        safe_rmtree(build_dir, allow_pwmk_cache=True)
     if install_dir.exists():
-        shutil.rmtree(install_dir)
+        safe_rmtree(install_dir, allow_pwmk_cache=True)
     ensure_directory(build_dir)
     ensure_directory(install_dir)
 
@@ -559,20 +550,63 @@ def ensure_picotool(
 
 def delete_cached_repos(args: BuildCommandArgs) -> None:
     """
-    自動取得した SDK / picotool キャッシュを削除する。
+    自動取得した SDK / picotool キャッシュの削除を試みる。
+
+    ~/.pwmk 以外のリポジトリ外キャッシュは安全規則により削除しない。
 
     :param args: コマンドライン引数
     """
 
+    cache_directories: list[Path] = []
     if args.sdk_path is None:
-        sdk_dir = sdk_cache_dir(args.sdk_tag)
-        if sdk_dir.exists():
-            shutil.rmtree(sdk_dir)
+        cache_directories.append(sdk_cache_dir(args.sdk_tag))
 
     if args.picotool_path is None:
-        picotool_dir = picotool_cache_dir(args.picotool_tag)
-        if picotool_dir.exists():
-            shutil.rmtree(picotool_dir)
+        cache_directories.append(picotool_cache_dir(args.picotool_tag))
+
+    for cache_directory in cache_directories:
+        if not cache_directory.exists():
+            continue
+        try:
+            safe_rmtree(cache_directory, allow_pwmk_cache=True)
+        except ValueError as error:
+            raise SystemExit(
+                "リポジトリ外の依存キャッシュは安全のため自動削除できません: "
+                f"{cache_directory}"
+            ) from error
+
+
+def clean_build_directory(build_dir: Path) -> None:
+    """
+    ビルドディレクトリを削除する。リポジトリ外は確認後に削除する。
+
+    :param build_dir: 削除対象のビルドディレクトリ
+    :raises SystemExit: 外部ディレクトリの削除を拒否した場合
+    :raises ValueError: 安全に削除できないパスが指定された場合
+    """
+
+    if not build_dir.exists():
+        return
+
+    resolved_build_dir = build_dir.resolve()
+    resolved_repo_root = repo_root().resolve()
+    if (
+        resolved_build_dir == resolved_repo_root
+        or resolved_repo_root in resolved_build_dir.parents
+    ):
+        safe_rmtree(build_dir)
+        return
+
+    if build_dir.is_symlink():
+        safe_rmtree(build_dir)
+
+    if not typer.confirm(
+        f"リポジトリ外のビルドディレクトリを削除します: {resolved_build_dir}\n続行しますか？",
+        default=False,
+    ):
+        raise SystemExit("外部ビルドディレクトリの削除を中止しました。")
+
+    shutil.rmtree(resolved_build_dir)
 
 
 def prepare_build_environment(args: BuildCommandArgs) -> BuildPreparation:
@@ -589,8 +623,8 @@ def prepare_build_environment(args: BuildCommandArgs) -> BuildPreparation:
     if not args.skip_deps:
         install_dependencies()
 
-    if args.clean and build_dir.exists():
-        shutil.rmtree(build_dir)
+    if args.clean:
+        clean_build_directory(build_dir)
 
     build_dir.mkdir(parents=True, exist_ok=True)
 
