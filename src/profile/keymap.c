@@ -85,7 +85,7 @@ bool keymap_is_valid_position(uint8_t layer, uint8_t row, uint8_t col) {
  * @brief
  * 指定された配列からキーコードを取得する。
  * 指定された位置にキーが存在しない場合はIKC_NOOPを返す。
- * @param keymap キーマップ配列
+ * @param dynamic_keymap キーマップ配列
  * @param layer レイヤー番号
  * @param row 行番号
  * @param col 列番号

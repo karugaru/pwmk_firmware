@@ -189,7 +189,6 @@ static bool _code_convert_internal_modifiers_to_vial(uint8_t modifiers_internal,
 /**
  * @brief VIALの修飾ビット表現を内部用の修飾ビット表現に変換する。
  * @param modifiers_vial 変換するVIALの修飾ビット表現
- * @param modifiers_internal 変換後の内部用の修飾ビット表現を格納するポインタ
  * @return 変換に成功した場合はtrue、失敗した場合はfalse
  */
 static uint8_t
