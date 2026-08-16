@@ -176,9 +176,13 @@ static void _pwmk_process_tick(void) {
     use_ble = !usb_active && ble_connected;
   }
 
+  bool has_activity = false;
+
   // USB定期処理
 #if PWMK_ENABLE_USB
-  usb_hid_task();
+  if (usb_hid_task()) {
+    has_activity = true;
+  }
 #endif
 
   // BLE定期処理
@@ -187,8 +191,6 @@ static void _pwmk_process_tick(void) {
     ble_poll();
   }
 #endif
-
-  bool has_activity = false;
 
   // 周辺機器のイベント処理（I2C通信を含むため必要な時のみ実行）
   if (peripheral_require_event_processing()) {

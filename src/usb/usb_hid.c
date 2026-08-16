@@ -20,7 +20,7 @@ static bool vial_request_pending;
  */
 
 static void _usb_hid_send_report_chain(void);
-static void _usb_hid_process_vial(void);
+static bool _usb_hid_process_vial(void);
 
 /*
  * 公開関数
@@ -42,10 +42,11 @@ void usb_hid_deinit(void) { tud_deinit(BOARD_TUD_RHPORT); }
 /**
  * @brief USB HIDのデバイスのタスク処理を行う。
  *        メインループから定期的に呼び出す必要がある。
+ * @return VIAL要求を処理した場合はtrue、それ以外はfalse
  */
-void usb_hid_task(void) {
+bool usb_hid_task(void) {
   tud_task();
-  _usb_hid_process_vial();
+  return _usb_hid_process_vial();
 }
 
 /**
@@ -205,9 +206,9 @@ static void _usb_hid_send_report_chain() {
 /**
  * @brief VIAL要求を通常のメインループ文脈で処理し、応答を送信する。
  */
-static void _usb_hid_process_vial(void) {
+static bool _usb_hid_process_vial(void) {
   if (!vial_request_pending) {
-    return;
+    return false;
   }
   vial_request_pending = false;
 
@@ -216,9 +217,10 @@ static void _usb_hid_process_vial(void) {
 
   // 処理結果を応答として送信する
   if (!tud_hid_n_ready(USB_HID_INSTANCE_VIAL)) {
-    return;
+    return true;
   }
   tud_hid_n_report(USB_HID_INSTANCE_VIAL, 0, vial_buffer, sizeof(vial_buffer));
+  return true;
 }
 
 #endif // PWMK_ENABLE_USB
