@@ -47,5 +47,4 @@
 
 ## ドキュメントサイト
 
-`src/` のDoxygenコメントと `docs/` のMarkdownをまとめた静的サイトを生成できます。
-前提環境と生成手順は [ドキュメントサイト.md](docs/ドキュメントサイト.md) を参照してください。
+[GitHub Pages](https://karugaru.github.io/pwmk_firmware/index.html)でドキュメントサイトを公開しています。
