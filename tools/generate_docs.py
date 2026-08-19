@@ -10,6 +10,43 @@ from pwmk_common import ensure_linux, repo_root, safe_rmtree
 
 PROJECT_NAME = "PWMK Firmware"
 DEFAULT_OUTPUT = "site"
+MERMAID_HTML = """<script id="pwmk-mermaid" src="https://cdn.jsdelivr.net/npm/mermaid@10.9.3/dist/mermaid.min.js" integrity="sha384-R63zfMfSwJF4xCR11wXii+QUsbiBIdiDzDbtxia72oGWfkT7WHJfmD/I/eeHPJyT" crossorigin="anonymous"></script>
+<script id="pwmk-mermaid-renderer">
+(() => {
+    const mermaidStart = /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|xychart|block-beta)\\b/;
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+    const renderMermaid = () => {
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: "strict",
+            theme: prefersDark.matches ? "dark" : "default"
+        });
+        for (const fragment of document.querySelectorAll(".fragment")) {
+            const source = [...fragment.querySelectorAll(".line")]
+                .map((line) => line.textContent)
+                .join("\\n");
+            if (!mermaidStart.test(source.trim())) {
+                continue;
+            }
+            const diagram = document.createElement("div");
+            diagram.className = "mermaid";
+            diagram.dataset.mermaidSource = source;
+            diagram.textContent = source;
+            fragment.replaceWith(diagram);
+        }
+        for (const diagram of document.querySelectorAll(".mermaid")) {
+            diagram.textContent = diagram.dataset.mermaidSource;
+        }
+        mermaid.run({ querySelector: ".mermaid" });
+    };
+    prefersDark.addEventListener("change", renderMermaid);
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", renderMermaid);
+    } else {
+        renderMermaid();
+    }
+})();
+</script>"""
 
 
 def parse_args() -> argparse.Namespace:
@@ -86,6 +123,17 @@ def find_doxygen(command: str) -> str:
     return executable
 
 
+def inject_mermaid_renderer(output: Path) -> None:
+    for html_path in output.rglob("*.html"):
+        html = html_path.read_text(encoding="utf-8")
+        if 'id="pwmk-mermaid-renderer"' in html:
+            continue
+        if "</body>" not in html:
+            continue
+        html = html.replace("</body>", f"{MERMAID_HTML}\n</body>", 1)
+        html_path.write_text(html, encoding="utf-8")
+
+
 def generate_docs(root: Path, output: Path, doxygen: str) -> None:
     if output.exists():
         safe_rmtree(output)
@@ -95,6 +143,7 @@ def generate_docs(root: Path, output: Path, doxygen: str) -> None:
         doxyfile = Path(temporary_directory) / "Doxyfile"
         doxyfile.write_text(build_doxyfile(root, output), encoding="utf-8")
         subprocess.run([doxygen, str(doxyfile)], cwd=root, check=True)
+    inject_mermaid_renderer(output)
 
 
 def main() -> None:
