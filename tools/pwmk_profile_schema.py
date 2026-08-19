@@ -3,12 +3,45 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator
 
 
+class DebugProfile(BaseModel):
+    """デバッグ出力の設定を表す Pydantic モデル。"""
+
+    all: bool = Field(default=False, description="全てのデバッグ出力を有効にするかどうか。")
+    main: bool = Field(default=False, description="DEBUG_MAIN を有効にするかどうか。")
+    ble: bool = Field(default=False, description="DEBUG_BLE を有効にするかどうか。")
+    event: bool = Field(
+        default=False, description="DEBUG_EVENT を有効にするかどうか。"
+    )
+    matrix_scan: bool = Field(
+        default=False, description="DEBUG_MATRIX_SCAN を有効にするかどうか。"
+    )
+    matrix_scan_deep: bool = Field(
+        default=False, description="DEBUG_MATRIX_SCAN_DEEP を有効にするかどうか。"
+    )
+    pinnacle: bool = Field(
+        default=False, description="DEBUG_PINNACLE を有効にするかどうか。"
+    )
+    peripheral: bool = Field(
+        default=False, description="DEBUG_PERIPHERAL を有効にするかどうか。"
+    )
+    persistence: bool = Field(
+        default=False, description="DEBUG_PERSISTENCE を有効にするかどうか。"
+    )
+    vial: bool = Field(default=False, description="DEBUG_VIAL を有効にするかどうか。")
+    ble_deep: bool = Field(
+        default=False, description="WANT_HCI_DUMP を有効にするかどうか。"
+    )
+
+
 class CMakeProfile(BaseModel):
     """CMake プロファイルの設定を表す Pydantic モデル。"""
 
     board: str = Field(min_length=1, description="PICO_BOARD に渡すボード名。")
     enable_usb: bool = Field(default=True, description="USB 機能を有効にするかどうか。")
     enable_ble: bool = Field(default=True, description="BLE 機能を有効にするかどうか。")
+    debug: DebugProfile = Field(
+        default_factory=DebugProfile, description="デバッグ出力の設定。"
+    )
 
 
 class BoardProfile(BaseModel):

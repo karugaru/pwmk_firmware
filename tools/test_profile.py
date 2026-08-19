@@ -80,6 +80,97 @@ class ProfileGenerationTest(unittest.TestCase):
                 "#define LED_COUNT 2", board_header.read_text(encoding="utf-8")
             )
 
+    def test_generate_profile_supports_debug_options(self) -> None:
+        profile_name = "test_profile_with_debug_options"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            safe_rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
+        debug_options = "\n".join(
+            f"    {option}: true"
+            for option in (
+                "main",
+                "ble",
+                "event",
+                "matrix_scan",
+                "matrix_scan_deep",
+                "pinnacle",
+                "peripheral",
+                "persistence",
+                "vial",
+                "ble_deep",
+            )
+        )
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  enable_ble: true",
+            f"  enable_ble: true\n  debug:\n{debug_options}",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            profile_cmake = (
+                build_dir / "generated" / "profile" / "profile.cmake"
+            ).read_text(encoding="utf-8")
+            for option in (
+                "MAIN",
+                "BLE",
+                "EVENT",
+                "MATRIX_SCAN",
+                "MATRIX_SCAN_DEEP",
+                "PINNACLE",
+                "PERIPHERAL",
+                "PERSISTENCE",
+                "VIAL",
+            ):
+                self.assertIn(f"set(PWMK_DEBUG_{option} 1", profile_cmake)
+            self.assertIn("set(PWMK_WANT_HCI_DUMP 1", profile_cmake)
+
+    def test_generate_profile_supports_debug_all(self) -> None:
+        profile_name = "test_profile_with_all_debug_options"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            safe_rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  enable_ble: true",
+            "  enable_ble: true\n  debug:\n    all: true",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            profile_cmake = (
+                build_dir / "generated" / "profile" / "profile.cmake"
+            ).read_text(encoding="utf-8")
+            for option in (
+                "MAIN",
+                "BLE",
+                "EVENT",
+                "MATRIX_SCAN",
+                "MATRIX_SCAN_DEEP",
+                "PINNACLE",
+                "PERIPHERAL",
+                "PERSISTENCE",
+                "VIAL",
+            ):
+                self.assertIn(f"set(PWMK_DEBUG_{option} 1", profile_cmake)
+            self.assertIn("set(PWMK_WANT_HCI_DUMP 1", profile_cmake)
+
     def test_generate_profile_supports_vial_unlock_combo(self) -> None:
         profile_name = "test_profile_with_vial_unlock_combo"
         profile_data = {
