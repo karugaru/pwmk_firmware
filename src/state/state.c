@@ -7,31 +7,24 @@
 #include "state/state.h"
 #include "usb/usb_hid.h"
 
-#if PWMK_ENABLE_BLE
-#define STATE_INIT_COMPLETE_REQUIRED_FROM STATE_BLE_INIT
-#else
-#define STATE_INIT_COMPLETE_REQUIRED_FROM STATE_SYS_INIT
-#endif
-
 // LEDの状態を定義する構造体
 typedef struct {
-  int8_t required_from; // 遷移元の状態。-1の場合はどの状態からでも遷移可能。
-  uint8_t r, g, b;      // LEDのRGB値
+  uint8_t r, g, b; // LEDのRGB値
 } state_led_entry_t;
 
 // clang-format off
 static const state_led_entry_t state_led_table[] = {
-  [STATE_RESET]         = { -1,              0,   0,   0   }, // 消灯
-  [STATE_BOOTING]       = { STATE_RESET,     255, 127, 0   }, // オレンジ
-  [STATE_SYS_INIT]      = { STATE_BOOTING,   255, 255, 0   }, // 黄色
-  [STATE_BLE_INIT]      = { STATE_SYS_INIT,  0,   0,   255 }, // 青
-  [STATE_INIT_COMPLETE] = { STATE_INIT_COMPLETE_REQUIRED_FROM, 255, 255, 255 }, // 白
-  [STATE_USB_WAITING]   = { -1,              255, 0,   0   }, // 赤
-  [STATE_BLE_WAITING]   = { -1,              0,   255, 255 }, // 水色
-  [STATE_BLE_CONNECTED] = { -1,              0,   0,   0   }, // 消灯
-  [STATE_USB_CONNECTED] = { -1,              0,   0,   0   }, // 消灯
-  [STATE_BOOTLOADER]    = { -1,              255, 255, 255 }, // 白
-  [STATE_DEEP_SLEEP]    = { -1,              0,   0,   0   }, // 消灯
+  [STATE_RESET]         = { 0,   0,   0   }, // 消灯
+  [STATE_BOOTING]       = { 255, 127, 0   }, // オレンジ
+  [STATE_SYS_INIT]      = { 255, 255, 0   }, // 黄色
+  [STATE_BLE_INIT]      = { 0,   0,   255 }, // 青
+  [STATE_INIT_COMPLETE] = { 255, 255, 255 }, // 白
+  [STATE_USB_WAITING]   = { 255, 0,   0   }, // 赤
+  [STATE_BLE_WAITING]   = { 0,   255, 255 }, // 水色
+  [STATE_BLE_CONNECTED] = { 0,   0,   0   }, // 消灯
+  [STATE_USB_CONNECTED] = { 0,   0,   0   }, // 消灯
+  [STATE_BOOTLOADER]    = { 255, 255, 255 }, // 白
+  [STATE_DEEP_SLEEP]    = { 0,   0,   0   }, // 消灯
 };
 // clang-format on
 
@@ -99,9 +92,7 @@ void state_refresh_runtime(void) {
 void state_set_system(state_system_t new_state) {
   const state_led_entry_t *entry = &state_led_table[new_state];
 
-  if (current_state == new_state ||
-      (entry->required_from >= 0 &&
-       current_state != (state_system_t)entry->required_from)) {
+  if (current_state == new_state) {
     return;
   }
 
