@@ -16,6 +16,16 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def pwmk_cache_root() -> Path:
+    """
+    PWMK の外部依存キャッシュルートを返す。
+
+    :return: 外部依存キャッシュルートの Path オブジェクト
+    """
+
+    return Path.home() / ".pwmk"
+
+
 def ensure_linux() -> None:
     """
     実行環境が Linux であることを確認する。
@@ -105,3 +115,38 @@ def ensure_directory(path: Path) -> None:
     """
 
     path.mkdir(parents=True, exist_ok=True)
+
+
+def safe_rmtree(
+    path: Path, *, ignore_errors: bool = False, allow_pwmk_cache: bool = False
+) -> None:
+    """
+    リポジトリ配下だけを削除する。必要な場合は ~/.pwmk 配下も許可する。
+
+    allow_pwmk_cache が True の場合だけ、~/.pwmk 配下も削除できる。
+
+    :param path: 削除対象ディレクトリ
+    :param ignore_errors: shutil.rmtree に渡すエラー無視フラグ
+    :param allow_pwmk_cache: ~/.pwmk 配下の削除を許可するかどうか
+    :raises ValueError: 許可範囲外、許可ルート自身、またはシンボリックリンクが指定された場合
+    """
+
+    lexical_path = Path(path)
+    if not lexical_path.is_absolute():
+        lexical_path = Path.cwd() / lexical_path
+    if lexical_path.is_symlink():
+        raise ValueError(f"シンボリックリンクは削除できません: {path}")
+
+    resolved_path = lexical_path.resolve()
+    allowed_roots = [repo_root().resolve()]
+    if allow_pwmk_cache:
+        allowed_roots.append(pwmk_cache_root().resolve())
+
+    if not any(
+        resolved_path != allowed_root and allowed_root in resolved_path.parents
+        for allowed_root in allowed_roots
+    ):
+        raise ValueError(f"許可された削除範囲外のディレクトリです: {resolved_path}")
+
+    if resolved_path.exists():
+        shutil.rmtree(resolved_path, ignore_errors=ignore_errors)

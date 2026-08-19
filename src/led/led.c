@@ -7,6 +7,10 @@
 static uint8_t brightness = 255;
 static PIO pio = NULL;
 
+/*
+ * 公開関数
+ */
+
 /**
  * @brief GRB形式のピクセルデータをLEDに送信する。
  * @param pixel_grb GRB形式のピクセルデータ (0x00GGRRBB)

@@ -29,101 +29,21 @@
 
 #if PWMK_ENABLE_BLE
 static async_at_time_worker_t pwmk_worker;
+static void _pwmk_worker_process(async_context_t *context,
+                                 async_at_time_worker_t *worker);
 #endif
 static absolute_time_t last_activity_time;
 static bool requested_deep_sleep;
 
-/**
- * @brief 1ms周期で実行する事実上のメインループ処理。
+/*
+ * 内部関数宣言
  */
-static void _pwmk_process_tick(void) {
-  // キーマトリクス処理を実行
-  matrix_scan_process();
 
-  // 定期処理を実行
-  event_process_periodic();
+static void _pwmk_process_tick(void);
 
-  // 接続モードとトランスポートの状態を取得
-  state_conn_pref_t connection_pref = state_get_connection_preference();
-  bool usb_active = usb_hid_is_active();
-  bool ble_enabled = ble_is_enabled();
-  bool ble_connected = ble_is_connected();
-
-  // USB優先時、USB接続状態に応じてBLEを動的に制御
-#if PWMK_ENABLE_USB && PWMK_ENABLE_BLE
-  if (connection_pref == CONN_PREF_USB) {
-    if (usb_active && ble_enabled) {
-      ble_power_set(false); // USB接続中はBLEをOFFにして省電力
-    } else if (!usb_active && !ble_enabled) {
-      ble_power_set(true); // USB未接続時はBLEをONにしてフォールバック
-    }
-  }
-#endif
-
-  // トランスポートの決定
-  bool use_ble, use_usb;
-  if (connection_pref == CONN_PREF_BLE) {
-    use_ble = ble_connected;
-    use_usb = !ble_connected && usb_active;
-  } else {
-    use_usb = usb_active;
-    use_ble = !usb_active && ble_connected;
-  }
-
-  // USB定期処理
-#if PWMK_ENABLE_USB
-  usb_hid_task();
-#endif
-
-  // BLE定期処理
-#if PWMK_ENABLE_BLE
-  if (ble_enabled) {
-    ble_poll();
-  }
-#endif
-
-  bool has_activity = false;
-
-  // 周辺機器のイベント処理（I2C通信を含むため必要な時のみ実行）
-  if (peripheral_require_event_processing()) {
-    peripheral_process_events();
-    has_activity = true;
-  }
-
-  // HIDイベントがあればアクティブなトランスポートにレポート送信を要求
-  if (event_has_event()) {
-    has_activity = true;
-    if (use_ble) {
-      ble_request_can_send();
-    } else if (use_usb) {
-      usb_hid_send_reports();
-    }
-  }
-
-  // アクティビティがあればタイマーをリセット
-  if (has_activity) {
-    last_activity_time = get_absolute_time();
-  }
-
-  // ディープスリープチェック
-  if (absolute_time_diff_us(last_activity_time, get_absolute_time()) >
-      DEEP_SLEEP_TIMEOUT_US) {
-    requested_deep_sleep = true;
-  }
-}
-
-/**
- * @brief CYW43のasync_context向け1ms定期ワーカー。
- * @param context 非同期コンテキスト
- * @param worker ワーカー構造体
+/*
+ * 公開関数
  */
-#if PWMK_ENABLE_BLE
-static void _pwmk_worker_process(async_context_t *context,
-                                 async_at_time_worker_t *worker) {
-  _pwmk_process_tick();
-  async_context_add_at_time_worker_in_ms(context, worker, 1);
-}
-#endif
 
 /**
  * @brief メイン関数 エントリーポイント
@@ -214,3 +134,101 @@ int main() {
   state_set_system(STATE_RESET);
   return 0;
 }
+
+/*
+ * 内部関数
+ */
+
+/**
+ * @brief 1ms周期で実行する事実上のメインループ処理。
+ */
+static void _pwmk_process_tick(void) {
+  // キーマトリクス処理を実行
+  matrix_scan_process();
+
+  // 定期処理を実行
+  event_process_periodic();
+
+  // 接続モードとトランスポートの状態を取得
+  state_conn_pref_t connection_pref = state_get_connection_preference();
+  bool usb_active = usb_hid_is_active();
+  bool ble_enabled = ble_is_enabled();
+  bool ble_connected = ble_is_connected();
+
+  // USB優先時、USB接続状態に応じてBLEを動的に制御
+#if PWMK_ENABLE_USB && PWMK_ENABLE_BLE
+  if (connection_pref == CONN_PREF_USB) {
+    if (usb_active && ble_enabled) {
+      ble_power_set(false); // USB接続中はBLEをOFFにして省電力
+    } else if (!usb_active && !ble_enabled) {
+      ble_power_set(true); // USB未接続時はBLEをONにしてフォールバック
+    }
+  }
+#endif
+
+  // トランスポートの決定
+  bool use_ble, use_usb;
+  if (connection_pref == CONN_PREF_BLE) {
+    use_ble = ble_connected;
+    use_usb = !ble_connected && usb_active;
+  } else {
+    use_usb = usb_active;
+    use_ble = !usb_active && ble_connected;
+  }
+
+  bool has_activity = false;
+
+  // USB定期処理
+#if PWMK_ENABLE_USB
+  if (usb_hid_task()) {
+    has_activity = true;
+  }
+#endif
+
+  // BLE定期処理
+#if PWMK_ENABLE_BLE
+  if (ble_enabled) {
+    ble_poll();
+  }
+#endif
+
+  // 周辺機器のイベント処理（I2C通信を含むため必要な時のみ実行）
+  if (peripheral_require_event_processing()) {
+    peripheral_process_events();
+    has_activity = true;
+  }
+
+  // HIDイベントがあればアクティブなトランスポートにレポート送信を要求
+  if (event_has_event()) {
+    has_activity = true;
+    if (use_ble) {
+      ble_request_can_send();
+    } else if (use_usb) {
+      usb_hid_send_reports();
+    }
+  }
+
+  // アクティビティがあればタイマーをリセット
+  if (has_activity) {
+    last_activity_time = get_absolute_time();
+  }
+
+  // ディープスリープチェック
+  if (absolute_time_diff_us(last_activity_time, get_absolute_time()) >
+      DEEP_SLEEP_TIMEOUT_US) {
+    requested_deep_sleep = true;
+  }
+}
+
+/**
+ * @brief CYW43のasync_context向け1ms定期ワーカー。
+ * @param context 非同期コンテキスト
+ * @param worker ワーカー構造体
+ */
+#if PWMK_ENABLE_BLE
+static void _pwmk_worker_process(async_context_t *context,
+                                 async_at_time_worker_t *worker) {
+  _pwmk_process_tick();
+  async_context_add_at_time_worker_in_ms(context, worker, 1);
+}
+#endif

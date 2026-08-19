@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from pwmk_common import ensure_linux, repo_root
+from pwmk_common import ensure_linux, repo_root, safe_rmtree
 
 PROJECT_NAME = "PWMK Firmware"
 DEFAULT_OUTPUT = "site"
@@ -88,7 +88,7 @@ def find_doxygen(command: str) -> str:
 
 def generate_docs(root: Path, output: Path, doxygen: str) -> None:
     if output.exists():
-        shutil.rmtree(output)
+        safe_rmtree(output)
     output.mkdir(parents=True)
 
     with tempfile.TemporaryDirectory(prefix="pwmk-doxygen-") as temporary_directory:

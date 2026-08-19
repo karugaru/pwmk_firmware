@@ -16,6 +16,10 @@
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
 
+/*
+ * 公開関数
+ */
+
 /**
  * @brief プラットフォーム固有の処理が必要になる特殊キーコードの処理
  * @param icode キーコード

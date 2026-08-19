@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 import lzma
 import re
-import shutil
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from pwmk_common import safe_rmtree
 from pwmk_profile import (
     current_profile_path,
     generate_profile,
@@ -58,10 +58,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         yaml_text = source_yaml.read_text(encoding="utf-8").replace(
             "  gpio_led_pin: 16",
             "  gpio_led_pin: 16\n  led_count: 2",
@@ -79,6 +79,97 @@ class ProfileGenerationTest(unittest.TestCase):
             self.assertIn(
                 "#define LED_COUNT 2", board_header.read_text(encoding="utf-8")
             )
+
+    def test_generate_profile_supports_debug_options(self) -> None:
+        profile_name = "test_profile_with_debug_options"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            safe_rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
+        debug_options = "\n".join(
+            f"    {option}: true"
+            for option in (
+                "main",
+                "ble",
+                "event",
+                "matrix_scan",
+                "matrix_scan_deep",
+                "pinnacle",
+                "peripheral",
+                "persistence",
+                "vial",
+                "ble_deep",
+            )
+        )
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  enable_ble: true",
+            f"  enable_ble: true\n  debug:\n{debug_options}",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            profile_cmake = (
+                build_dir / "generated" / "profile" / "profile.cmake"
+            ).read_text(encoding="utf-8")
+            for option in (
+                "MAIN",
+                "BLE",
+                "EVENT",
+                "MATRIX_SCAN",
+                "MATRIX_SCAN_DEEP",
+                "PINNACLE",
+                "PERIPHERAL",
+                "PERSISTENCE",
+                "VIAL",
+            ):
+                self.assertIn(f"set(PWMK_DEBUG_{option} 1", profile_cmake)
+            self.assertIn("set(PWMK_WANT_HCI_DUMP 1", profile_cmake)
+
+    def test_generate_profile_supports_debug_all(self) -> None:
+        profile_name = "test_profile_with_all_debug_options"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            safe_rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  enable_ble: true",
+            "  enable_ble: true\n  debug:\n    all: true",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            profile_cmake = (
+                build_dir / "generated" / "profile" / "profile.cmake"
+            ).read_text(encoding="utf-8")
+            for option in (
+                "MAIN",
+                "BLE",
+                "EVENT",
+                "MATRIX_SCAN",
+                "MATRIX_SCAN_DEEP",
+                "PINNACLE",
+                "PERIPHERAL",
+                "PERSISTENCE",
+                "VIAL",
+            ):
+                self.assertIn(f"set(PWMK_DEBUG_{option} 1", profile_cmake)
+            self.assertIn("set(PWMK_WANT_HCI_DUMP 1", profile_cmake)
 
     def test_generate_profile_supports_vial_unlock_combo(self) -> None:
         profile_name = "test_profile_with_vial_unlock_combo"
@@ -152,10 +243,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -165,6 +256,72 @@ class ProfileGenerationTest(unittest.TestCase):
                 SystemExit, "keyboard-layout.json が見つかりません"
             ):
                 generate_profile(Path(temporary_directory), profile_name)
+
+    def test_generate_profile_rejects_schema_validation_errors(self) -> None:
+        profile_name = "test_profile_with_schema_validation_errors"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+        source_yaml_text = source_yaml.read_text(encoding="utf-8")
+
+        if profile_dir.exists():
+            safe_rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
+
+        invalid_profiles = (
+            (
+                "layout/keymap count mismatch",
+                source_yaml_text.replace('"ICC_NEXT_TRACK",', ""),
+                "キーマップの要素数がレイアウトの要素数と一致する必要があります",
+            ),
+            (
+                "duplicate layout position",
+                source_yaml_text.replace(
+                    "[0, 0], [0, 1]", "[0, 0], [0, 0]", 1
+                ),
+                "レイアウトの要素は一意である必要があります",
+            ),
+            (
+                "unlock combo position outside layout",
+                source_yaml_text.replace("    - [4, 0]", "    - [4, 1]"),
+                "Vial の解除コンボにはレイアウト上のキー座標を指定する必要があります",
+            ),
+            (
+                "missing pinnacle settings",
+                source_yaml_text.replace(
+                    "  pinnacle:\n    rotate: PINNACLE_ROTATE_270\n    accel: 1.2\n    speed: 0.8\n",
+                    "",
+                ),
+                "use_pinnacle が指定されていますが、pinnacle の設定がありません",
+            ),
+            (
+                "deep sleep timeout below minimum",
+                source_yaml_text.replace(
+                    "  deep_sleep_timeout_seconds: 300",
+                    "  deep_sleep_timeout_seconds: 4",
+                ),
+                "greater than or equal to 5",
+            ),
+            (
+                "LED brightness above maximum",
+                source_yaml_text.replace(
+                    "  led_brightness: 16", "  led_brightness: 256"
+                ),
+                "less than or equal to 255",
+            ),
+        )
+
+        for case_name, yaml_text, error_message in invalid_profiles:
+            with self.subTest(case=case_name):
+                (profile_dir / "profile.yaml").write_text(
+                    yaml_text, encoding="utf-8"
+                )
+                self._copy_keyboard_layout(profile_dir)
+
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    with self.assertRaisesRegex(SystemExit, error_message):
+                        generate_profile(Path(temporary_directory), profile_name)
 
     def test_generate_profile_outputs_expected_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -282,10 +439,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         yaml_text = source_yaml.read_text(encoding="utf-8").replace(
             "  usb_vid: 0xCAFE\n  usb_pid: 0x4001",
             "  usb_vid: 0x1234\n  usb_pid: 0xABCD",
@@ -310,10 +467,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -345,10 +502,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )
@@ -372,10 +529,10 @@ class ProfileGenerationTest(unittest.TestCase):
         source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
 
         if profile_dir.exists():
-            shutil.rmtree(profile_dir)
+            safe_rmtree(profile_dir)
 
         profile_dir.mkdir(parents=True)
-        self.addCleanup(lambda: shutil.rmtree(profile_dir, ignore_errors=True))
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
         (profile_dir / "profile.yaml").write_text(
             source_yaml.read_text(encoding="utf-8"), encoding="utf-8"
         )

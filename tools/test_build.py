@@ -475,7 +475,7 @@ def shell_command(test_case: BuildTestCase) -> str:
     copy_command = (
         'WORKDIR="/tmp/pwmk-build-test-workspace" && '
         'rm -rf "$WORKDIR" && mkdir -p "$WORKDIR" && '
-        'cp -a /workspace/. "$WORKDIR"/'
+        'cp -r --no-preserve=all /workspace/. "$WORKDIR"/'
     )
     return (
         f"{test_case.target.bootstrap_command} && {copy_command} && "

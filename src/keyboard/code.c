@@ -1,5 +1,9 @@
 #include "keyboard/code.h"
 
+/*
+ * 公開関数
+ */
+
 /**
  * @brief 内部キーコードからキーボード修飾子コードに変換
  * @return 変換後のキーボード修飾子コード、該当しない場合はKMC_UNDEFINED

@@ -43,6 +43,45 @@ static bool unlock_in_progress; // アンロックが進行中かどうか
 static bool unlock_combo_held;  // アンロックコンボが押されているかどうか
 static uint32_t unlock_hold_started_at_ms; // アンロックを始めた時刻
 
+/*
+ * 内部関数宣言
+ */
+
+static void _handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
+                                 uint8_t response[VIAL_PACKET_SIZE]);
+static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
+                                uint8_t response[VIAL_PACKET_SIZE]);
+
+/*
+ * 公開関数
+ */
+
+/**
+ * @brief Vialパケットを処理する。
+ * @param packet 受信したパケット
+ */
+void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
+  uint8_t request[VIAL_PACKET_SIZE];
+  // 入力を退避してから同じ 32 バイト領域をゼロ初期化した応答として再利用する。
+  memcpy(request, packet, sizeof(request));
+  DEBUG_PRINT_PACKET("Vial request", request);
+  memset(packet, 0, VIAL_PACKET_SIZE);
+
+  if (request[0] == VIAL_PREFIX) {
+    // 0xFE プレフィックスは Vial 固有コマンド、
+    // それ以外は VIA コマンドとして解釈する。
+    _handle_vial_command(request, packet);
+  } else {
+    _handle_via_command(request, packet);
+  }
+
+  DEBUG_PRINT_PACKET("Vial response", packet);
+}
+
+/*
+ * 内部関数
+ */
+
 /**
  * @brief バッファから16ビットのビッグエンディアン値を読み取る。
  * @param buffer 読み取り元のバッファ
@@ -481,28 +520,6 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
     response[0] = 1;
     break;
   }
-}
-
-/**
- * @brief Vialパケットを処理する。
- * @param packet 受信したパケット
- */
-void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
-  uint8_t request[VIAL_PACKET_SIZE];
-  // 入力を退避してから同じ 32 バイト領域をゼロ初期化した応答として再利用する。
-  memcpy(request, packet, sizeof(request));
-  DEBUG_PRINT_PACKET("Vial request", request);
-  memset(packet, 0, VIAL_PACKET_SIZE);
-
-  if (request[0] == VIAL_PREFIX) {
-    // 0xFE プレフィックスは Vial 固有コマンド、
-    // それ以外は VIA コマンドとして解釈する。
-    _handle_vial_command(request, packet);
-  } else {
-    _handle_via_command(request, packet);
-  }
-
-  DEBUG_PRINT_PACKET("Vial response", packet);
 }
 
 #endif // PWMK_ENABLE_USB

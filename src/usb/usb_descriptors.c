@@ -1,3 +1,5 @@
+
+
 #if PWMK_ENABLE_USB
 
 #include <pico/unique_id.h>
@@ -12,6 +14,20 @@
 #include "vial/vial.h"
 
 #define VIAL_SERIAL_PREFIX "vial:f64c2b3c-"
+#define CONFIG_TOTAL_LEN                                                       \
+  (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
+#define EPNUM_HID 0x81
+#define EPNUM_VIAL_OUT 0x02
+#define EPNUM_VIAL_IN 0x82
+
+enum { ITF_NUM_HID, ITF_NUM_VIAL, ITF_NUM_TOTAL };
+
+enum {
+  STRID_LANGID = 0,
+  STRID_MANUFACTURER,
+  STRID_PRODUCT,
+  STRID_SERIAL,
+};
 
 // デバイスディスクリプタ
 static tusb_desc_device_t const desc_device = {
@@ -34,10 +50,7 @@ static tusb_desc_device_t const desc_device = {
     .bNumConfigurations = 0x01,
 };
 
-uint8_t const *tud_descriptor_device_cb(void) {
-  return (uint8_t const *)&desc_device;
-}
-
+// VIAL専用のHIDレポートディスクリプタ
 static uint8_t const vial_hid_descriptor[] = {
     0x06, 0x60,
     0xFF,       // Usage Page (Vendor Defined 0xFF60)
@@ -59,20 +72,6 @@ static uint8_t const vial_hid_descriptor[] = {
     0xC0, // End collection
 };
 
-// HIDレポートディスクリプタ
-uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
-  return instance == USB_HID_INSTANCE_VIAL ? vial_hid_descriptor
-                                           : hid_descriptor;
-}
-
-enum { ITF_NUM_HID, ITF_NUM_VIAL, ITF_NUM_TOTAL };
-
-#define CONFIG_TOTAL_LEN                                                       \
-  (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
-#define EPNUM_HID 0x81
-#define EPNUM_VIAL_OUT 0x02
-#define EPNUM_VIAL_IN 0x82
-
 // コンフィグレーションディスクリプタ
 // HIDレポートディスクリプタのサイズはコンパイル時に不明のため、
 // 実行時にコンフィグレーションディスクリプタのサイズフィールドを修正する
@@ -93,18 +92,6 @@ static uint8_t desc_configuration[] = {
                              1),
 };
 
-uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
-  (void)index;
-  return desc_configuration;
-}
-
-enum {
-  STRID_LANGID = 0,
-  STRID_MANUFACTURER,
-  STRID_PRODUCT,
-  STRID_SERIAL,
-};
-
 // 文字列ディスクリプタ
 static char const *string_desc_arr[] = {
     (const char[]){0x09, 0x04}, // 0: English (0x0409)
@@ -115,6 +102,49 @@ static char const *string_desc_arr[] = {
 
 static uint16_t _desc_str[32 + 1];
 
+/*
+ * 公開関数
+ */
+
+/**
+ * @brief デバイスディスクリプタを返す。
+ * @return デバイスディスクリプタのポインタ
+ * @note この関数はTinyUSBのコールバック関数として使用されます。
+ */
+uint8_t const *tud_descriptor_device_cb(void) {
+  return (uint8_t const *)&desc_device;
+}
+
+// HIDレポートディスクリプタ
+/**
+ * @brief HIDレポートディスクリプタを返す。
+ * @param instance インターフェース番号
+ * @return HIDレポートディスクリプタのポインタ
+ * @note この関数はTinyUSBのコールバック関数として使用されます。
+ */
+uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
+  return instance == USB_HID_INSTANCE_VIAL ? vial_hid_descriptor
+                                           : hid_descriptor;
+}
+
+/**
+ * @brief コンフィグレーションディスクリプタを返す。
+ * @param index インターフェース番号
+ * @return コンフィグレーションディスクリプタのポインタ
+ * @note この関数はTinyUSBのコールバック関数として使用されます
+ */
+uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
+  (void)index;
+  return desc_configuration;
+}
+
+/**
+ * @brief 文字列ディスクリプタを返す。
+ * @param index 文字列ディスクリプタのインデックス
+ * @param langid 言語ID
+ * @return 文字列ディスクリプタのポインタ
+ * @note この関数はTinyUSBのコールバック関数として使用されます
+ */
 uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   (void)langid;
   size_t chr_count;
@@ -171,6 +201,9 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   return _desc_str;
 }
 
+/**
+ * @brief USBディスクリプタを初期化する。
+ */
 void usb_descriptors_init(void) {
   // 各 HID descriptor 内の wReportLength フィールドを設定する。
   const size_t report_length_offset =

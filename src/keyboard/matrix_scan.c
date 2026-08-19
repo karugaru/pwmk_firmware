@@ -13,13 +13,6 @@
 #define DEBUG_MATRIX_SCAN_DEEP 0
 #endif
 
-static bool _scan_each_lines();
-static bool _scan_line(int row);
-
-//----------------------------------------------------------------
-// 静的変数
-//----------------------------------------------------------------
-
 // デバウンス後の前回のキーの状態
 static volatile bool prev_gpio_state[ROWS][COLS] = {false};
 // デバウンス前の最新のキーの状態
@@ -27,9 +20,16 @@ static volatile bool last_gpio_state[ROWS][COLS] = {false};
 // 最後に状態が変化した時刻
 static volatile absolute_time_t last_change_time = 0;
 
-//----------------------------------------------------------------
-// 関数定義
-//----------------------------------------------------------------
+/*
+ * 内部関数宣言
+ */
+
+static bool _scan_each_lines();
+static bool _scan_line(int row);
+
+/*
+ * 公開関数
+ */
 
 /**
  * @brief キーマトリクススキャンの初期化を行います。
@@ -132,9 +132,9 @@ bool matrix_scan_is_pressed(uint8_t row, uint8_t col) {
   return prev_gpio_state[row][col];
 }
 
-//----------------------------------------------------------------
-// 静的関数
-//----------------------------------------------------------------
+/*
+ * 内部関数
+ */
 
 /**
  * @brief マトリクス全体をスキャンし、キーの状態を更新します。

@@ -9,6 +9,10 @@
 uint8_t adv_data[64];
 uint8_t adv_data_len = 0;
 
+/*
+ * 公開関数
+ */
+
 /**
  * @brief BLE Advertising用のデータを初期化する。
  */

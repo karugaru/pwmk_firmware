@@ -10,17 +10,21 @@
 #include "usb/usb_hid.h"
 #include "vial/vial.h"
 
-static void _usb_hid_send_report_chain(void);
-static void _usb_hid_process_vial(void);
-
 static bool usb_hid_report_chain_active;
 
 static uint8_t vial_buffer[VIAL_PACKET_SIZE];
 static bool vial_request_pending;
 
-// --------------------------------
-// 公開関数
-// --------------------------------
+/*
+ * 内部関数宣言
+ */
+
+static void _usb_hid_send_report_chain(void);
+static bool _usb_hid_process_vial(void);
+
+/*
+ * 公開関数
+ */
 
 /**
  * @brief USB HIDデバイスの初期化を行う。
@@ -38,10 +42,11 @@ void usb_hid_deinit(void) { tud_deinit(BOARD_TUD_RHPORT); }
 /**
  * @brief USB HIDのデバイスのタスク処理を行う。
  *        メインループから定期的に呼び出す必要がある。
+ * @return VIAL要求を処理した場合はtrue、それ以外はfalse
  */
-void usb_hid_task(void) {
+bool usb_hid_task(void) {
   tud_task();
-  _usb_hid_process_vial();
+  return _usb_hid_process_vial();
 }
 
 /**
@@ -63,17 +68,15 @@ void usb_hid_send_reports(void) {
  */
 bool usb_hid_is_active(void) { return tud_mounted(); }
 
-// --------------------------------
-// TinyUSBデバイスコールバック
-// --------------------------------
-
 /**
  * @brief USBデバイスがマウントされた時のコールバック。
+ * @note この関数はTinyUSBのデバイスコールバック関数として使用されます。
  */
 void tud_mount_cb(void) { state_refresh_runtime(); }
 
 /**
  * @brief USBデバイスがアンマウントされた時のコールバック。
+ * @note この関数はTinyUSBのデバイスコールバック関数として使用されます。
  */
 void tud_umount_cb(void) {
   vial_request_pending = false;
@@ -82,21 +85,24 @@ void tud_umount_cb(void) {
 
 /**
  * @brief USBバスがサスペンドされた時のコールバック。
+ * @param remote_wakeup_en リモートウェイクアップが有効かどうか
+ * @note この関数はTinyUSBのデバイスコールバック関数として使用されます。
  */
 void tud_suspend_cb(bool remote_wakeup_en) { (void)remote_wakeup_en; }
 
 /**
  * @brief USBバスがレジュームされた時のコールバック。
+ * @note この関数はTinyUSBのデバイスコールバック関数として使用されます。
  */
 void tud_resume_cb(void) {}
-
-// --------------------------------
-// TinyUSB HIDコールバック
-// --------------------------------
 
 /**
  * @brief HIDレポート送信完了コールバック。
  *        レポートチェーンの次のレポートを送信する。
+ * @param _instance インターフェース番号
+ * @param report 送信したレポートのデータ
+ * @param len 送信したレポートの長さ
+ * @note この関数はTinyUSBのHIDコールバック関数として使用されます。
  */
 void tud_hid_report_complete_cb(uint8_t _instance, uint8_t const *report,
                                 uint16_t len) {
@@ -116,6 +122,13 @@ void tud_hid_report_complete_cb(uint8_t _instance, uint8_t const *report,
 
 /**
  * @brief GET_REPORTリクエストのコールバック。
+ * @param instance インターフェース番号
+ * @param report_id レポートID
+ * @param report_type レポートタイプ
+ * @param buffer レポートデータを格納するバッファ
+ * @param reqlen バッファの長さ
+ * @return レポートデータの長さ
+ * @note この関数はTinyUSBのHIDコールバック関数として使用されます。
  */
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
                                hid_report_type_t report_type, uint8_t *buffer,
@@ -131,6 +144,12 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
 /**
  * @brief SET_REPORTリクエストのコールバック。
  *        キーボードLED（CapsLock等）の処理に使用可能。
+ * @param instance インターフェース番号
+ * @param report_id レポートID
+ * @param report_type レポートタイプ
+ * @param buffer レポートデータ
+ * @param bufsize レポートデータの長さ
+ * @note この関数はTinyUSBのHIDコールバック関数として使用されます。
  */
 void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
                            hid_report_type_t _report_type,
@@ -165,9 +184,9 @@ void tud_hid_set_report_cb(uint8_t _instance, uint8_t _report_id,
   vial_request_pending = true;
 }
 
-// --------------------------------
-// 内部関数
-// --------------------------------
+/*
+ * 内部関数
+ */
 
 /**
  * @brief レポートチェーンを開始する。
@@ -187,9 +206,9 @@ static void _usb_hid_send_report_chain() {
 /**
  * @brief VIAL要求を通常のメインループ文脈で処理し、応答を送信する。
  */
-static void _usb_hid_process_vial(void) {
+static bool _usb_hid_process_vial(void) {
   if (!vial_request_pending) {
-    return;
+    return false;
   }
   vial_request_pending = false;
 
@@ -198,9 +217,10 @@ static void _usb_hid_process_vial(void) {
 
   // 処理結果を応答として送信する
   if (!tud_hid_n_ready(USB_HID_INSTANCE_VIAL)) {
-    return;
+    return true;
   }
   tud_hid_n_report(USB_HID_INSTANCE_VIAL, 0, vial_buffer, sizeof(vial_buffer));
+  return true;
 }
 
 #endif // PWMK_ENABLE_USB

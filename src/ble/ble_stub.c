@@ -4,6 +4,10 @@
 #define uint8_t unsigned char
 #endif
 
+/*
+ * 公開関数
+ */
+
 __attribute__((weak)) void ble_setup(void) {}
 
 __attribute__((weak)) void ble_power_set(bool power) { (void)power; }
