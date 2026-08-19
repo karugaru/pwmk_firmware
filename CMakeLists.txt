@@ -210,6 +210,7 @@ target_compile_definitions(pwmk PRIVATE
     DEBUG_MATRIX_SCAN_DEEP=0
     DEBUG_PINNACLE=0
     DEBUG_PERIPHERAL=0
+    DEBUG_PERSISTENCE=0
     DEBUG_VIAL=0
 )
 
