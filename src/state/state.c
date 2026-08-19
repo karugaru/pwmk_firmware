@@ -2,7 +2,6 @@
 #include <pico/bootrom.h>
 
 #include "ble/ble.h"
-#include "peripheral/peripheral.h"
 #include "state/sleep.h"
 #include "state/state.h"
 #include "usb/usb_hid.h"
@@ -73,7 +72,6 @@ void state_set_system(state_system_t new_state) {
     return;
   }
 
-  peripheral_set_state(new_state);
   current_state = new_state;
 
   switch (new_state) {

@@ -207,6 +207,9 @@ static void _pwmk_process_tick(void) {
     }
   }
 
+  // 周期的なペリフェラル処理を実行
+  peripheral_process_periodic();
+
   // アクティビティがあればタイマーをリセット
   if (has_activity) {
     last_activity_time = get_absolute_time();

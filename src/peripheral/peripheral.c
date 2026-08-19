@@ -49,10 +49,10 @@ static int8_t pointing_device_pinnacle = -1;
 void peripheral_early_init(void) { led_init(GPIO_LED_PIN, LED_BRIGHTNESS); }
 
 /**
- * @brief 状態に応じた処理ができるようにペリフェラルに状態を通知する。
- * @param state 現在のシステム状態
+ * @brief 周期的なペリフェラル処理を行う。
  */
-void peripheral_set_state(state_system_t state) {
+void peripheral_process_periodic(void) {
+  state_system_t state = state_get_system();
   const peripheral_led_entry_t *entry = &peripheral_led_table[state];
   led_put_rgb(entry->r, entry->g, entry->b);
 }
