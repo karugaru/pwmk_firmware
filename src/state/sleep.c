@@ -14,7 +14,6 @@
 #endif
 
 #include "ble/ble.h"
-#include "led/led.h"
 #include "profile/board.h"
 #include "state/sleep.h"
 #include "usb/usb_hid.h"
@@ -144,9 +143,6 @@ void sleep_enter_deep(void) {
 static void _prepare_deep_sleep(void) {
   // 割り込みを無効化
   disable_interrupts();
-
-  // LEDを消灯
-  led_put_rgb(0, 0, 0);
 
   // BLEを無効化
 #if PWMK_ENABLE_BLE

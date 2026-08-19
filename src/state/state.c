@@ -2,31 +2,10 @@
 #include <pico/bootrom.h>
 
 #include "ble/ble.h"
-#include "led/led.h"
+#include "peripheral/peripheral.h"
 #include "state/sleep.h"
 #include "state/state.h"
 #include "usb/usb_hid.h"
-
-// LEDの状態を定義する構造体
-typedef struct {
-  uint8_t r, g, b; // LEDのRGB値
-} state_led_entry_t;
-
-// clang-format off
-static const state_led_entry_t state_led_table[] = {
-  [STATE_RESET]         = { 0,   0,   0   }, // 消灯
-  [STATE_BOOTING]       = { 255, 127, 0   }, // オレンジ
-  [STATE_SYS_INIT]      = { 255, 255, 0   }, // 黄色
-  [STATE_BLE_INIT]      = { 0,   0,   255 }, // 青
-  [STATE_INIT_COMPLETE] = { 255, 255, 255 }, // 白
-  [STATE_USB_WAITING]   = { 255, 0,   0   }, // 赤
-  [STATE_BLE_WAITING]   = { 0,   255, 255 }, // 水色
-  [STATE_BLE_CONNECTED] = { 0,   0,   0   }, // 消灯
-  [STATE_USB_CONNECTED] = { 0,   0,   0   }, // 消灯
-  [STATE_BOOTLOADER]    = { 255, 255, 255 }, // 白
-  [STATE_DEEP_SLEEP]    = { 0,   0,   0   }, // 消灯
-};
-// clang-format on
 
 static volatile state_system_t current_state = STATE_RESET;
 static volatile state_conn_pref_t conn_pref = CONN_PREF_USB;
@@ -90,13 +69,11 @@ void state_refresh_runtime(void) {
  * @param new_state 設定する新しい状態
  */
 void state_set_system(state_system_t new_state) {
-  const state_led_entry_t *entry = &state_led_table[new_state];
-
   if (current_state == new_state) {
     return;
   }
 
-  led_put_rgb(entry->r, entry->g, entry->b);
+  peripheral_set_state(new_state);
   current_state = new_state;
 
   switch (new_state) {

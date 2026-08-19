@@ -10,7 +10,6 @@
 #include "keyboard/event.h"
 #include "keyboard/event_platform.h"
 #include "keyboard/matrix_scan.h"
-#include "led/led.h"
 #include "peripheral/peripheral.h"
 #include "profile/board.h"
 #include "settings/settings.h"
@@ -58,8 +57,8 @@ int main() {
 #endif
   DEBUG_PRINT("pwmk v1 start\n");
 
-  // LEDの初期化
-  led_init(GPIO_LED_PIN, LED_BRIGHTNESS);
+  // 初期周辺機器の初期化
+  peripheral_early_init();
   state_set_system(STATE_SYS_INIT);
 
   // 設定の初期化

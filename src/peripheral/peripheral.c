@@ -1,9 +1,31 @@
 #include "peripheral/peripheral.h"
 #include "hid/hid.h"
 #include "keyboard/event.h"
+#include "led/led.h"
 #include "pinnacle/pinnacle.h"
 #include "profile/board.h"
 #include "settings/settings.h"
+
+// LEDの状態を定義する構造体
+typedef struct {
+  uint8_t r, g, b; // LEDのRGB値
+} peripheral_led_entry_t;
+
+// clang-format off
+static const peripheral_led_entry_t peripheral_led_table[] = {
+  [STATE_RESET]         = { 0,   0,   0   }, // 消灯
+  [STATE_BOOTING]       = { 255, 127, 0   }, // オレンジ
+  [STATE_SYS_INIT]      = { 255, 255, 0   }, // 黄色
+  [STATE_BLE_INIT]      = { 0,   0,   255 }, // 青
+  [STATE_INIT_COMPLETE] = { 255, 255, 255 }, // 白
+  [STATE_USB_WAITING]   = { 255, 0,   0   }, // 赤
+  [STATE_BLE_WAITING]   = { 0,   255, 255 }, // 水色
+  [STATE_BLE_CONNECTED] = { 0,   0,   0   }, // 消灯
+  [STATE_USB_CONNECTED] = { 0,   0,   0   }, // 消灯
+  [STATE_BOOTLOADER]    = { 255, 255, 255 }, // 白
+  [STATE_DEEP_SLEEP]    = { 0,   0,   0   }, // 消灯
+};
+// clang-format on
 
 #ifndef DEBUG_PERIPHERAL
 #define DEBUG_PERIPHERAL 0
@@ -20,6 +42,20 @@ static int8_t pointing_device_pinnacle = -1;
 /*
  * 公開関数
  */
+
+/**
+ * @brief 通常のペリフェラルより前に初期化が必要なペリフェラルを初期化する。
+ */
+void peripheral_early_init(void) { led_init(GPIO_LED_PIN, LED_BRIGHTNESS); }
+
+/**
+ * @brief 状態に応じた処理ができるようにペリフェラルに状態を通知する。
+ * @param state 現在のシステム状態
+ */
+void peripheral_set_state(state_system_t state) {
+  const peripheral_led_entry_t *entry = &peripheral_led_table[state];
+  led_put_rgb(entry->r, entry->g, entry->b);
+}
 
 /**
  * @brief 周辺機器の初期化を行う。
