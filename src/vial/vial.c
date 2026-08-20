@@ -5,6 +5,7 @@
 
 #include <pico/unique_id.h>
 
+#include "debug.h"
 #include "keyboard/code_convert.h"
 #include "keyboard/matrix_scan.h"
 #include "profile/board.h"
@@ -20,13 +21,7 @@
 
 #if DEBUG_VIAL
 #define DEBUG_PRINT_PACKET(label, packet)                                      \
-  do {                                                                         \
-    printf("%s: ", label);                                                     \
-    for (uint8_t index = 0; index < VIAL_PACKET_SIZE; index++) {               \
-      printf("0x%02X ", packet[index]);                                        \
-    }                                                                          \
-    printf("\n");                                                              \
-  } while (0)
+  pwmk_debug_hexdump("VIAL", label, packet, VIAL_PACKET_SIZE)
 #else
 #define DEBUG_PRINT_PACKET(...) ((void)(0))
 #endif
@@ -64,7 +59,7 @@ void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
   uint8_t request[VIAL_PACKET_SIZE];
   // 入力を退避してから同じ 32 バイト領域をゼロ初期化した応答として再利用する。
   memcpy(request, packet, sizeof(request));
-  DEBUG_PRINT_PACKET("Vial request", request);
+  DEBUG_PRINT_PACKET("request", request);
   memset(packet, 0, VIAL_PACKET_SIZE);
 
   if (request[0] == VIAL_PREFIX) {
@@ -75,7 +70,7 @@ void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
     _handle_via_command(request, packet);
   }
 
-  DEBUG_PRINT_PACKET("Vial response", packet);
+  DEBUG_PRINT_PACKET("response", packet);
 }
 
 /*

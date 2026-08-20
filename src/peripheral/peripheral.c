@@ -1,4 +1,5 @@
 #include "peripheral/peripheral.h"
+#include "debug.h"
 #include "hid/hid.h"
 #include "keyboard/event.h"
 #include "led/led.h"
@@ -48,7 +49,7 @@ static const peripheral_led_entry_t peripheral_led_table[STATE_STEADY_COUNT] = {
 #endif
 
 #if DEBUG_PERIPHERAL
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("PERIPHERAL", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif

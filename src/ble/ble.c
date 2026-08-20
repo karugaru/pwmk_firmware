@@ -10,6 +10,7 @@
 #include "ble/advertising_data.h"
 #include "ble/ble.h"
 #include "ble/le_device_db_tlv_custom.h"
+#include "debug.h"
 #include "keyboard/event.h"
 
 #ifndef DEBUG_BLE
@@ -17,7 +18,7 @@
 #endif
 
 #if DEBUG_BLE
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("BLE", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
@@ -48,7 +49,7 @@ static void _ble_resume_advertising(void);
  * @brief BLEの初期化を行う。
  */
 void ble_setup(void) {
-  DEBUG_PRINT("BLE setup\n");
+  DEBUG_PRINT("setup\n");
 
   // Initialize L2CAP
   l2cap_init();
@@ -89,7 +90,7 @@ void ble_setup(void) {
   sm_add_event_handler(&sm_event_callback_registration);
   hids_device_register_packet_handler(_packet_handler);
 
-  DEBUG_PRINT("BLE setup complete\n");
+  DEBUG_PRINT("setup complete\n");
 }
 
 /**
@@ -113,7 +114,7 @@ void ble_power_set(bool power) {
     hci_power_control(HCI_POWER_OFF);
   }
 
-  DEBUG_PRINT("BLE Power set to %s\n", power ? "ON" : "OFF");
+  DEBUG_PRINT("power: %s\n", power ? "ON" : "OFF");
 }
 
 /**
@@ -339,7 +340,7 @@ static void _ble_apply_selected_slot_address(void) {
   // Advertising用の自己アドレスを設定する
   gap_random_address_set(slot_addr);
   gap_random_address_set_mode(GAP_RANDOM_ADDRESS_TYPE_STATIC);
-  DEBUG_PRINT("BLE own address mode: static slot=%d generation=%u addr=%s\n",
+  DEBUG_PRINT("own address: static slot=%d generation=%u addr=%s\n",
               selected_slot, address_generation, bd_addr_to_str(slot_addr));
 }
 

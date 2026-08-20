@@ -1,4 +1,5 @@
 #include "keyboard/event.h"
+#include "debug.h"
 #include "hid/hid.h"
 #include "keyboard/code.h"
 #include <stdbool.h>
@@ -11,16 +12,9 @@
 #endif
 
 #if DEBUG_EVENT
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("EVENT", __VA_ARGS__)
 #define DEBUG_PRINT_REPORT(name, report)                                       \
-  do {                                                                         \
-    /* デバッグ出力 */                                                         \
-    printf("%s: ", name);                                                      \
-    for (int i = 0; i < (report->size); i++) {                                 \
-      printf("0x%02X ", (report->data[i]));                                    \
-    }                                                                          \
-    printf("\n");                                                              \
-  } while (0);
+  pwmk_debug_hexdump("EVENT", name, (report)->data, (report)->size)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #define DEBUG_PRINT_REPORT(name, report) ((void)(name), (void)(report))
@@ -213,7 +207,7 @@ bool event_pop_hid_report(event_hid_report_t *report) {
     hid_keyboard_to_report(&hid_state, report->data);
     hid_state.has_keyboard_event = false;
 
-    DEBUG_PRINT_REPORT("Keyboard Report", report);
+    DEBUG_PRINT_REPORT("keyboard", report);
     return true;
   }
 
@@ -223,7 +217,7 @@ bool event_pop_hid_report(event_hid_report_t *report) {
     hid_consumer_to_report(&hid_state, report->data);
     hid_state.has_consumer_event = false;
 
-    DEBUG_PRINT_REPORT("Consumer Report", report);
+    DEBUG_PRINT_REPORT("consumer", report);
     return true;
   }
 
@@ -235,7 +229,7 @@ bool event_pop_hid_report(event_hid_report_t *report) {
                                     event_settings.mouse_wheel_thresh);
     hid_state.has_mouse_event = false;
 
-    DEBUG_PRINT_REPORT("Mouse Report", report);
+    DEBUG_PRINT_REPORT("mouse", report);
     return true;
   }
 

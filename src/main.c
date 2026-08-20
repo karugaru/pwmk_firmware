@@ -6,6 +6,7 @@
 #endif
 
 #include "ble/ble.h"
+#include "debug.h"
 #include "keyboard/code.h"
 #include "keyboard/event.h"
 #include "keyboard/event_platform.h"
@@ -21,7 +22,7 @@
 #endif
 
 #if DEBUG_MAIN
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("MAIN", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
@@ -57,7 +58,7 @@ int main() {
 #if DEBUG_MAIN
   sleep_ms(2000); // UARTデバッグ用: 接続待ち
 #endif
-  DEBUG_PRINT("pwmk v1 start\n");
+  DEBUG_PRINT("PWMK Firmware Start v2\n");
 
   // 初期周辺機器の初期化
   peripheral_early_init();

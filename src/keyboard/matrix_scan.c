@@ -1,7 +1,6 @@
-#include <stdio.h>
-
-#include "keyboard/event.h"
 #include "keyboard/matrix_scan.h"
+#include "debug.h"
+#include "keyboard/event.h"
 #include "profile/board.h"
 #include "settings/settings.h"
 
@@ -11,6 +10,12 @@
 
 #ifndef DEBUG_MATRIX_SCAN_DEEP
 #define DEBUG_MATRIX_SCAN_DEEP 0
+#endif
+
+#if DEBUG_MATRIX_SCAN || DEBUG_MATRIX_SCAN_DEEP
+#define DEBUG_PRINT(...) pwmk_debug_printf("MATRIX_SCAN", __VA_ARGS__)
+#else
+#define DEBUG_PRINT(...) ((void)(0))
 #endif
 
 // デバウンス後の前回のキーの状態
@@ -81,15 +86,15 @@ void matrix_scan_process(void) {
     last_change_time = current_time;
 
 #if DEBUG_MATRIX_SCAN_DEEP
-    printf("Matrix[\n");
+    DEBUG_PRINT("state changed\n");
     for (int row = 0; row < ROWS; row++) {
-      printf("  ");
+      char row_state[COLS + 1];
       for (int col = 0; col < COLS; col++) {
-        printf("%d", last_gpio_state[row][col] ? 1 : 0);
+        row_state[col] = last_gpio_state[row][col] ? '1' : '0';
       }
-      printf("\n");
+      row_state[COLS] = '\0';
+      DEBUG_PRINT("row %d: %s\n", row, row_state);
     }
-    printf("]\n");
 #endif
   }
 
@@ -107,8 +112,8 @@ void matrix_scan_process(void) {
         bool pressed = last_gpio_state[row][col];
 
 #if DEBUG_MATRIX_SCAN
-        printf("Matrix debounced (%d, %d) %s\n", row, col,
-               pressed ? "pressed" : "released");
+        DEBUG_PRINT("debounced (%d, %d) %s\n", row, col,
+                    pressed ? "pressed" : "released");
 #endif
 
         event_process(row, col, pressed, to_us_since_boot(current_time));

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "debug.h"
 #include "pinnacle/pinnacle.h"
 
 #ifndef DEBUG_PINNACLE
@@ -10,7 +11,7 @@
 #endif
 
 #if DEBUG_PINNACLE
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("PINNACLE", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
@@ -67,7 +68,7 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   // ターゲットデバイスが接続されていることを確認
   uint8_t firmware[2] = {0};
   _rap_read_bytes(PINNACLE_I2C_FIRMWARE_ID, 2, firmware);
-  DEBUG_PRINT("Cirque Firmware ID: %02x %02x\n", firmware[0], firmware[1]);
+  DEBUG_PRINT("firmware ID: %02x %02x\n", firmware[0], firmware[1]);
   if (firmware[0] != 0x07 || firmware[1] != 0x3A) {
     return false;
   }
@@ -75,30 +76,22 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   // 初期化シーケンス
   // システムをリセット
   _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x01);
-  DEBUG_PRINT("Cirque reset\n");
+  DEBUG_PRINT("reset\n");
   while (!pinnacle_check_DR()) {
     sleep_ms(1);
   }
   _rap_write(PINNACLE_I2C_STATUS, 0x00);
-  DEBUG_PRINT("Cirque reset complete\n");
+  DEBUG_PRINT("reset complete\n");
 
 #if DEBUG_PINNACLE
   // リセット後のレジスタダンプ
   uint8_t register_dump[32];
   _rap_read_bytes(0x00, 32, register_dump);
-  DEBUG_PRINT("Cirque register dump after reset:\n");
-  for (int i = 0; i < 32; i++) {
-    if (i % 8 == 0) {
-      DEBUG_PRINT("  ");
-    }
-    DEBUG_PRINT("%02x ", register_dump[i]);
-    if (i % 8 == 7) {
-      DEBUG_PRINT("\n");
-    }
-  }
+  pwmk_debug_hexdump("PINNACLE", "register dump after reset", register_dump,
+                     sizeof(register_dump));
 #endif
 
-  DEBUG_PRINT("Cirque init start\n");
+  DEBUG_PRINT("init start\n");
   // システム設定を初期化
   _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x00);
   _rap_write(PINNACLE_I2C_FEED_CONFIG_1, 0x00);
@@ -137,7 +130,7 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x04);
   _rap_write(PINNACLE_I2C_SLEEP_INTERVAL, 0x80);
   _rap_write(PINNACLE_I2C_SLEEP_TIMER, 0x08);
-  DEBUG_PRINT("Cirque init complete\n");
+  DEBUG_PRINT("init complete\n");
 
   return true;
 }

@@ -1,5 +1,6 @@
 #include "keyboard/event_platform.h"
 #include "ble/ble.h"
+#include "debug.h"
 #include "keyboard/code.h"
 #include "state/state.h"
 #include <stdbool.h>
@@ -11,7 +12,7 @@
 #endif
 
 #if DEBUG_EVENT
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("EVENT", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
@@ -66,33 +67,28 @@ bool event_platform_process(icode_t icode, bool pressed) {
   if (pressed && ISC_BLE_UNPAIR <= icode && icode <= ISC_BLE_SLOT_4) {
     bool ble_slot_updated = false;
 
-    DEBUG_PRINT("BLE slot op requested: icode=0x%04X\n", icode);
+    DEBUG_PRINT("BLE slot requested: icode=0x%04X\n", icode);
 
     switch (icode) {
     case ISC_BLE_UNPAIR:
       ble_slot_updated = ble_unpair_selected_slot();
-      DEBUG_PRINT("BLE slot op: unpair selected result=%d\n",
-                  ble_slot_updated ? 1 : 0);
+      DEBUG_PRINT("BLE unpair result=%d\n", ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_1:
       ble_slot_updated = ble_select_slot(0);
-      DEBUG_PRINT("BLE slot op: select slot 1 result=%d\n",
-                  ble_slot_updated ? 1 : 0);
+      DEBUG_PRINT("BLE slot 1 result=%d\n", ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_2:
       ble_slot_updated = ble_select_slot(1);
-      DEBUG_PRINT("BLE slot op: select slot 2 result=%d\n",
-                  ble_slot_updated ? 1 : 0);
+      DEBUG_PRINT("BLE slot 2 result=%d\n", ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_3:
       ble_slot_updated = ble_select_slot(2);
-      DEBUG_PRINT("BLE slot op: select slot 3 result=%d\n",
-                  ble_slot_updated ? 1 : 0);
+      DEBUG_PRINT("BLE slot 3 result=%d\n", ble_slot_updated ? 1 : 0);
       break;
     case ISC_BLE_SLOT_4:
       ble_slot_updated = ble_select_slot(3);
-      DEBUG_PRINT("BLE slot op: select slot 4 result=%d\n",
-                  ble_slot_updated ? 1 : 0);
+      DEBUG_PRINT("BLE slot 4 result=%d\n", ble_slot_updated ? 1 : 0);
       break;
     default:
       break;

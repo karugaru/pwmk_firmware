@@ -14,6 +14,7 @@
 #endif
 
 #include "ble/ble.h"
+#include "debug.h"
 #include "profile/board.h"
 #include "state/sleep.h"
 #include "usb/usb_hid.h"
@@ -23,7 +24,7 @@
 #endif
 
 #if DEBUG_MAIN
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("SLEEP", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
