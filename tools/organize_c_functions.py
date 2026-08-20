@@ -237,11 +237,19 @@ def _is_header_prefix_line(masked_line: str) -> bool:
     stripped = masked_line.strip()
     if not stripped or stripped.startswith("#"):
         return False
+    if stripped.startswith(("__attribute__", "__declspec")):
+        declaration = re.sub(
+            r"^(?:(?:__attribute__\s*\(\([^;{}]*\)\))|"
+            r"(?:__declspec\s*\([^;{}]*\)))\s*",
+            "",
+            stripped,
+        )
+        return not any(character in stripped for character in "{};=") and not re.search(
+            r"\b[A-Za-z_]\w*\s*\([^;{}]*\)", declaration
+        )
     if any(character in stripped for character in "{};=()"):
         return False
-    return stripped.startswith(("__attribute__", "__declspec")) or bool(
-        re.match(r"[A-Za-z_]", stripped)
-    )
+    return bool(re.match(r"[A-Za-z_]", stripped))
 
 
 def _is_block_comment_line(original_line: str) -> bool:
