@@ -5,7 +5,6 @@
 
 #include "hid/hid.h"
 #include "keyboard/event.h"
-#include "state/state.h"
 #include "usb/usb_descriptors.h"
 #include "usb/usb_hid.h"
 #include "vial/vial.h"
@@ -72,16 +71,13 @@ bool usb_hid_is_active(void) { return tud_mounted(); }
  * @brief USBデバイスがマウントされた時のコールバック。
  * @note この関数はTinyUSBのデバイスコールバック関数として使用されます。
  */
-void tud_mount_cb(void) { state_refresh_runtime(); }
+void tud_mount_cb(void) {}
 
 /**
  * @brief USBデバイスがアンマウントされた時のコールバック。
  * @note この関数はTinyUSBのデバイスコールバック関数として使用されます。
  */
-void tud_umount_cb(void) {
-  vial_request_pending = false;
-  state_refresh_runtime();
-}
+void tud_umount_cb(void) { vial_request_pending = false; }
 
 /**
  * @brief USBバスがサスペンドされた時のコールバック。

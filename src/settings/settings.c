@@ -1,6 +1,7 @@
 #include "settings/settings.h"
 #include "persistence/persistence.h"
 #include "profile/keymap.h"
+#include "state/state.h"
 #include <string.h>
 
 // 設定の状態を表す構造体
@@ -18,6 +19,7 @@ static bool persistence_unavailable;
 static settings_update_result_t _settings_persist_current_state(void);
 static settings_update_result_t _settings_rebuild_current_state(void);
 static settings_update_result_t _settings_unchanged_result(void);
+static void _settings_notify_result(settings_update_result_t result);
 
 /*
  * 公開関数
@@ -25,8 +27,12 @@ static settings_update_result_t _settings_unchanged_result(void);
 
 /**
  * @brief 設定を初期化する
+ * @return bool 初期化に成功した場合にtrueを返す
+ * @note
+ * 永続化領域の初期化に失敗した場合でも、RAM上の設定は初期化されるため、trueを返す
+ *       ただし、永続化領域が利用できない状態となるため、設定の変更はRAM上のみで反映され、永続化は行われない
  */
-void settings_init(void) {
+bool settings_init(void) {
   // 設定状態を初期化する
   memset(&settings_state, 0, sizeof(settings_state));
   persistence_unavailable = false;
@@ -38,10 +44,10 @@ void settings_init(void) {
   // 永続化領域を初期化して、保存済みの設定を復元する
   if (!persistence_init(sizeof(settings_state))) {
     persistence_unavailable = true;
-    return;
+    return true;
   }
   if (persistence_restore((uint8_t *)&settings_state, sizeof(settings_state))) {
-    return;
+    return true;
   }
 
   // 復元できない場合は設定を初期値に戻して永続化領域を再構築する
@@ -49,7 +55,9 @@ void settings_init(void) {
   if (!persistence_rebuild((const uint8_t *)&settings_state,
                            sizeof(settings_state))) {
     persistence_unavailable = true;
+    return true;
   }
+  return true;
 }
 
 /**
@@ -81,6 +89,7 @@ settings_update_result_t settings_set_keycode(uint8_t layer, uint8_t row,
                                               uint8_t col, icode_t keycode) {
   if (!keymap_is_valid_position(layer, row, col) ||
       !keymap_is_valid_keycode(keycode)) {
+    state_set_temporary_state(STATE_TEMP_SETTINGS_FAILED);
     return SETTINGS_UPDATE_FAILED;
   }
 
@@ -93,6 +102,7 @@ settings_update_result_t settings_set_keycode(uint8_t layer, uint8_t row,
 
   // キーマップを更新して、永続化領域に保存する
   if (!keymap_set(settings_state.dynamic_keymap, layer, row, col, keycode)) {
+    state_set_temporary_state(STATE_TEMP_SETTINGS_FAILED);
     return SETTINGS_UPDATE_FAILED;
   }
   return _settings_persist_current_state();
@@ -105,6 +115,7 @@ settings_update_result_t settings_set_keycode(uint8_t layer, uint8_t row,
  */
 settings_update_result_t settings_reset(settings_id_t id) {
   if (id != SETTINGS_ID_KEYMAP) {
+    state_set_temporary_state(STATE_TEMP_SETTINGS_FAILED);
     return SETTINGS_UPDATE_FAILED;
   }
 
@@ -122,6 +133,15 @@ settings_update_result_t settings_reset(settings_id_t id) {
   return _settings_rebuild_current_state();
 }
 
+/**
+ * @brief 一時状態設定の実装のスタブ
+ * @param state 設定する一時状態
+ * @note この実装は単体テスト用のスタブであり、実際の実装はstate.cで提供される。
+ */
+__attribute__((weak)) void state_set_temporary_state(state_temporary_t state) {
+  (void)state;
+}
+
 /*
  * 内部関数
  */
@@ -131,16 +151,20 @@ settings_update_result_t settings_reset(settings_id_t id) {
  * @return 設定の更新結果
  */
 static settings_update_result_t _settings_persist_current_state(void) {
+  state_set_temporary_state(STATE_TEMP_SETTINGS_SAVING);
   if (persistence_unavailable) {
+    _settings_notify_result(SETTINGS_UPDATE_RAM_ONLY);
     return SETTINGS_UPDATE_RAM_ONLY;
   }
 
   if (persistence_commit((const uint8_t *)&settings_state,
                          sizeof(settings_state))) {
+    _settings_notify_result(SETTINGS_UPDATE_PERSISTED);
     return SETTINGS_UPDATE_PERSISTED;
   }
 
   persistence_unavailable = true;
+  _settings_notify_result(SETTINGS_UPDATE_RAM_ONLY);
   return SETTINGS_UPDATE_RAM_ONLY;
 }
 
@@ -149,16 +173,20 @@ static settings_update_result_t _settings_persist_current_state(void) {
  * @return 設定の更新結果
  */
 static settings_update_result_t _settings_rebuild_current_state(void) {
+  state_set_temporary_state(STATE_TEMP_SETTINGS_SAVING);
   if (persistence_unavailable) {
+    _settings_notify_result(SETTINGS_UPDATE_RAM_ONLY);
     return SETTINGS_UPDATE_RAM_ONLY;
   }
 
   if (persistence_rebuild((const uint8_t *)&settings_state,
                           sizeof(settings_state))) {
+    _settings_notify_result(SETTINGS_UPDATE_PERSISTED);
     return SETTINGS_UPDATE_PERSISTED;
   }
 
   persistence_unavailable = true;
+  _settings_notify_result(SETTINGS_UPDATE_RAM_ONLY);
   return SETTINGS_UPDATE_RAM_ONLY;
 }
 
@@ -169,4 +197,22 @@ static settings_update_result_t _settings_rebuild_current_state(void) {
 static settings_update_result_t _settings_unchanged_result(void) {
   return persistence_unavailable ? SETTINGS_UPDATE_RAM_ONLY
                                  : SETTINGS_UPDATE_PERSISTED;
+}
+
+/**
+ * @brief 設定の更新結果に応じて状態イベントを通知する
+ * @param result 設定の更新結果
+ */
+static void _settings_notify_result(settings_update_result_t result) {
+  switch (result) {
+  case SETTINGS_UPDATE_PERSISTED:
+    state_set_temporary_state(STATE_TEMP_SETTINGS_PERSISTED);
+    break;
+  case SETTINGS_UPDATE_RAM_ONLY:
+    state_set_temporary_state(STATE_TEMP_SETTINGS_RAM_ONLY);
+    break;
+  case SETTINGS_UPDATE_FAILED:
+    state_set_temporary_state(STATE_TEMP_SETTINGS_FAILED);
+    break;
+  }
 }

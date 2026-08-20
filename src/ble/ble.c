@@ -11,7 +11,6 @@
 #include "ble/ble.h"
 #include "ble/le_device_db_tlv_custom.h"
 #include "keyboard/event.h"
-#include "state/state.h"
 
 #ifndef DEBUG_BLE
 #define DEBUG_BLE 0
@@ -168,6 +167,10 @@ void ble_reconnect(void) {
  * @return 操作が受付された場合はtrue、失敗時はfalse
  */
 bool ble_select_slot(uint8_t slot) {
+  if (!ble_enabled) {
+    return false;
+  }
+
   bool updated = le_device_db_tlv_schedule_select_slot((int)slot);
   if (updated) {
     ble_reconnect();
@@ -181,6 +184,10 @@ bool ble_select_slot(uint8_t slot) {
  * @return 操作が受付された場合はtrue、失敗時はfalse
  */
 bool ble_unpair_selected_slot(void) {
+  if (!ble_enabled) {
+    return false;
+  }
+
   bool updated = le_device_db_tlv_schedule_clear_selected_slot();
   if (updated) {
     ble_reconnect();
@@ -220,7 +227,6 @@ static void _packet_handler(uint8_t packet_type, uint16_t channel,
         le_device_db_tlv_apply_pending_slot_action();
         _ble_resume_advertising();
         ble_restart_pending = false;
-        state_refresh_runtime();
         break;
       default:
         break;
@@ -238,7 +244,6 @@ static void _packet_handler(uint8_t packet_type, uint16_t channel,
       _ble_resume_advertising();
     }
     DEBUG_PRINT("Disconnected\n");
-    state_refresh_runtime();
     break;
   case SM_EVENT_JUST_WORKS_REQUEST:
     DEBUG_PRINT("Just Works requested\n");
@@ -262,7 +267,6 @@ static void _packet_handler(uint8_t packet_type, uint16_t channel,
           ERROR_CODE_SUCCESS) {
         con_handle =
             gap_subevent_le_connection_complete_get_connection_handle(packet);
-        state_refresh_runtime();
       }
       break;
     default:
@@ -276,7 +280,6 @@ static void _packet_handler(uint8_t packet_type, uint16_t channel,
       DEBUG_PRINT("Report Characteristic Subscribed %s\n",
                   hids_subevent_input_report_enable_get_enable(packet) ? "ON"
                                                                        : "OFF");
-      state_refresh_runtime();
       break;
     case HIDS_SUBEVENT_CAN_SEND_NOW:
       _send_report();

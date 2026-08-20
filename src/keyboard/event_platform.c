@@ -29,7 +29,7 @@
 bool event_platform_process(icode_t icode, bool pressed) {
   // ISC_BOOTが押されたらブートモードでリセット
   if (icode == ISC_BOOT && pressed) {
-    state_set_system(STATE_BOOTLOADER);
+    state_request_steady_state(STATE_BOOTLOADER);
     return true;
   }
 
@@ -57,6 +57,7 @@ bool event_platform_process(icode_t icode, bool pressed) {
 
     if (handled) {
       state_switch_connection_preference(new_pref);
+      state_set_temporary_state(STATE_TEMP_CONNECTION_SWITCHED);
       return true;
     }
   }
@@ -95,6 +96,9 @@ bool event_platform_process(icode_t icode, bool pressed) {
       break;
     default:
       break;
+    }
+    if (ble_slot_updated) {
+      state_set_temporary_state(STATE_TEMP_BLE_SLOT_CHANGED);
     }
     return ble_slot_updated;
   }

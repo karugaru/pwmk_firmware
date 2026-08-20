@@ -167,6 +167,7 @@ static uint8_t _vial_update_unlock_state(void) {
     unlocked = true;
     unlock_in_progress = false;
     unlock_combo_held = false;
+    state_set_temporary_state(STATE_TEMP_VIAL_UNLOCKED);
     return 0;
   }
 
@@ -310,8 +311,11 @@ static void _handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x06:
     // Unlock Start
     // 実際のタイマー開始は最初の解除コンボ検出時に行う。
-    unlock_in_progress = true;
-    unlock_combo_held = false;
+    if (!unlocked) {
+      unlock_in_progress = true;
+      unlock_combo_held = false;
+      state_set_temporary_state(STATE_TEMP_VIAL_UNLOCKING);
+    }
     break;
 
   case 0x07: {
@@ -329,6 +333,7 @@ static void _handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
     unlocked = false;
     unlock_in_progress = false;
     unlock_combo_held = false;
+    state_clear_temporary_state();
     break;
 
   case 0x09:
@@ -438,6 +443,7 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
     uint16_t vial = _read_u16_be(&request[4]);
     if (!_vial_keycode_write_allowed(vial)) {
+      state_set_temporary_state(STATE_TEMP_VIAL_LOCKED);
       break;
     }
 
@@ -457,8 +463,11 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x06:
     // Dynamic Keymap Reset
-    if (unlocked &&
-        settings_reset(SETTINGS_ID_KEYMAP) == SETTINGS_UPDATE_PERSISTED) {
+    if (!unlocked) {
+      state_set_temporary_state(STATE_TEMP_VIAL_LOCKED);
+      response[0] = 1;
+    } else if (settings_reset(SETTINGS_ID_KEYMAP) ==
+               SETTINGS_UPDATE_PERSISTED) {
       response[0] = 0;
     } else {
       response[0] = 1;
@@ -475,8 +484,9 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x0B:
     // Bootloader Jump
     if (unlocked) {
-      state_set_system(STATE_BOOTLOADER);
+      state_request_steady_state(STATE_BOOTLOADER);
     } else {
+      state_set_temporary_state(STATE_TEMP_VIAL_LOCKED);
       response[0] = 1;
     }
     break;

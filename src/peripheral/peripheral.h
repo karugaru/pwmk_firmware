@@ -10,5 +10,6 @@ bool peripheral_require_event_processing(void);
 void peripheral_process_events(void);
 void peripheral_process_periodic(void);
 void peripheral_early_init(void);
+void peripheral_prepare_deep_sleep(void);
 
 #endif // PWMK_PERIPHERAL_H
