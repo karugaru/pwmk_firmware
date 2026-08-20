@@ -171,6 +171,44 @@ class ProfileGenerationTest(unittest.TestCase):
                 self.assertIn(f"set(PWMK_DEBUG_{option} 1", profile_cmake)
             self.assertIn("set(PWMK_WANT_HCI_DUMP 1", profile_cmake)
 
+    def test_generate_profile_debug_options_override_all(self) -> None:
+        profile_name = "test_profile_with_debug_option_overrides"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            safe_rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  enable_ble: true",
+            "  enable_ble: true\n  debug:\n    all: true\n    main: false\n    ble_deep: false",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            profile_cmake = (
+                build_dir / "generated" / "profile" / "profile.cmake"
+            ).read_text(encoding="utf-8")
+            self.assertIn("set(PWMK_DEBUG_MAIN 0", profile_cmake)
+            self.assertIn("set(PWMK_WANT_HCI_DUMP 0", profile_cmake)
+            for option in (
+                "BLE",
+                "EVENT",
+                "MATRIX_SCAN",
+                "MATRIX_SCAN_DEEP",
+                "PINNACLE",
+                "PERIPHERAL",
+                "PERSISTENCE",
+                "VIAL",
+            ):
+                self.assertIn(f"set(PWMK_DEBUG_{option} 1", profile_cmake)
+
     def test_generate_profile_supports_vial_unlock_combo(self) -> None:
         profile_name = "test_profile_with_vial_unlock_combo"
         profile_data = {
@@ -277,9 +315,7 @@ class ProfileGenerationTest(unittest.TestCase):
             ),
             (
                 "duplicate layout position",
-                source_yaml_text.replace(
-                    "[0, 0], [0, 1]", "[0, 0], [0, 0]", 1
-                ),
+                source_yaml_text.replace("[0, 0], [0, 1]", "[0, 0], [0, 0]", 1),
                 "レイアウトの要素は一意である必要があります",
             ),
             (
@@ -314,9 +350,7 @@ class ProfileGenerationTest(unittest.TestCase):
 
         for case_name, yaml_text, error_message in invalid_profiles:
             with self.subTest(case=case_name):
-                (profile_dir / "profile.yaml").write_text(
-                    yaml_text, encoding="utf-8"
-                )
+                (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
                 self._copy_keyboard_layout(profile_dir)
 
                 with tempfile.TemporaryDirectory() as temporary_directory:
