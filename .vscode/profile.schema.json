@@ -1,0 +1,415 @@
+{
+  "$defs": {
+    "BoardProfile": {
+      "description": "ボードプロファイルの設定を表す Pydantic モデル。",
+      "properties": {
+        "rows_pins": {
+          "description": "キーマトリクスの行ピン番号一覧。",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Rows Pins",
+          "type": "array"
+        },
+        "cols_pins": {
+          "description": "キーマトリクスの列ピン番号一覧。",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Cols Pins",
+          "type": "array"
+        },
+        "gpio_sda_pin": {
+          "description": "I2C の SDA ピン番号。",
+          "title": "Gpio Sda Pin",
+          "type": "integer"
+        },
+        "gpio_scl_pin": {
+          "description": "I2C の SCL ピン番号。",
+          "title": "Gpio Scl Pin",
+          "type": "integer"
+        },
+        "gpio_dr_pin": {
+          "description": "Pinnacle のデータレディ信号を受けるピン番号。",
+          "title": "Gpio Dr Pin",
+          "type": "integer"
+        },
+        "gpio_led_pin": {
+          "description": "ステータス LED を接続する GPIO ピン番号。",
+          "title": "Gpio Led Pin",
+          "type": "integer"
+        },
+        "led_count": {
+          "default": 1,
+          "description": "接続する LED の個数。",
+          "minimum": 1,
+          "title": "Led Count",
+          "type": "integer"
+        },
+        "pin_settle_time_us": {
+          "description": "マトリクス走査時にピン状態が安定するまで待つ時間。単位はマイクロ秒。",
+          "minimum": 0,
+          "title": "Pin Settle Time Us",
+          "type": "integer"
+        },
+        "layout": {
+          "description": "物理配列とマトリクス座標の対応。 例として、[[1,1],[2,3]]の場合、keymap[0]が行1列1のスイッチ、keymap[1]が行2列3のスイッチに対応する。",
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Layout",
+          "type": "array"
+        },
+        "vial_unlock_combo": {
+          "anyOf": [
+            {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              "maxItems": 14,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Vial のロックを解除するために同時押しするキーのマトリクス座標一覧。省略時はレイアウト先頭の3キーを使用する。",
+          "title": "Vial Unlock Combo"
+        }
+      },
+      "required": [
+        "rows_pins",
+        "cols_pins",
+        "gpio_sda_pin",
+        "gpio_scl_pin",
+        "gpio_dr_pin",
+        "gpio_led_pin",
+        "pin_settle_time_us",
+        "layout"
+      ],
+      "title": "BoardProfile",
+      "type": "object"
+    },
+    "CMakeProfile": {
+      "description": "CMake プロファイルの設定を表す Pydantic モデル。",
+      "properties": {
+        "board": {
+          "description": "PICO_BOARD に渡すボード名。",
+          "minLength": 1,
+          "title": "Board",
+          "type": "string"
+        },
+        "enable_usb": {
+          "default": true,
+          "description": "USB 機能を有効にするかどうか。",
+          "title": "Enable Usb",
+          "type": "boolean"
+        },
+        "enable_ble": {
+          "default": true,
+          "description": "BLE 機能を有効にするかどうか。",
+          "title": "Enable Ble",
+          "type": "boolean"
+        },
+        "debug": {
+          "$ref": "#/$defs/DebugProfile",
+          "description": "デバッグ出力の設定。"
+        }
+      },
+      "required": [
+        "board"
+      ],
+      "title": "CMakeProfile",
+      "type": "object"
+    },
+    "DebugProfile": {
+      "description": "デバッグ出力の設定を表す Pydantic モデル。",
+      "properties": {
+        "all": {
+          "default": false,
+          "description": "個別指定がない全てのデバッグ出力の既定値。",
+          "title": "All",
+          "type": "boolean"
+        },
+        "main": {
+          "default": false,
+          "description": "DEBUG_MAIN を有効にするかどうか。",
+          "title": "Main",
+          "type": "boolean"
+        },
+        "ble": {
+          "default": false,
+          "description": "DEBUG_BLE を有効にするかどうか。",
+          "title": "Ble",
+          "type": "boolean"
+        },
+        "event": {
+          "default": false,
+          "description": "DEBUG_EVENT を有効にするかどうか。",
+          "title": "Event",
+          "type": "boolean"
+        },
+        "matrix_scan": {
+          "default": false,
+          "description": "DEBUG_MATRIX_SCAN を有効にするかどうか。",
+          "title": "Matrix Scan",
+          "type": "boolean"
+        },
+        "matrix_scan_deep": {
+          "default": false,
+          "description": "DEBUG_MATRIX_SCAN_DEEP を有効にするかどうか。",
+          "title": "Matrix Scan Deep",
+          "type": "boolean"
+        },
+        "pinnacle": {
+          "default": false,
+          "description": "DEBUG_PINNACLE を有効にするかどうか。",
+          "title": "Pinnacle",
+          "type": "boolean"
+        },
+        "peripheral": {
+          "default": false,
+          "description": "DEBUG_PERIPHERAL を有効にするかどうか。",
+          "title": "Peripheral",
+          "type": "boolean"
+        },
+        "persistence": {
+          "default": false,
+          "description": "DEBUG_PERSISTENCE を有効にするかどうか。",
+          "title": "Persistence",
+          "type": "boolean"
+        },
+        "vial": {
+          "default": false,
+          "description": "DEBUG_VIAL を有効にするかどうか。",
+          "title": "Vial",
+          "type": "boolean"
+        },
+        "ble_deep": {
+          "default": false,
+          "description": "WANT_HCI_DUMP を有効にするかどうか。",
+          "title": "Ble Deep",
+          "type": "boolean"
+        }
+      },
+      "title": "DebugProfile",
+      "type": "object"
+    },
+    "KeymapProfile": {
+      "description": "キーマッププロファイルの設定を表す Pydantic モデル。",
+      "properties": {
+        "user_keycodes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "ユーザー定義キーコード。キーが名前、値が展開先の式。",
+          "title": "User Keycodes",
+          "type": "object"
+        },
+        "keymap": {
+          "description": "layout の有効キー数に対応するキーコード一覧。",
+          "items": {
+            "type": "string"
+          },
+          "title": "Keymap",
+          "type": "array"
+        }
+      },
+      "title": "KeymapProfile",
+      "type": "object"
+    },
+    "PinnacleProfile": {
+      "description": "Pinnacle プロファイルの設定を表す Pydantic モデル。",
+      "properties": {
+        "rotate": {
+          "description": "Pinnacle の回転設定。PINNACLE_ROTATE_0 などの定数名を指定する。",
+          "minLength": 1,
+          "title": "Rotate",
+          "type": "string"
+        },
+        "accel": {
+          "description": "Pinnacle の加速度設定。移動量は delta^accel*speed で計算される。",
+          "title": "Accel",
+          "type": "number"
+        },
+        "speed": {
+          "description": "Pinnacle の速度設定。",
+          "title": "Speed",
+          "type": "number"
+        }
+      },
+      "required": [
+        "rotate",
+        "accel",
+        "speed"
+      ],
+      "title": "PinnacleProfile",
+      "type": "object"
+    },
+    "SettingsProfile": {
+      "description": "設定プロファイルの設定を表す Pydantic モデル。",
+      "properties": {
+        "device_name": {
+          "default": "PWMK",
+          "description": "USB/BLE で表示するデバイス名。",
+          "minLength": 1,
+          "title": "Device Name",
+          "type": "string"
+        },
+        "manufacturer_name": {
+          "default": "PWMK",
+          "description": "USB/BLE で表示するメーカー名。",
+          "minLength": 1,
+          "title": "Manufacturer Name",
+          "type": "string"
+        },
+        "usb_vid": {
+          "default": 51966,
+          "description": "USB デバイス記述子で使用するベンダー ID (VID)。",
+          "maximum": 65535,
+          "minimum": 0,
+          "title": "Usb Vid",
+          "type": "integer"
+        },
+        "usb_pid": {
+          "default": 16385,
+          "description": "USB デバイス記述子で使用するプロダクト ID (PID)。",
+          "maximum": 65535,
+          "minimum": 0,
+          "title": "Usb Pid",
+          "type": "integer"
+        },
+        "deep_sleep_timeout_seconds": {
+          "description": "無操作時にディープスリープへ移行するまでの時間。単位は秒。",
+          "minimum": 5,
+          "title": "Deep Sleep Timeout Seconds",
+          "type": "integer"
+        },
+        "led_brightness": {
+          "description": "LED の明るさ。1 から 255 の範囲で指定する。",
+          "maximum": 255,
+          "minimum": 1,
+          "title": "Led Brightness",
+          "type": "integer"
+        },
+        "debounce_time_ms": {
+          "description": "キースイッチのデバウンス時間。単位はミリ秒。",
+          "minimum": 0,
+          "title": "Debounce Time Ms",
+          "type": "integer"
+        },
+        "mouse_move_delta": {
+          "description": "マウスキー 1 回分のカーソル移動量。",
+          "minimum": 0,
+          "title": "Mouse Move Delta",
+          "type": "integer"
+        },
+        "mouse_move_thresh": {
+          "description": "マウス移動イベントとして送信するための移動量の閾値。",
+          "minimum": 0,
+          "title": "Mouse Move Thresh",
+          "type": "integer"
+        },
+        "mouse_wheel_delta": {
+          "description": "ホイール操作 1 回分の移動量。",
+          "minimum": 0,
+          "title": "Mouse Wheel Delta",
+          "type": "integer"
+        },
+        "mouse_wheel_thresh": {
+          "description": "ホイール移動イベントとして送信するための移動量の閾値。",
+          "minimum": 0,
+          "title": "Mouse Wheel Thresh",
+          "type": "integer"
+        },
+        "use_pinnacle": {
+          "default": true,
+          "description": "Pinnacle トラックパッドを使用するかどうか。",
+          "title": "Use Pinnacle",
+          "type": "boolean"
+        },
+        "ble_persist_selected_slot": {
+          "default": true,
+          "description": "選択中の BLE 接続スロットを再起動後も維持するかどうか。",
+          "title": "Ble Persist Selected Slot",
+          "type": "boolean"
+        },
+        "pinnacle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PinnacleProfile"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pinnacle 使用時の回転、加速度、速度設定。use_pinnacle が true の場合は必須。"
+        }
+      },
+      "required": [
+        "deep_sleep_timeout_seconds",
+        "led_brightness",
+        "debounce_time_ms",
+        "mouse_move_delta",
+        "mouse_move_thresh",
+        "mouse_wheel_delta",
+        "mouse_wheel_thresh"
+      ],
+      "title": "SettingsProfile",
+      "type": "object"
+    }
+  },
+  "description": "プロファイルの設定を表す Pydantic モデル。",
+  "properties": {
+    "cmake": {
+      "$ref": "#/$defs/CMakeProfile",
+      "description": "ビルド時の CMake 設定。"
+    },
+    "board": {
+      "$ref": "#/$defs/BoardProfile",
+      "description": "基板の配線とレイアウト設定。"
+    },
+    "keymap": {
+      "$ref": "#/$defs/KeymapProfile",
+      "description": "キーコードとキーマップ設定。"
+    },
+    "settings": {
+      "$ref": "#/$defs/SettingsProfile",
+      "description": "スリープ、LED、ポインティングデバイスなどの動作設定。"
+    }
+  },
+  "required": [
+    "cmake",
+    "board",
+    "keymap",
+    "settings"
+  ],
+  "title": "ProfileConfig",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

@@ -42,6 +42,11 @@
         "*.h": "c",
         "*.c": "c"
     },
+    "yaml.schemas": {
+        "./.vscode/profile.schema.json": [
+            "users/**/profile.yaml"
+        ]
+    },
     "[c]": {
         "editor.formatOnSave": true,
         "editor.formatOnSaveMode": "file"
