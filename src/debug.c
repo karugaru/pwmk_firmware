@@ -1,6 +1,5 @@
 #include "debug.h"
 
-#include <inttypes.h>
 #include <pico/time.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -44,6 +43,8 @@ static void _pwmk_debug_print_prefix(const char *module) {
   uint64_t elapsed_seconds = (elapsed_ms / 1000ULL) % 60ULL;
   uint64_t milliseconds = elapsed_ms % 1000ULL;
 
-  printf("[%02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ".%03" PRIu64 "] %s ",
-         elapsed_hours, elapsed_minutes, elapsed_seconds, milliseconds, module);
+  printf("[%02llu:%02llu:%02llu.%03llu] %s ", (unsigned long long)elapsed_hours,
+         (unsigned long long)elapsed_minutes,
+         (unsigned long long)elapsed_seconds, (unsigned long long)milliseconds,
+         module);
 }
