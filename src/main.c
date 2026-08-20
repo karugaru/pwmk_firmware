@@ -86,11 +86,6 @@ int main() {
   };
   event_init(event_settings);
 
-  // マトリクス以外の周辺機器の初期化
-  if (!peripheral_init()) {
-    _pwmk_run_init_error(STATE_INIT_ERROR_PERIPHERAL);
-  }
-
   // BLEの初期化
 #if PWMK_ENABLE_BLE
   state_request_steady_state(STATE_BLE_INIT);
@@ -103,6 +98,11 @@ int main() {
   ble_setup();
   ble_power_set(true);
 #endif
+
+  // マトリクス以外の周辺機器の初期化
+  if (!peripheral_init()) {
+    _pwmk_run_init_error(STATE_INIT_ERROR_PERIPHERAL);
+  }
 
   // USB HIDの初期化
 #if PWMK_ENABLE_USB
