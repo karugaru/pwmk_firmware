@@ -50,7 +50,7 @@ settings:
   manufacturer_name: "PWMK"
   usb_vid: 0xCAFE
   usb_pid: 0x4001
-  deep_sleep_timeout_seconds: 300
+  deep_sleep_timeout_ms: 300000
   led_brightness: 16
   debounce_time_ms: 5
   mouse_move_delta: 1

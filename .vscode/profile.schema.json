@@ -303,10 +303,10 @@
           "title": "Usb Pid",
           "type": "integer"
         },
-        "deep_sleep_timeout_seconds": {
-          "description": "無操作時にディープスリープへ移行するまでの時間。単位は秒。",
-          "minimum": 5,
-          "title": "Deep Sleep Timeout Seconds",
+        "deep_sleep_timeout_ms": {
+          "description": "無操作時にディープスリープへ移行するまでの時間。単位はミリ秒。",
+          "minimum": 500,
+          "title": "Deep Sleep Timeout Ms",
           "type": "integer"
         },
         "led_brightness": {
@@ -372,7 +372,7 @@
         }
       },
       "required": [
-        "deep_sleep_timeout_seconds",
+        "deep_sleep_timeout_ms",
         "led_brightness",
         "debounce_time_ms",
         "mouse_move_delta",

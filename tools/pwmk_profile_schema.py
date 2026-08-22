@@ -202,9 +202,9 @@ class SettingsProfile(BaseModel):
         le=0xFFFF,
         description="USB デバイス記述子で使用するプロダクト ID (PID)。",
     )
-    deep_sleep_timeout_seconds: int = Field(
-        ge=5,
-        description="無操作時にディープスリープへ移行するまでの時間。単位は秒。",
+    deep_sleep_timeout_ms: int = Field(
+        ge=500,
+        description="無操作時にディープスリープへ移行するまでの時間。単位はミリ秒。",
     )
     led_brightness: int = Field(
         ge=1,

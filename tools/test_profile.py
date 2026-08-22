@@ -80,6 +80,37 @@ class ProfileGenerationTest(unittest.TestCase):
                 "#define LED_COUNT 2", board_header.read_text(encoding="utf-8")
             )
 
+    def test_generate_profile_converts_deep_sleep_timeout_ms_to_microseconds(
+        self,
+    ) -> None:
+        profile_name = "test_profile_with_deep_sleep_timeout_ms"
+        profile_dir = users_root() / profile_name
+        source_yaml = users_root() / "remopicon_v1" / "profile.yaml"
+
+        if profile_dir.exists():
+            safe_rmtree(profile_dir)
+
+        profile_dir.mkdir(parents=True)
+        self.addCleanup(lambda: safe_rmtree(profile_dir, ignore_errors=True))
+        yaml_text = source_yaml.read_text(encoding="utf-8").replace(
+            "  deep_sleep_timeout_ms: 300000",
+            "  deep_sleep_timeout_ms: 500",
+        )
+        (profile_dir / "profile.yaml").write_text(yaml_text, encoding="utf-8")
+        self._copy_keyboard_layout(profile_dir)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_dir = Path(temporary_directory)
+            generate_profile(build_dir, profile_name)
+
+            settings_header = (
+                build_dir / "generated" / "profile" / "src" / "profile" / "settings.h"
+            )
+            self.assertIn(
+                "#define DEEP_SLEEP_TIMEOUT_US ((int64_t)500 * 1000)",
+                settings_header.read_text(encoding="utf-8"),
+            )
+
     def test_generate_profile_supports_debug_options(self) -> None:
         profile_name = "test_profile_with_debug_options"
         profile_dir = users_root() / profile_name
@@ -226,7 +257,7 @@ class ProfileGenerationTest(unittest.TestCase):
             },
             "keymap": {"keymap": ["IKC_NOOP"] * 4},
             "settings": {
-                "deep_sleep_timeout_seconds": 5,
+                "deep_sleep_timeout_ms": 500,
                 "led_brightness": 1,
                 "debounce_time_ms": 0,
                 "mouse_move_delta": 0,
@@ -334,10 +365,10 @@ class ProfileGenerationTest(unittest.TestCase):
             (
                 "deep sleep timeout below minimum",
                 source_yaml_text.replace(
-                    "  deep_sleep_timeout_seconds: 300",
-                    "  deep_sleep_timeout_seconds: 4",
+                    "  deep_sleep_timeout_ms: 300000",
+                    "  deep_sleep_timeout_ms: 499",
                 ),
-                "greater than or equal to 5",
+                "greater than or equal to 500",
             ),
             (
                 "LED brightness above maximum",
