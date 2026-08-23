@@ -9,6 +9,13 @@
 #include <pico/bootrom.h>
 #include <pico/stdlib.h>
 
+// LEDの1回点滅するサイクルにかかる時間（ミリ秒）
+#define BLINK_CYCLE_MS 200
+// LEDの各点滅シーケンスの間の無点灯時間（ミリ秒）
+#define BLINK_PAUSE_MS 1000
+// LEDの1回点滅するサイクル中の点灯時間（ミリ秒）
+#define BLINK_DURATION_MS 100
+
 // LEDの表示パターンを定義する列挙型
 typedef enum {
   PERIPHERAL_LED_OFF,          // 消灯
@@ -296,16 +303,14 @@ static void _render_entry(peripheral_led_entry_t entry, uint32_t elapsed_ms) {
     level = _triangle_level(elapsed_ms, 600);
     break;
   case PERIPHERAL_LED_BLINK_COUNT: {
-    uint8_t count = entry.count == 0 ? 1 : entry.count;
-    uint32_t phase = elapsed_ms % (count * 200 + 1000);
-    level = 0;
-    for (uint8_t index = 0; index < count; index++) {
-      uint32_t start = index * 200;
-      if (phase >= start && phase < start + 100) {
-        level = 255;
-        break;
-      }
-    }
+    const uint8_t blink_count = entry.count == 0 ? 1 : entry.count;
+
+    const uint32_t total = blink_count * BLINK_CYCLE_MS;
+    const uint32_t in_seq = elapsed_ms % (total + BLINK_PAUSE_MS);
+    const uint32_t in_cycle = in_seq % BLINK_CYCLE_MS;
+    const bool is_blinking = in_seq < total && in_cycle < BLINK_DURATION_MS;
+
+    level = is_blinking ? 255 : 0;
     break;
   }
   }
