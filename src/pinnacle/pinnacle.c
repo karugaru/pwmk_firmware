@@ -12,24 +12,31 @@
 
 #if DEBUG_PINNACLE
 #define DEBUG_PRINT(...) pwmk_debug_printf("PINNACLE", __VA_ARGS__)
+#define DEBUG_DUMP(...) pwmk_debug_hexdump("PINNACLE", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
+#define DEBUG_DUMP(...) ((void)(0))
 #endif
 
 #define PINNACLE_DEFAULT_SENSITIVITY PINNACLE_SENSITIVITY_MOST_SENSITIVE
+#define PINNACLE_I2C_TIMEOUT_US 10000
 
 static i2c_inst_t *i2c = NULL;
 static uint8_t dr_pin = 0;
-static uint8_t lookup_table[256];
+static uint8_t speed_lookup_table[256];
 static pinnacle_rotate_t rotation = PINNACLE_ROTATE_0;
+static bool i2c_access_failed = false;
 
 /*
  * 内部関数宣言
  */
 
+static void _rap_write_bytes(uint8_t address, uint8_t count,
+                             uint8_t values[count]);
 static void _rap_write(uint8_t address, uint8_t value);
 static void _rap_read_bytes(uint8_t address, uint8_t count,
                             uint8_t read_buffer[count]);
+static uint8_t _rap_read(uint8_t address);
 static void _era_write(uint16_t address, uint8_t data);
 static void _era_read_bytes(uint16_t address, uint16_t count,
                             uint8_t read_buffer[count]);
@@ -46,14 +53,14 @@ static void _wait_for_release_before_calibration(void);
  * @param scl_pin I2CのSCLピン番号
  * @param sda_pin I2CのSDAピン番号
  * @param data_ready_pin データレディピンの番号
+ * @return true: 初期化成功、false: 初期化失敗
  */
 bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
                    uint8_t data_ready_pin) {
+  i2c_access_failed = false;
   i2c = i2c_inst;
   dr_pin = data_ready_pin;
-  for (int i = 0; i < 256; i++) {
-    lookup_table[i] = i;
-  }
+  pinnacle_set_speed(1.0f, 1.0f);
 
   // I2Cの初期化
   i2c_init(i2c, PINNACLE_I2C_BAUD);
@@ -73,6 +80,12 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
     return false;
   }
 
+#if DEBUG_PINNACLE
+  // レジスタダンプ
+  uint8_t register_dump[32] = {0};
+  _rap_read_bytes(0x00, 32, register_dump);
+#endif
+
   // 初期化シーケンス
   // システムをリセット
   _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x01);
@@ -82,14 +95,6 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   }
   _rap_write(PINNACLE_I2C_STATUS, 0x00);
   DEBUG_PRINT("reset complete\n");
-
-#if DEBUG_PINNACLE
-  // リセット後のレジスタダンプ
-  uint8_t register_dump[32];
-  _rap_read_bytes(0x00, 32, register_dump);
-  pwmk_debug_hexdump("PINNACLE", "register dump after reset", register_dump,
-                     sizeof(register_dump));
-#endif
 
   DEBUG_PRINT("init start\n");
   // システム設定を初期化
@@ -132,7 +137,7 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   _rap_write(PINNACLE_I2C_SLEEP_TIMER, 0x08);
   DEBUG_PRINT("init complete\n");
 
-  return true;
+  return !i2c_access_failed;
 }
 
 /**
@@ -147,7 +152,7 @@ void pinnacle_set_speed(float accel, float speed) {
     if (i != 0 && value < 1.0f) {
       value = 1.0f; // 0以外の値は最低でも1になるようにする
     }
-    lookup_table[i] = (uint8_t)fminf(fmaxf(value, 0.0f), 127.0f);
+    speed_lookup_table[i] = (uint8_t)fminf(fmaxf(value, 0.0f), 127.0f);
   }
 }
 
@@ -169,6 +174,8 @@ bool pinnacle_check_DR() { return gpio_get(dr_pin); }
  * @return true:データ取得成功、false:データ未準備
  */
 bool pinnacle_read_data(pinnacle_data_t *data) {
+  i2c_access_failed = false;
+
   // i2cが初期化されていない場合はfalseを返す
   if (i2c == NULL) {
     return false;
@@ -180,7 +187,7 @@ bool pinnacle_read_data(pinnacle_data_t *data) {
   }
 
   // データパケットを読み込み
-  uint8_t packet_data[4];
+  uint8_t packet_data[4] = {0};
   _rap_read_bytes(PINNACLE_I2C_PACKET_BYTE_0, 4, packet_data);
   // ステータスフラグをクリア
   _rap_write(PINNACLE_I2C_STATUS, 0x00);
@@ -213,12 +220,12 @@ bool pinnacle_read_data(pinnacle_data_t *data) {
   }
 
   // 速度調整
-  data->xDelta = (int8_t)lookup_table[(uint8_t)abs(data->xDelta)] *
+  data->xDelta = (int8_t)speed_lookup_table[(uint8_t)abs(data->xDelta)] *
                  (data->xDelta < 0 ? -1 : 1);
-  data->yDelta = (int8_t)lookup_table[(uint8_t)abs(data->yDelta)] *
+  data->yDelta = (int8_t)speed_lookup_table[(uint8_t)abs(data->yDelta)] *
                  (data->yDelta < 0 ? -1 : 1);
 
-  return true;
+  return !i2c_access_failed;
 }
 
 /*
@@ -233,13 +240,25 @@ bool pinnacle_read_data(pinnacle_data_t *data) {
  */
 static void _rap_write_bytes(uint8_t address, uint8_t count,
                              uint8_t values[count]) {
+  DEBUG_PRINT("I2C-W %d bytes to address 0x%02X\n", count, address);
+  DEBUG_DUMP("I2C-W", values, count);
   uint8_t write_buffer[count * 2];
   for (uint8_t i = 0; i < count; ++i) {
     write_buffer[i * 2] = 0x80 | (address + i);
     write_buffer[i * 2 + 1] = values[i];
   }
-  i2c_write_blocking(i2c, PINNACLE_I2C_TARGET_ADDRESS, write_buffer,
-                     sizeof(write_buffer), false);
+  int written_bytes = i2c_write_timeout_us(i2c, PINNACLE_I2C_TARGET_ADDRESS,
+                                           write_buffer, sizeof(write_buffer),
+                                           false, PINNACLE_I2C_TIMEOUT_US);
+#if DEBUG_PINNACLE
+  DEBUG_PRINT("I2C-W %d bytes done\n", written_bytes);
+  if (written_bytes != (int)sizeof(write_buffer)) {
+    DEBUG_PRINT("I2C-W ERROR detected\n");
+  }
+#endif
+  if (written_bytes != (int)sizeof(write_buffer)) {
+    i2c_access_failed = true;
+  }
 }
 
 /**
@@ -259,11 +278,32 @@ static void _rap_write(uint8_t address, uint8_t value) {
  */
 static void _rap_read_bytes(uint8_t address, uint8_t count,
                             uint8_t read_buffer[count]) {
+  DEBUG_PRINT("I2C-R %d bytes from address 0x%02X\n", count, address);
+
   address |= 0xA0;
-  i2c_write_blocking(i2c, PINNACLE_I2C_TARGET_ADDRESS, &address,
-                     sizeof(address), false);
-  i2c_read_blocking(i2c, PINNACLE_I2C_TARGET_ADDRESS, read_buffer, count,
-                    false);
+  int written_bytes =
+      i2c_write_timeout_us(i2c, PINNACLE_I2C_TARGET_ADDRESS, &address,
+                           sizeof(address), false, PINNACLE_I2C_TIMEOUT_US);
+  if (written_bytes != (int)sizeof(address)) {
+    i2c_access_failed = true;
+  }
+
+  int read_bytes =
+      i2c_read_timeout_us(i2c, PINNACLE_I2C_TARGET_ADDRESS, read_buffer, count,
+                          false, PINNACLE_I2C_TIMEOUT_US);
+
+#if DEBUG_PINNACLE
+  DEBUG_PRINT("I2C-R %d bytes done\n", read_bytes);
+  if (read_bytes == (int)count) {
+    DEBUG_DUMP("I2C-R", read_buffer, read_bytes);
+  } else {
+    DEBUG_PRINT("I2C-R ERROR detected\n");
+  }
+#endif
+
+  if (read_bytes != (int)count) {
+    i2c_access_failed = true;
+  }
 }
 
 /**
@@ -295,7 +335,7 @@ static void _era_write(uint16_t address, uint8_t data) {
   while (_rap_read(PINNACLE_I2C_ERA_CONTROL) != 0x00) {
     sleep_us(1);
   }
-  DEBUG_PRINT("era write 0x%04x <= 0x%02x\n", address, data);
+  DEBUG_PRINT("I2C-W ERA 0x%04x <= 0x%02x\n", address, data);
 
   // ステータスフラグをクリア
   _rap_write(PINNACLE_I2C_STATUS, 0x00);
@@ -330,7 +370,7 @@ static void _era_read_bytes(uint16_t address, uint16_t count,
 
     // データ読み込み
     read_buffer[i] = _rap_read(PINNACLE_I2C_ERA_VALUE);
-    DEBUG_PRINT("era read 0x%04x => 0x%02x\n", address, read_buffer[i]);
+    DEBUG_PRINT("I2C-R ERA 0x%04x => 0x%02x\n", address, read_buffer[i]);
 
     // ステータスフラグをクリア
     _rap_write(PINNACLE_I2C_STATUS, 0x00);
