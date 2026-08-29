@@ -40,7 +40,6 @@ static uint8_t _rap_read(uint8_t address);
 static void _era_write(uint16_t address, uint8_t data);
 static void _era_read_bytes(uint16_t address, uint16_t count,
                             uint8_t read_buffer[count]);
-static void _wait_for_release_before_calibration(void);
 
 /*
  * 公開関数
@@ -61,7 +60,6 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   i2c = i2c_inst;
   dr_pin = data_ready_pin;
   pinnacle_set_speed(1.0f, 1.0f);
-
   // I2Cの初期化
   i2c_init(i2c, PINNACLE_I2C_BAUD);
   gpio_set_function(sda_pin, GPIO_FUNC_I2C);
@@ -70,15 +68,18 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   gpio_init(dr_pin);
   gpio_set_dir(dr_pin, GPIO_IN);
   // 初期化完了を待つ
-  sleep_ms(1);
+  sleep_ms(10);
 
-  // ターゲットデバイスが接続されていることを確認
-  uint8_t firmware[2] = {0};
-  _rap_read_bytes(PINNACLE_I2C_FIRMWARE_ID, 2, firmware);
-  DEBUG_PRINT("firmware ID: %02x %02x\n", firmware[0], firmware[1]);
-  if (firmware[0] != 0x07 || firmware[1] != 0x3A) {
-    return false;
+  // 初期化シーケンス
+  // システムをリセット
+  DEBUG_PRINT("reset\n");
+  _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x01);
+  while (!pinnacle_check_DR()) {
+    sleep_ms(1);
   }
+  sleep_ms(1);
+  _rap_write(PINNACLE_I2C_STATUS, 0x00);
+  DEBUG_PRINT("reset complete\n");
 
 #if DEBUG_PINNACLE
   // レジスタダンプ
@@ -86,55 +87,26 @@ bool pinnacle_init(i2c_inst_t *i2c_inst, uint8_t scl_pin, uint8_t sda_pin,
   _rap_read_bytes(0x00, 32, register_dump);
 #endif
 
-  // 初期化シーケンス
-  // システムをリセット
-  _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x01);
-  DEBUG_PRINT("reset\n");
-  while (!pinnacle_check_DR()) {
-    sleep_ms(1);
-  }
-  _rap_write(PINNACLE_I2C_STATUS, 0x00);
-  DEBUG_PRINT("reset complete\n");
-
   DEBUG_PRINT("init start\n");
   // システム設定を初期化
   _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x00);
-  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, 0x00);
   _rap_write(PINNACLE_I2C_FEED_CONFIG_2, 0x00);
+  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, 0x01);
   // フィードレートを100Hzに設定
   _rap_write(PINNACLE_I2C_SAMPLE_RATE, 100);
   // Z-idle packets の数を設定（リフトオフ検出後に送信される）
   _rap_write(PINNACLE_I2C_Z_IDLE, 30);
-
-  // ステータスフラグをクリア
-  while (pinnacle_check_DR()) {
-    _rap_write(PINNACLE_I2C_STATUS, 0x00);
-  }
-
   // 感度設定
   uint8_t sensitivity = 0;
   _era_read_bytes(0x0187, 1, &sensitivity);
   _era_write(0x0187,
              (sensitivity & 0x3F) | (PINNACLE_DEFAULT_SENSITIVITY << 6));
-
-  // 復帰トリガー直後の接触中キャリブレーションを避ける
-  _wait_for_release_before_calibration();
-
-  // キャリブレーション
-  _rap_write(PINNACLE_I2C_CAL_CONFIG, 0b00011111);
-  while (!pinnacle_check_DR()) {
-    sleep_ms(1);
-  }
-  _rap_write(PINNACLE_I2C_STATUS, 0x00);
-
-  // フィード機能を有効にしてrelativeモードに設定
-  uint8_t feedConfig1 = 0b00000001;
-  _rap_write(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
-
+  // キャリブレーション設定を上書き
+  _rap_write(PINNACLE_I2C_CAL_CONFIG, 0b00001110);
   // スリープへ移行することを許可
-  _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x04);
   _rap_write(PINNACLE_I2C_SLEEP_INTERVAL, 0x80);
   _rap_write(PINNACLE_I2C_SLEEP_TIMER, 0x08);
+  _rap_write(PINNACLE_I2C_SYS_CONFIG, 0x04);
   DEBUG_PRINT("init complete\n");
 
   return !i2c_access_failed;
@@ -377,32 +349,4 @@ static void _era_read_bytes(uint16_t address, uint16_t count,
   }
   // データフィードを元に戻す
   _rap_write(PINNACLE_I2C_FEED_CONFIG_1, feedConfig1);
-}
-
-/**
- * @brief 復帰直後の接触残りを避けるため、一定時間DRが静かな状態を待つ。
- */
-static void _wait_for_release_before_calibration(void) {
-  absolute_time_t start = get_absolute_time();
-  absolute_time_t released_since = {0};
-  bool release_started = false;
-
-  while (absolute_time_diff_us(start, get_absolute_time()) <
-         (int64_t)PINNACLE_CALIBRATION_RELEASE_TIMEOUT_MS * 1000) {
-    if (pinnacle_check_DR()) {
-      // pendingデータを捨て、接触/動作が落ち着くのを待つ
-      _rap_write(PINNACLE_I2C_STATUS, 0x00);
-      release_started = false;
-    } else {
-      if (!release_started) {
-        released_since = get_absolute_time();
-        release_started = true;
-      } else if (absolute_time_diff_us(released_since, get_absolute_time()) >=
-                 (int64_t)PINNACLE_CALIBRATION_RELEASE_WAIT_MS * 1000) {
-        return;
-      }
-    }
-
-    sleep_ms(1);
-  }
 }
