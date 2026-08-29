@@ -10,11 +10,11 @@
 #include <pico/stdlib.h>
 
 // LEDの1回点滅するサイクルにかかる時間（ミリ秒）
-#define BLINK_CYCLE_MS 200
+#define BLINK_CYCLE_MS 500
 // LEDの各点滅シーケンスの間の無点灯時間（ミリ秒）
 #define BLINK_PAUSE_MS 1000
 // LEDの1回点滅するサイクル中の点灯時間（ミリ秒）
-#define BLINK_DURATION_MS 100
+#define BLINK_DURATION_MS 250
 
 // LEDの表示パターンを定義する列挙型
 typedef enum {
