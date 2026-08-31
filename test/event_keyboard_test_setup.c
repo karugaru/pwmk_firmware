@@ -15,8 +15,8 @@ static icode_t event_keyboard_test_keymap_get(uint8_t layer, uint8_t row,
 }
 
 static bool event_keyboard_test_platform_callback(icode_t keycode,
-                                                   bool pressed) {
-  if (keycode < ICODE_SPECIAL_START || keycode > ICODE_SPECIAL_END) {
+                                                  bool pressed) {
+  if (ICODE_OPCODE(keycode) != ICODE_OPCODE_SYSTEM) {
     return false;
   }
 

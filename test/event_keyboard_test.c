@@ -79,7 +79,7 @@ static void event_keyboard_test_assert_platform_event(icode_t expected_keycode,
 
 static void test_event_keyboard_key_press_and_release(void) {
   const uint8_t pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_A, 0, 0, 0, 0, 0,
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0,
   };
   const uint8_t released_report[HID_KEYBOARD_REPORT_SIZE] = {0};
 
@@ -96,7 +96,7 @@ static void test_event_keyboard_key_press_and_release(void) {
 
 static void test_event_keyboard_key_with_modifier(void) {
   const uint8_t pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      KMC_LEFT_SHIFT, 0, IKC_A, 0, 0, 0, 0, 0,
+      KMC_LEFT_SHIFT, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0,
   };
   const uint8_t released_report[HID_KEYBOARD_REPORT_SIZE] = {0};
 
@@ -111,13 +111,14 @@ static void test_event_keyboard_key_with_modifier(void) {
 
 static void test_event_keyboard_multiple_keys_and_release_order(void) {
   const uint8_t first_pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_A, 0, 0, 0, 0, 0,
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0,
   };
   const uint8_t both_pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_A, IKC_B, 0, 0, 0, 0,
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_A), (uint8_t)ICODE_OPERAND(IKC_B), 0, 0,
+      0, 0,
   };
   const uint8_t second_pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_B, 0, 0, 0, 0, 0,
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_B), 0, 0, 0, 0, 0,
   };
   const uint8_t released_report[HID_KEYBOARD_REPORT_SIZE] = {0};
 
@@ -138,7 +139,7 @@ static void test_event_keyboard_multiple_keys_and_release_order(void) {
 
 static void test_event_keyboard_duplicate_press_and_release(void) {
   const uint8_t pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_A, 0, 0, 0, 0, 0,
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0,
   };
   const uint8_t released_report[HID_KEYBOARD_REPORT_SIZE] = {0};
 
@@ -159,31 +160,58 @@ static void test_event_keyboard_duplicate_press_and_release(void) {
 
 static void test_event_keyboard_six_key_rollover(void) {
   const uint8_t six_key_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_A, IKC_B, IKC_C, IKC_D, IKC_E, IKC_F,
+      0,
+      0,
+      (uint8_t)ICODE_OPERAND(IKC_A),
+      (uint8_t)ICODE_OPERAND(IKC_B),
+      (uint8_t)ICODE_OPERAND(IKC_C),
+      (uint8_t)ICODE_OPERAND(IKC_D),
+      (uint8_t)ICODE_OPERAND(IKC_E),
+      (uint8_t)ICODE_OPERAND(IKC_F),
   };
   const uint8_t after_release_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_A, IKC_B, IKC_D, IKC_E, IKC_F, 0,
+      0,
+      0,
+      (uint8_t)ICODE_OPERAND(IKC_A),
+      (uint8_t)ICODE_OPERAND(IKC_B),
+      (uint8_t)ICODE_OPERAND(IKC_D),
+      (uint8_t)ICODE_OPERAND(IKC_E),
+      (uint8_t)ICODE_OPERAND(IKC_F),
+      0,
   };
   const uint8_t after_replacement_report[HID_KEYBOARD_REPORT_SIZE] = {
-      0, 0, IKC_A, IKC_B, IKC_D, IKC_E, IKC_F, IKC_G,
+      0,
+      0,
+      (uint8_t)ICODE_OPERAND(IKC_A),
+      (uint8_t)ICODE_OPERAND(IKC_B),
+      (uint8_t)ICODE_OPERAND(IKC_D),
+      (uint8_t)ICODE_OPERAND(IKC_E),
+      (uint8_t)ICODE_OPERAND(IKC_F),
+      (uint8_t)ICODE_OPERAND(IKC_G),
   };
 
   event_keyboard_test_prepare(IKC_A);
 
   event_keyboard_test_press_key(IKC_A);
-  event_keyboard_test_assert_report((uint8_t[]){0, 0, IKC_A, 0, 0, 0, 0, 0});
+  event_keyboard_test_assert_report(
+      (uint8_t[]){0, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0});
   event_keyboard_test_press_key(IKC_B);
   event_keyboard_test_assert_report(
-      (uint8_t[]){0, 0, IKC_A, IKC_B, 0, 0, 0, 0});
+      (uint8_t[]){0, 0, (uint8_t)ICODE_OPERAND(IKC_A),
+                  (uint8_t)ICODE_OPERAND(IKC_B), 0, 0, 0, 0});
   event_keyboard_test_press_key(IKC_C);
-  event_keyboard_test_assert_report(
-      (uint8_t[]){0, 0, IKC_A, IKC_B, IKC_C, 0, 0, 0});
+  event_keyboard_test_assert_report((uint8_t[]){
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_A), (uint8_t)ICODE_OPERAND(IKC_B),
+      (uint8_t)ICODE_OPERAND(IKC_C), 0, 0, 0});
   event_keyboard_test_press_key(IKC_D);
-  event_keyboard_test_assert_report(
-      (uint8_t[]){0, 0, IKC_A, IKC_B, IKC_C, IKC_D, 0, 0});
+  event_keyboard_test_assert_report((uint8_t[]){
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_A), (uint8_t)ICODE_OPERAND(IKC_B),
+      (uint8_t)ICODE_OPERAND(IKC_C), (uint8_t)ICODE_OPERAND(IKC_D), 0, 0});
   event_keyboard_test_press_key(IKC_E);
-  event_keyboard_test_assert_report(
-      (uint8_t[]){0, 0, IKC_A, IKC_B, IKC_C, IKC_D, IKC_E, 0});
+  event_keyboard_test_assert_report((uint8_t[]){
+      0, 0, (uint8_t)ICODE_OPERAND(IKC_A), (uint8_t)ICODE_OPERAND(IKC_B),
+      (uint8_t)ICODE_OPERAND(IKC_C), (uint8_t)ICODE_OPERAND(IKC_D),
+      (uint8_t)ICODE_OPERAND(IKC_E), 0});
   event_keyboard_test_press_key(IKC_F);
   event_keyboard_test_assert_report(six_key_report);
 
@@ -199,13 +227,20 @@ static void test_event_keyboard_six_key_rollover(void) {
 
 static void test_event_keyboard_combined_virtual_modifiers(void) {
   const uint8_t first_pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      KMC_LEFT_SHIFT, 0, IKC_A, 0, 0, 0, 0, 0,
+      KMC_LEFT_SHIFT, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0,
   };
   const uint8_t both_pressed_report[HID_KEYBOARD_REPORT_SIZE] = {
-      KMC_LEFT_CONTROL | KMC_LEFT_SHIFT, 0, IKC_A, IKC_B, 0, 0, 0, 0,
+      KMC_LEFT_CONTROL | KMC_LEFT_SHIFT,
+      0,
+      (uint8_t)ICODE_OPERAND(IKC_A),
+      (uint8_t)ICODE_OPERAND(IKC_B),
+      0,
+      0,
+      0,
+      0,
   };
   const uint8_t first_released_report[HID_KEYBOARD_REPORT_SIZE] = {
-      KMC_LEFT_SHIFT, 0, IKC_A, 0, 0, 0, 0, 0,
+      KMC_LEFT_SHIFT, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0,
   };
   const uint8_t released_report[HID_KEYBOARD_REPORT_SIZE] = {0};
 
@@ -229,7 +264,7 @@ static void test_event_keyboard_direct_modifier_and_virtual_modifier(void) {
       KMC_LEFT_SHIFT, 0, 0, 0, 0, 0, 0, 0,
   };
   const uint8_t modified_key_report[HID_KEYBOARD_REPORT_SIZE] = {
-      KMC_LEFT_SHIFT, 0, IKC_A, 0, 0, 0, 0, 0,
+      KMC_LEFT_SHIFT, 0, (uint8_t)ICODE_OPERAND(IKC_A), 0, 0, 0, 0, 0,
   };
   const uint8_t released_report[HID_KEYBOARD_REPORT_SIZE] = {0};
 

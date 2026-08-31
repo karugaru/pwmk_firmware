@@ -28,6 +28,10 @@
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
 bool event_platform_process(icode_t icode, bool pressed) {
+  if (!code_icode_is_valid(icode)) {
+    return false;
+  }
+
   // ISC_BOOTが押されたらブートモードでリセット
   if (icode == ISC_BOOT && pressed) {
     state_request_steady_state(STATE_BOOTLOADER);
@@ -35,9 +39,9 @@ bool event_platform_process(icode_t icode, bool pressed) {
   }
 
   // 接続モード切替コードの処理
-  if (pressed && ISC_CONN_TOGGLE <= icode && icode <= ISC_CONN_BLE) {
+  if (pressed && (icode == ISC_CONN_TOGGLE || icode == ISC_CONN_USB ||
+                  icode == ISC_CONN_BLE)) {
     state_conn_pref_t new_pref;
-    bool handled = true;
 
     switch (icode) {
     case ISC_CONN_TOGGLE:
@@ -52,19 +56,18 @@ bool event_platform_process(icode_t icode, bool pressed) {
       new_pref = CONN_PREF_BLE;
       break;
     default:
-      handled = false;
-      break;
+      return false;
     }
 
-    if (handled) {
-      state_switch_connection_preference(new_pref);
-      state_set_temporary_state(STATE_TEMP_CONNECTION_SWITCHED);
-      return true;
-    }
+    state_switch_connection_preference(new_pref);
+    state_set_temporary_state(STATE_TEMP_CONNECTION_SWITCHED);
+    return true;
   }
 
   // BLEスロット系コードの処理
-  if (pressed && ISC_BLE_UNPAIR <= icode && icode <= ISC_BLE_SLOT_4) {
+  if (pressed && (icode == ISC_BLE_UNPAIR || icode == ISC_BLE_SLOT_1 ||
+                  icode == ISC_BLE_SLOT_2 || icode == ISC_BLE_SLOT_3 ||
+                  icode == ISC_BLE_SLOT_4)) {
     bool ble_slot_updated = false;
 
     DEBUG_PRINT("BLE slot requested: icode=0x%04X\n", icode);

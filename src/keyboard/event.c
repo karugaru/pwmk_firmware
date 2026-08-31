@@ -39,8 +39,8 @@ typedef enum {
  * 内部関数宣言
  */
 
-static bool _event_apply_press_keyboard_key(code_modded_t keycode);
-static bool _event_apply_release_keyboard_key(code_modded_t keycode);
+static bool _event_apply_press_keyboard_key(icode_t keycode);
+static bool _event_apply_release_keyboard_key(icode_t keycode);
 static bool _event_apply_press_consumer_key(code_consumer_t keycode);
 static bool _event_apply_release_consumer_key(code_consumer_t keycode);
 static bool _event_has_mouse_move_event();
@@ -121,6 +121,10 @@ void event_process(uint8_t row, uint8_t col, bool pressed,
 
   bool process_subsequent = event_process_user_cb(&icode, pressed, event_time);
   if (!process_subsequent) {
+    return;
+  }
+
+  if (!code_icode_is_valid(icode)) {
     return;
   }
 
@@ -300,13 +304,13 @@ static bool _event_has_mouse_move_event() {
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
 static bool _event_process_key(icode_t icode, bool pressed) {
-  if (icode >= ICODE_STANDARD_START && icode <= ICODE_STANDARD_END) {
-    code_modded_t keycode = (code_modded_t)icode;
+  const uint8_t opcode = ICODE_OPCODE(icode);
+  if (opcode == ICODE_OPCODE_KEYBOARD || opcode == ICODE_OPCODE_MODIFIER) {
     bool state_changed = false;
     if (pressed) {
-      state_changed = _event_apply_press_keyboard_key(keycode);
+      state_changed = _event_apply_press_keyboard_key(icode);
     } else {
-      state_changed = _event_apply_release_keyboard_key(keycode);
+      state_changed = _event_apply_release_keyboard_key(icode);
     }
 
     if (state_changed) {
@@ -325,7 +329,7 @@ static bool _event_process_key(icode_t icode, bool pressed) {
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
 static bool _event_process_consumer(icode_t icode, bool pressed) {
-  if (icode >= ICODE_CONSUMER_START && icode <= ICODE_CONSUMER_END) {
+  if (ICODE_OPCODE(icode) == ICODE_OPCODE_CONSUMER) {
     code_consumer_t keycode = code_icodes_to_consumer(icode);
 
     bool state_changed = false;
@@ -351,7 +355,12 @@ static bool _event_process_consumer(icode_t icode, bool pressed) {
  * @return 処理された場合はtrue、処理されなかった場合はfalse
  */
 static bool _event_process_pointing(icode_t icode, bool pressed) {
-  if (icode >= ICODE_MOUSE_BUTTON_START && icode <= ICODE_MOUSE_BUTTON_END) {
+  if (ICODE_OPCODE(icode) != ICODE_OPCODE_POINTING) {
+    return false;
+  }
+
+  const uint8_t mode = ICODE_MODE(icode);
+  if (mode == ICODE_POINTING_BUTTON) {
     if (pointing_device_mouse_keys < 0) {
       return true;
     }
@@ -371,7 +380,8 @@ static bool _event_process_pointing(icode_t icode, bool pressed) {
   }
 
   // マウス移動キーコードの場合
-  if (icode >= ICODE_MOUSE_MOVE_START && icode <= ICODE_MOUSE_MOVE_END) {
+  if (mode == ICODE_POINTING_MOVE_X || mode == ICODE_POINTING_MOVE_Y ||
+      mode == ICODE_POINTING_WHEEL) {
     if (pointing_device_mouse_keys < 0) {
       return true;
     }
@@ -389,9 +399,9 @@ static bool _event_process_pointing(icode_t icode, bool pressed) {
  * @brief キーボードキーを追加
  * @return 内部状態が変化された場合にtrueを返す
  */
-static bool _event_apply_press_keyboard_key(code_modded_t keycode) {
+static bool _event_apply_press_keyboard_key(icode_t keycode) {
   // 修飾キーが直接指定された場合
-  if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
+  if (ICODE_OPCODE(keycode) == ICODE_OPCODE_MODIFIER) {
     code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
     code_mod_bits_t new_real_mod =
         old_real_mod | code_icode_to_modifier((icode_t)keycode);
@@ -403,7 +413,7 @@ static bool _event_apply_press_keyboard_key(code_modded_t keycode) {
 
   // コードから修飾子ビットとキーコードを抽出
   code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
-  code_mod_bits_t key_bits = 0xFF & keycode;
+  code_t key_bits = (code_t)ICODE_OPERAND(keycode);
   code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
   hid_state.keyboard.virtual_modifier |= mod_bits;
 
@@ -431,9 +441,9 @@ static bool _event_apply_press_keyboard_key(code_modded_t keycode) {
  * @brief キーボードキーを削除
  * @return 内部状態が変化された場合にtrueを返す
  */
-static bool _event_apply_release_keyboard_key(code_modded_t keycode) {
+static bool _event_apply_release_keyboard_key(icode_t keycode) {
   // 修飾キーが直接指定された場合
-  if (keycode >= ICODE_MODIFIER_START && keycode <= ICODE_MODIFIER_END) {
+  if (ICODE_OPCODE(keycode) == ICODE_OPCODE_MODIFIER) {
     code_mod_bits_t old_real_mod = hid_state.keyboard.real_modifier;
     code_mod_bits_t new_real_mod =
         old_real_mod & ~code_icode_to_modifier((icode_t)keycode);
@@ -445,7 +455,7 @@ static bool _event_apply_release_keyboard_key(code_modded_t keycode) {
 
   // コードから修飾子ビットとキーコードを抽出
   code_mod_bits_t mod_bits = code_icode_extract_modifier_bits(keycode);
-  code_mod_bits_t key_bits = 0xFF & keycode;
+  code_t key_bits = (code_t)ICODE_OPERAND(keycode);
   code_mod_bits_t old_virt_mod = hid_state.keyboard.virtual_modifier;
   hid_state.keyboard.virtual_modifier &= ~mod_bits;
 
