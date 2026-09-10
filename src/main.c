@@ -6,11 +6,11 @@
 #endif
 
 #include "ble/ble.h"
+#include "debug.h"
 #include "keyboard/code.h"
 #include "keyboard/event.h"
 #include "keyboard/event_platform.h"
 #include "keyboard/matrix_scan.h"
-#include "led/led.h"
 #include "peripheral/peripheral.h"
 #include "profile/board.h"
 #include "settings/settings.h"
@@ -22,7 +22,7 @@
 #endif
 
 #if DEBUG_MAIN
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("MAIN", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
@@ -40,6 +40,7 @@ static bool requested_deep_sleep;
  */
 
 static void _pwmk_process_tick(void);
+static void _pwmk_run_init_error(state_steady_t error);
 
 /*
  * 公開関数
@@ -50,20 +51,26 @@ static void _pwmk_process_tick(void);
  * @return 0
  */
 int main() {
-  state_set_system(STATE_BOOTING);
+  state_request_steady_state(STATE_BOOTING);
+  state_process_periodic();
   stdio_init_all();
 
 #if DEBUG_MAIN
   sleep_ms(2000); // UARTデバッグ用: 接続待ち
 #endif
-  DEBUG_PRINT("pwmk v1 start\n");
+  DEBUG_PRINT("PWMK Firmware Start v2\n");
 
-  // LEDの初期化
-  led_init(GPIO_LED_PIN, LED_BRIGHTNESS);
-  state_set_system(STATE_SYS_INIT);
+  // 初期周辺機器の初期化
+  peripheral_early_init();
+  peripheral_process_periodic();
+  state_request_steady_state(STATE_SYS_INIT);
+  state_process_periodic();
+  peripheral_process_periodic();
 
   // 設定の初期化
-  settings_init();
+  if (!settings_init()) {
+    _pwmk_run_init_error(STATE_INIT_ERROR_SETTINGS);
+  }
 
   // マトリクススキャン初期化
   matrix_scan_init();
@@ -81,17 +88,21 @@ int main() {
 
   // BLEの初期化
 #if PWMK_ENABLE_BLE
+  state_request_steady_state(STATE_BLE_INIT);
+  state_process_periodic();
+  peripheral_process_periodic();
   if (cyw43_arch_init()) {
     DEBUG_PRINT("failed to initialise cyw43_arch\n");
-    return -1;
+    _pwmk_run_init_error(STATE_INIT_ERROR_BLE);
   }
   ble_setup();
   ble_power_set(true);
-  state_set_system(STATE_BLE_INIT);
 #endif
 
   // マトリクス以外の周辺機器の初期化
-  peripheral_init();
+  if (!peripheral_init()) {
+    _pwmk_run_init_error(STATE_INIT_ERROR_PERIPHERAL);
+  }
 
   // USB HIDの初期化
 #if PWMK_ENABLE_USB
@@ -99,8 +110,12 @@ int main() {
 #endif
 
   // 初期化完了
-  state_set_system(STATE_INIT_COMPLETE);
-  state_refresh_runtime();
+  state_request_steady_state(STATE_INIT_COMPLETE);
+  state_process_periodic();
+  peripheral_process_periodic();
+  sleep_ms(100); // 初期化完了の表示を人間にが見えるように少し待つ
+  state_process_periodic();
+  peripheral_process_periodic();
 
   // アクティビティタイマー初期化
   last_activity_time = get_absolute_time();
@@ -118,20 +133,23 @@ int main() {
 #if PWMK_ENABLE_BLE
     async_context_poll(cyw43_arch_async_context());
     if (requested_deep_sleep) {
-      state_set_system(STATE_DEEP_SLEEP);
+      peripheral_prepare_deep_sleep();
+      state_request_steady_state(STATE_DEEP_SLEEP);
+      state_process_periodic();
     }
     async_context_wait_for_work_until(cyw43_arch_async_context(),
                                       at_the_end_of_time);
 #else
     _pwmk_process_tick();
     if (requested_deep_sleep) {
-      state_set_system(STATE_DEEP_SLEEP);
+      peripheral_prepare_deep_sleep();
+      state_request_steady_state(STATE_DEEP_SLEEP);
+      state_process_periodic();
     }
     sleep_ms(1);
 #endif
   }
 
-  state_set_system(STATE_RESET);
   return 0;
 }
 
@@ -208,6 +226,12 @@ static void _pwmk_process_tick(void) {
     }
   }
 
+  // 周期的な状態管理処理を実行
+  state_process_periodic();
+
+  // 周期的なペリフェラル処理を実行
+  peripheral_process_periodic();
+
   // アクティビティがあればタイマーをリセット
   if (has_activity) {
     last_activity_time = get_absolute_time();
@@ -217,6 +241,20 @@ static void _pwmk_process_tick(void) {
   if (absolute_time_diff_us(last_activity_time, get_absolute_time()) >
       DEEP_SLEEP_TIMEOUT_US) {
     requested_deep_sleep = true;
+  }
+}
+
+/**
+ * @brief 初期化エラーが発生した場合の処理。
+ * @param error 初期化エラーの種類
+ * @note この関数は戻らない。
+ */
+static void _pwmk_run_init_error(state_steady_t error) {
+  state_request_steady_state(error);
+  while (true) {
+    state_process_periodic();
+    peripheral_process_periodic();
+    sleep_ms(1);
   }
 }
 

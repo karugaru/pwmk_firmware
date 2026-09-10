@@ -1,4 +1,5 @@
 #include "persistence/persistence_flash.h"
+#include "debug.h"
 #include "persistence/persistence_format.h"
 #include <hardware/flash.h>
 #include <hardware/regs/addressmap.h>
@@ -15,7 +16,7 @@
 #endif
 
 #if DEBUG_PERSISTENCE
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) pwmk_debug_printf("PERSISTENCE", __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) ((void)(0))
 #endif
@@ -149,7 +150,7 @@ bool persistence_flash_init(size_t image_size) {
   if (image_size == 0u || built_data_offset > PWMK_PERSISTENCE_SIZE ||
       image_size > PWMK_PERSISTENCE_SIZE - built_data_offset) {
     persistence_flash_ready = false;
-    DEBUG_PRINT("Persistence flash init failed: image_size=%zu\n", image_size);
+    DEBUG_PRINT("flash init failed: image_size=%zu\n", image_size);
     return false;
   }
   layout.built_data_offset = built_data_offset;
@@ -159,22 +160,20 @@ bool persistence_flash_init(size_t image_size) {
       PWMK_ALIGN_UP(built_data_offset + image_size, FLASH_PAGE_SIZE);
   if (layout.log_data_offset > PWMK_PERSISTENCE_SIZE) {
     persistence_flash_ready = false;
-    DEBUG_PRINT("Persistence flash init failed: log offset=%zu\n",
-                layout.log_data_offset);
+    DEBUG_PRINT("flash init failed: log offset=%zu\n", layout.log_data_offset);
     return false;
   }
   layout.log_data_size = PWMK_PERSISTENCE_SIZE - layout.log_data_offset;
   if (layout.log_data_size < PWMK_FIXED_LOG_RECORD_SIZE ||
       layout.log_data_size < PWMK_VARIABLE_LOG_HEADER_SIZE + 1u) {
     persistence_flash_ready = false;
-    DEBUG_PRINT("Persistence flash init failed: log size=%zu\n",
-                layout.log_data_size);
+    DEBUG_PRINT("flash init failed: log size=%zu\n", layout.log_data_size);
     return false;
   }
 
   persistence_flash_layout = layout;
   persistence_flash_ready = true;
-  DEBUG_PRINT("Persistence flash init: image_size=%zu marker=%zu serial=%zu "
+  DEBUG_PRINT("flash init: image_size=%zu marker=%zu serial=%zu "
               "progress=%zu built=%zu log=%zu+%zu\n",
               image_size, layout.marker_offset, layout.serial_offset,
               layout.progress_offset, layout.built_data_offset,
@@ -191,13 +190,12 @@ bool persistence_flash_init(size_t image_size) {
  */
 bool persistence_flash_read(size_t offset, uint8_t *buffer, size_t size) {
   if (buffer == NULL || !_persistence_flash_range_is_valid(offset, size)) {
-    DEBUG_PRINT("Persistence flash read failed: offset=%zu size=%zu\n", offset,
-                size);
+    DEBUG_PRINT("flash read failed: offset=%zu size=%zu\n", offset, size);
     return false;
   }
 
   memcpy(buffer, READ_ADDRESS_PTR(offset), size);
-  DEBUG_PRINT("Persistence flash read: offset=%zu size=%zu\n", offset, size);
+  DEBUG_PRINT("flash read: offset=%zu size=%zu\n", offset, size);
   return true;
 }
 
@@ -215,13 +213,12 @@ bool persistence_flash_get_view(size_t offset, size_t size,
                                 const uint8_t **read_address_out) {
   if (read_address_out == NULL ||
       !_persistence_flash_range_is_valid(offset, size)) {
-    DEBUG_PRINT("Persistence flash view failed: offset=%zu size=%zu\n", offset,
-                size);
+    DEBUG_PRINT("flash view failed: offset=%zu size=%zu\n", offset, size);
     return false;
   }
 
   *read_address_out = READ_ADDRESS_PTR(offset);
-  DEBUG_PRINT("Persistence flash view: offset=%zu size=%zu\n", offset, size);
+  DEBUG_PRINT("flash view: offset=%zu size=%zu\n", offset, size);
   return true;
 }
 
@@ -233,21 +230,21 @@ bool persistence_flash_get_view(size_t offset, size_t size,
  */
 bool persistence_flash_region_is_erased(size_t offset, size_t size) {
   if (!_persistence_flash_range_is_valid(offset, size)) {
-    DEBUG_PRINT("Persistence flash erased check failed: offset=%zu size=%zu\n",
-                offset, size);
+    DEBUG_PRINT("flash erased check failed: offset=%zu size=%zu\n", offset,
+                size);
     return false;
   }
 
   const uint8_t *data = READ_ADDRESS_PTR(offset);
   for (size_t index = 0; index < size; index++) {
     if (data[index] != 0xFFu) {
-      DEBUG_PRINT("Persistence flash erased check failed: offset=%zu "
+      DEBUG_PRINT("flash erased check failed: offset=%zu "
                   "value=0x%02X\n",
                   offset + index, data[index]);
       return false;
     }
   }
-  DEBUG_PRINT("Persistence flash erased: offset=%zu size=%zu\n", offset, size);
+  DEBUG_PRINT("flash erased: offset=%zu size=%zu\n", offset, size);
   return true;
 }
 
@@ -261,12 +258,11 @@ bool persistence_flash_region_is_erased(size_t offset, size_t size) {
 bool persistence_flash_program(size_t offset, const uint8_t *data,
                                size_t size) {
   if (data == NULL || !_persistence_flash_range_is_valid(offset, size)) {
-    DEBUG_PRINT("Persistence flash program failed: offset=%zu size=%zu\n",
-                offset, size);
+    DEBUG_PRINT("flash program failed: offset=%zu size=%zu\n", offset, size);
     return false;
   }
 
-  DEBUG_PRINT("Persistence flash program: offset=%zu size=%zu\n", offset, size);
+  DEBUG_PRINT("flash program: offset=%zu size=%zu\n", offset, size);
 
   size_t current_offset = offset;
   size_t remaining = size;
@@ -305,7 +301,7 @@ bool persistence_flash_program(size_t offset, const uint8_t *data,
          index < distance_from_page_head + write_size; index++) {
       if ((page_buffer[index] & page_read_address[index]) !=
           page_buffer[index]) {
-        DEBUG_PRINT("Persistence flash program failed: 0-to-1 at offset=%zu\n",
+        DEBUG_PRINT("flash program failed: 0-to-1 at offset=%zu\n",
                     page_head_offset + index);
         return false;
       }
@@ -314,13 +310,13 @@ bool persistence_flash_program(size_t offset, const uint8_t *data,
     // フラッシュに書き込み、内容を検証する
     if (flash_safe_execute(_persistence_flash_operation, &write_param,
                            UINT32_MAX) != PICO_OK) {
-      DEBUG_PRINT("Persistence flash program failed: execute offset=%zu\n",
+      DEBUG_PRINT("flash program failed: execute offset=%zu\n",
                   page_head_offset);
       return false;
     }
     if (memcmp(READ_ADDRESS_PTR(page_head_offset), page_buffer,
                sizeof(page_buffer)) != 0) {
-      DEBUG_PRINT("Persistence flash program failed: verify offset=%zu\n",
+      DEBUG_PRINT("flash program failed: verify offset=%zu\n",
                   page_head_offset);
       return false;
     }
@@ -330,8 +326,7 @@ bool persistence_flash_program(size_t offset, const uint8_t *data,
     remaining -= write_size;
   }
 
-  DEBUG_PRINT("Persistence flash program complete: offset=%zu size=%zu\n",
-              offset, size);
+  DEBUG_PRINT("flash program complete: offset=%zu size=%zu\n", offset, size);
   return true;
 }
 
@@ -341,11 +336,11 @@ bool persistence_flash_program(size_t offset, const uint8_t *data,
  */
 bool persistence_flash_erase_all(void) {
   if (!persistence_flash_ready) {
-    DEBUG_PRINT("Persistence flash erase failed: not ready\n");
+    DEBUG_PRINT("flash erase failed: not ready\n");
     return false;
   }
 
-  DEBUG_PRINT("Persistence flash erase: size=%u\n", PWMK_PERSISTENCE_SIZE);
+  DEBUG_PRINT("flash erase: size=%u\n", PWMK_PERSISTENCE_SIZE);
 
   persistence_write_param_t write_param = {
       .erase = true,
@@ -357,15 +352,15 @@ bool persistence_flash_erase_all(void) {
   // フラッシュを消去し、内容を検証する
   if (flash_safe_execute(_persistence_flash_operation, &write_param,
                          UINT32_MAX) != PICO_OK) {
-    DEBUG_PRINT("Persistence flash erase failed: execute\n");
+    DEBUG_PRINT("flash erase failed: execute\n");
     return false;
   }
   if (!persistence_flash_region_is_erased(0u, PWMK_PERSISTENCE_SIZE)) {
-    DEBUG_PRINT("Persistence flash erase failed: verify\n");
+    DEBUG_PRINT("flash erase failed: verify\n");
     return false;
   }
 
-  DEBUG_PRINT("Persistence flash erase complete\n");
+  DEBUG_PRINT("flash erase complete\n");
   return true;
 }
 

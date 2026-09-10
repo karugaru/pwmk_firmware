@@ -27,6 +27,7 @@ add_executable(code_convert_test
     code_convert_test.c
     unity.c
     ${CMAKE_CURRENT_LIST_DIR}/../src/keyboard/code_convert.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/keyboard/code.c
 )
 
 target_include_directories(code_convert_test PRIVATE
@@ -51,6 +52,7 @@ add_executable(keymap_persistence_test
     keymap_persistence_test.c
     unity.c
     ${CMAKE_CURRENT_LIST_DIR}/../src/profile/keymap.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/keyboard/code.c
 )
 
 target_include_directories(keymap_persistence_test PRIVATE
@@ -65,6 +67,7 @@ add_executable(settings_test
     unity.c
     ${CMAKE_CURRENT_LIST_DIR}/../src/settings/settings.c
     ${CMAKE_CURRENT_LIST_DIR}/../src/profile/keymap.c
+    ${CMAKE_CURRENT_LIST_DIR}/../src/keyboard/code.c
 )
 
 target_include_directories(settings_test PRIVATE

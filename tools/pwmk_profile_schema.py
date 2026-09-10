@@ -6,12 +6,13 @@ from pydantic import BaseModel, Field, model_validator
 class DebugProfile(BaseModel):
     """デバッグ出力の設定を表す Pydantic モデル。"""
 
-    all: bool = Field(default=False, description="全てのデバッグ出力を有効にするかどうか。")
+    all: bool = Field(
+        default=False,
+        description="個別指定がない全てのデバッグ出力の既定値。",
+    )
     main: bool = Field(default=False, description="DEBUG_MAIN を有効にするかどうか。")
     ble: bool = Field(default=False, description="DEBUG_BLE を有効にするかどうか。")
-    event: bool = Field(
-        default=False, description="DEBUG_EVENT を有効にするかどうか。"
-    )
+    event: bool = Field(default=False, description="DEBUG_EVENT を有効にするかどうか。")
     matrix_scan: bool = Field(
         default=False, description="DEBUG_MATRIX_SCAN を有効にするかどうか。"
     )
@@ -31,6 +32,25 @@ class DebugProfile(BaseModel):
     ble_deep: bool = Field(
         default=False, description="WANT_HCI_DUMP を有効にするかどうか。"
     )
+
+    @model_validator(mode="after")
+    def apply_all_as_default(self) -> DebugProfile:
+        for field_name in (
+            "main",
+            "ble",
+            "event",
+            "matrix_scan",
+            "matrix_scan_deep",
+            "pinnacle",
+            "peripheral",
+            "persistence",
+            "vial",
+            "ble_deep",
+        ):
+            if field_name not in self.model_fields_set:
+                setattr(self, field_name, self.all)
+
+        return self
 
 
 class CMakeProfile(BaseModel):
@@ -182,9 +202,9 @@ class SettingsProfile(BaseModel):
         le=0xFFFF,
         description="USB デバイス記述子で使用するプロダクト ID (PID)。",
     )
-    deep_sleep_timeout_seconds: int = Field(
-        ge=5,
-        description="無操作時にディープスリープへ移行するまでの時間。単位は秒。",
+    deep_sleep_timeout_ms: int = Field(
+        ge=500,
+        description="無操作時にディープスリープへ移行するまでの時間。単位はミリ秒。",
     )
     led_brightness: int = Field(
         ge=1,

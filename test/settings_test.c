@@ -2,6 +2,7 @@
 
 #include "profile/keymap.h"
 #include "settings/settings.h"
+#include "state/state.h"
 #include "unity.h"
 
 const int8_t layout[ROWS * COLS][2] = {
@@ -21,6 +22,11 @@ static size_t persistence_rebuild_calls;
 static size_t persistence_commit_calls;
 static uint8_t persisted_image[128];
 static bool persistence_restore_partial_failure;
+static state_temporary_t temporary_state;
+
+void state_set_temporary_state(state_temporary_t state) {
+  temporary_state = state;
+}
 
 bool persistence_init(size_t image_size) {
   persistence_image_size = image_size;
@@ -72,6 +78,7 @@ void setUp(void) {
   persistence_rebuild_calls = 0;
   persistence_commit_calls = 0;
   persistence_restore_partial_failure = false;
+  temporary_state = STATE_TEMP_NONE;
   memset(persisted_image, 0, sizeof(persisted_image));
 }
 
@@ -107,6 +114,18 @@ static void test_settings_keeps_ram_change_after_commit_failure(void) {
 
   TEST_ASSERT_EQUAL_INT(SETTINGS_UPDATE_RAM_ONLY,
                         settings_set_keycode(0, 0, 1, IKC_D));
+}
+
+static void test_settings_reports_update_state(void) {
+  settings_init();
+
+  TEST_ASSERT_EQUAL_INT(SETTINGS_UPDATE_PERSISTED,
+                        settings_set_keycode(0, 0, 0, IKC_C));
+  TEST_ASSERT_EQUAL_INT(STATE_TEMP_SETTINGS_PERSISTED, temporary_state);
+
+  TEST_ASSERT_EQUAL_INT(SETTINGS_UPDATE_FAILED,
+                        settings_set_keycode(0, 1, 1, IKC_C));
+  TEST_ASSERT_EQUAL_INT(STATE_TEMP_SETTINGS_FAILED, temporary_state);
 }
 
 static void test_settings_rejects_invalid_input_without_changes(void) {
@@ -149,7 +168,7 @@ static void test_settings_resets_defaults_after_partial_restore_failure(void) {
 static void
 test_settings_accepts_ram_changes_after_persistence_init_failure(void) {
   persistence_init_result = false;
-  settings_init();
+  TEST_ASSERT_TRUE(settings_init());
 
   TEST_ASSERT_EQUAL_INT(SETTINGS_UPDATE_RAM_ONLY,
                         settings_set_keycode(0, 0, 0, IKC_C));
@@ -173,6 +192,7 @@ int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_settings_initializes_defaults_and_persists_change);
   RUN_TEST(test_settings_keeps_ram_change_after_commit_failure);
+  RUN_TEST(test_settings_reports_update_state);
   RUN_TEST(test_settings_rejects_invalid_input_without_changes);
   RUN_TEST(test_settings_restores_without_rebuilding);
   RUN_TEST(test_settings_resets_defaults_after_partial_restore_failure);

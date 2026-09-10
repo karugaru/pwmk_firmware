@@ -1,307 +1,338 @@
 #ifndef PWMK_CODE_H
 #define PWMK_CODE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /**
- * @brief
- * 内部用(キー)コード
+ * @brief 内部キーコードの型。
  *
- * 0x00000000 - 0x0000FFFF: 標準キーコード。
- * 最下位8bitがUSB HID Usage ID準拠のキーボード用コード、
- * 次の8bitが修飾子コード(Ctrl,Shiftなど)を表す。
- * この修飾子ビットはkeyboard_modifier_t型に対応している。
- *
- * 0x00010000 - 0x00017FFF: 拡張コード。
- * 通常のキーボードコードに含まれないキーコードを表す。
- * (例: メディアキー、マウスボタンなど)
- * そのままHID Usage IDとしては使用できないので、
- * マッピングの必要がある。
- *
- * 0x00018000 - 0x0001FFFF: ユーザ拡張コード。
- * ユーザが自由に定義して使用できるコード。
- *
- * 最上位15bitは予約済み。
- * これらのビットが立っている場合、ビットごとに特殊な処理を行う。
+ * 上位8bitがopcode、次の8bitがmodeまたはflags、下位16bitがoperandを表す。
+ * [oooooooo][mmmmmmmm][xxxxxxxxxxxxxxxx]
+ *  ^ bit 31 (MSB)                     ^ bit 0 (LSB)
  */
-typedef enum {
-  // Internal Key Codes
-  IKC_NOOP = 0x0000,
-  // KC_ERO = 0x0001,
-  // KC_PF = 0x0002,
-  // KC_ERUD = 0x0003,
-  IKC_A = 0x0004,
-  IKC_B = 0x0005,
-  IKC_C = 0x0006,
-  IKC_D = 0x0007,
-  IKC_E = 0x0008,
-  IKC_F = 0x0009,
-  IKC_G = 0x000A,
-  IKC_H = 0x000B,
-  IKC_I = 0x000C,
-  IKC_J = 0x000D,
-  IKC_K = 0x000E,
-  IKC_L = 0x000F,
-  IKC_M = 0x0010,
-  IKC_N = 0x0011,
-  IKC_O = 0x0012,
-  IKC_P = 0x0013,
-  IKC_Q = 0x0014,
-  IKC_R = 0x0015,
-  IKC_S = 0x0016,
-  IKC_T = 0x0017,
-  IKC_U = 0x0018,
-  IKC_V = 0x0019,
-  IKC_W = 0x001A,
-  IKC_X = 0x001B,
-  IKC_Y = 0x001C,
-  IKC_Z = 0x001D,
-  IKC_1 = 0x001E,
-  IKC_2 = 0x001F,
-  IKC_3 = 0x0020,
-  IKC_4 = 0x0021,
-  IKC_5 = 0x0022,
-  IKC_6 = 0x0023,
-  IKC_7 = 0x0024,
-  IKC_8 = 0x0025,
-  IKC_9 = 0x0026,
-  IKC_0 = 0x0027,
-  IKC_ENTER = 0x0028,
-  IKC_ESCAPE = 0x0029,
-  IKC_BACKSPACE = 0x002A,
-  IKC_TAB = 0x002B,
-  IKC_SPACE = 0x002C,
-  IKC_MINUS = 0x002D,
-  IKC_EQUAL = 0x002E,
-  IKC_LEFT_BRACKET = 0x002F,
-  IKC_RIGHT_BRACKET = 0x0030,
-  IKC_BACKSLASH = 0x0031,
-  IKC_NON_US_HASH = 0x0032,
-  IKC_SEMICOLON = 0x0033,
-  IKC_SINGLE_QUOTE = 0x0034,
-  IKC_GRAVE = 0x0035,
-  IKC_COMMA = 0x0036,
-  IKC_DOT = 0x0037,
-  IKC_SLASH = 0x0038,
-  IKC_CAPSLOCK = 0x0039,
-  IKC_F1 = 0x003A,
-  IKC_F2 = 0x003B,
-  IKC_F3 = 0x003C,
-  IKC_F4 = 0x003D,
-  IKC_F5 = 0x003E,
-  IKC_F6 = 0x003F,
-  IKC_F7 = 0x0040,
-  IKC_F8 = 0x0041,
-  IKC_F9 = 0x0042,
-  IKC_F10 = 0x0043,
-  IKC_F11 = 0x0044,
-  IKC_F12 = 0x0045,
-  IKC_PRINT_SCREEN = 0x0046,
-  IKC_SCROLL_LOCK = 0x0047,
-  IKC_PAUSE = 0x0048,
-  IKC_INSERT = 0x0049,
-  IKC_HOME = 0x004A,
-  IKC_PAGE_UP = 0x004B,
-  IKC_DELETE = 0x004C,
-  IKC_END = 0x004D,
-  IKC_PAGE_DOWN = 0x004E,
-  IKC_RIGHT_ARROW = 0x004F,
-  IKC_LEFT_ARROW = 0x0050,
-  IKC_DOWN_ARROW = 0x0051,
-  IKC_UP_ARROW = 0x0052,
-  IKC_NUM_LOCK = 0x0053,
-  IKC_KEYPAD_SLASH = 0x0054,
-  IKC_KEYPAD_ASTERISK = 0x0055,
-  IKC_KEYPAD_MINUS = 0x0056,
-  IKC_KEYPAD_PLUS = 0x0057,
-  IKC_KEYPAD_ENTER = 0x0058,
-  IKC_KEYPAD_1 = 0x0059,
-  IKC_KEYPAD_2 = 0x005A,
-  IKC_KEYPAD_3 = 0x005B,
-  IKC_KEYPAD_4 = 0x005C,
-  IKC_KEYPAD_5 = 0x005D,
-  IKC_KEYPAD_6 = 0x005E,
-  IKC_KEYPAD_7 = 0x005F,
-  IKC_KEYPAD_8 = 0x0060,
-  IKC_KEYPAD_9 = 0x0061,
-  IKC_KEYPAD_0 = 0x0062,
-  IKC_KEYPAD_DOT = 0x0063,
-  IKC_NON_US_BACKSLASH = 0x0064,
-  IKC_APPLICATION = 0x0065,
-  IKC_POWER = 0x0066,
-  IKC_KEYPAD_EQUAL = 0x0067,
-  IKC_F13 = 0x0068,
-  IKC_F14 = 0x0069,
-  IKC_F15 = 0x006A,
-  IKC_F16 = 0x006B,
-  IKC_F17 = 0x006C,
-  IKC_F18 = 0x006D,
-  IKC_F19 = 0x006E,
-  IKC_F20 = 0x006F,
-  IKC_F21 = 0x0070,
-  IKC_F22 = 0x0071,
-  IKC_F23 = 0x0072,
-  IKC_F24 = 0x0073,
-  IKC_EXECUTE = 0x0074,
-  IKC_HELP = 0x0075,
-  IKC_MENU = 0x0076,
-  IKC_SELECT = 0x0077,
-  IKC_STOP = 0x0078,
-  IKC_AGAIN = 0x0079,
-  IKC_UNDO = 0x007A,
-  IKC_CUT = 0x007B,
-  IKC_COPY = 0x007C,
-  IKC_PASTE = 0x007D,
-  IKC_FIND = 0x007E,
-  IKC_MUTE = 0x007F,
-  IKC_VOLUME_UP = 0x0080,
-  IKC_VOLUME_DOWN = 0x0081,
-  IKC_LOCKING_CAPS = 0x0082,
-  IKC_LOCKING_NUM = 0x0083,
-  IKC_LOCKING_SCROLL = 0x0084,
-  IKC_KEYPAD_COMMA = 0x0085,
-  IKC_KEYPAD_EQUAL_UNIX = 0x0086,
-  IKC_INTERNATIONAL1 = 0x0087,
-  IKC_INTERNATIONAL2 = 0x0088,
-  IKC_INTERNATIONAL3 = 0x0089,
-  IKC_INTERNATIONAL4 = 0x008A,
-  IKC_INTERNATIONAL5 = 0x008B,
-  IKC_INTERNATIONAL6 = 0x008C,
-  IKC_INTERNATIONAL7 = 0x008D,
-  IKC_INTERNATIONAL8 = 0x008E,
-  IKC_INTERNATIONAL9 = 0x008F,
-  IKC_LANG1 = 0x0090,
-  IKC_LANG2 = 0x0091,
-  IKC_LANG3 = 0x0092,
-  IKC_LANG4 = 0x0093,
-  IKC_LANG5 = 0x0094,
-  IKC_LANG6 = 0x0095,
-  IKC_LANG7 = 0x0096,
-  IKC_LANG8 = 0x0097,
-  IKC_LANG9 = 0x0098,
-  IKC_ALTERNATE_ERASE = 0x0099,
-  IKC_SYSREQ = 0x009A,
-  IKC_CANCEL = 0x009B,
-  IKC_CLEAR = 0x009C,
-  IKC_PRIOR = 0x009D,
-  IKC_RETURN2 = 0x009E,
-  IKC_SEPARATOR = 0x009F,
-  IKC_OUT = 0x00A0,
-  IKC_OPER = 0x00A1,
-  IKC_CLEAR_AGAIN = 0x00A2,
-  IKC_CRSEL = 0x00A3,
-  IKC_EXSEL = 0x00A4,
-  IKC_KEYPAD_00 = 0x00B0,
-  IKC_KEYPAD_000 = 0x00B1,
-  IKC_THOUSANDS_SEPARATOR = 0x00B2,
-  IKC_DECIMAL_SEPARATOR = 0x00B3,
-  IKC_CURRENCY_UNIT = 0x00B4,
-  IKC_CURRENCY_SUB_UNIT = 0x00B5,
-  IKC_KEYPAD_LEFT_PAREN = 0x00B6,
-  IKC_KEYPAD_RIGHT_PAREN = 0x00B7,
-  IKC_KEYPAD_LEFT_BRACE = 0x00B8,
-  IKC_KEYPAD_RIGHT_BRACE = 0x00B9,
-  IKC_KEYPAD_TAB = 0x00BA,
-  IKC_KEYPAD_BACKSPACE = 0x00BB,
-  IKC_KEYPAD_A = 0x00BC,
-  IKC_KEYPAD_B = 0x00BD,
-  IKC_KEYPAD_C = 0x00BE,
-  IKC_KEYPAD_D = 0x00BF,
-  IKC_KEYPAD_E = 0x00C0,
-  IKC_KEYPAD_F = 0x00C1,
-  IKC_KEYPAD_XOR = 0x00C2,
-  IKC_KEYPAD_CARET = 0x00C3,
-  IKC_KEYPAD_PERCENT = 0x00C4,
-  IKC_KEYPAD_LESS = 0x00C5,
-  IKC_KEYPAD_GREATER = 0x00C6,
-  IKC_KEYPAD_AMPERSAND = 0x00C7,
-  IKC_KEYPAD_DOUBLE_AMPERSAND = 0x00C8,
-  IKC_KEYPAD_VERTICAL_BAR = 0x00C9,
-  IKC_KEYPAD_DOUBLE_VERTICAL_BAR = 0x00CA,
-  IKC_KEYPAD_COLON = 0x00CB,
-  IKC_KEYPAD_HASH = 0x00CC,
-  IKC_KEYPAD_SPACE = 0x00CD,
-  IKC_KEYPAD_AT = 0x00CE,
-  IKC_KEYPAD_EXCLAMATION = 0x00CF,
-  IKC_KEYPAD_MEMORY_STORE = 0x00D0,
-  IKC_KEYPAD_MEMORY_RECALL = 0x00D1,
-  IKC_KEYPAD_MEMORY_CLEAR = 0x00D2,
-  IKC_KEYPAD_MEMORY_ADD = 0x00D3,
-  IKC_KEYPAD_MEMORY_SUBTRACT = 0x00D4,
-  IKC_KEYPAD_MEMORY_MULTIPLY = 0x00D5,
-  IKC_KEYPAD_MEMORY_DIVIDE = 0x00D6,
-  IKC_KEYPAD_PLUS_MINUS = 0x00D7,
-  IKC_KEYPAD_CLEAR = 0x00D8,
-  IKC_KEYPAD_CLEAR_ENTRY = 0x00D9,
-  IKC_KEYPAD_BINARY = 0x00DA,
-  IKC_KEYPAD_OCTAL = 0x00DB,
-  IKC_KEYPAD_DECIMAL = 0x00DC,
-  IKC_KEYPAD_HEXADECIMAL = 0x00DD,
-  // Internal Modifier Key Codes
-  IMKC_LEFT_CONTROL = 0x00E0,
-  IMKC_LEFT_SHIFT = 0x00E1,
-  IMKC_LEFT_ALT = 0x00E2,
-  IMKC_LEFT_GUI = 0x00E3,
-  IMKC_RIGHT_CONTROL = 0x00E4,
-  IMKC_RIGHT_SHIFT = 0x00E5,
-  IMKC_RIGHT_ALT = 0x00E6,
-  IMKC_RIGHT_GUI = 0x00E7,
-  // Internal Special Codes Range
-  ISC_UNDEFINED = 0x00010000,
-  // Internal Consumer control Codes
-  ICC_RECORD = 0x00010001,
-  ICC_FAST_FORWARD,
-  ICC_REWIND,
-  ICC_NEXT_TRACK,
-  ICC_PREV_TRACK,
-  ICC_STOP_TRACK,
-  ICC_EJECT,
-  ICC_RANDOM_PLAY,
-  ICC_STOP_EJECT,
-  ICC_PLAY_PAUSE,
-  ICC_VOL_MUTE,
-  ICC_VOL_UP,
-  ICC_VOL_DOWN,
-  // Internal Mouse Codes
-  IMC_MOUSE_LEFT,
-  IMC_MOUSE_RIGHT,
-  IMC_MOUSE_MIDDLE,
-  IMC_MOUSE_MOVE_UP,
-  IMC_MOUSE_MOVE_DOWN,
-  IMC_MOUSE_MOVE_LEFT,
-  IMC_MOUSE_MOVE_RIGHT,
-  IMC_MOUSE_WHEEL_UP,
-  IMC_MOUSE_WHEEL_DOWN,
-  // Internal Special Codes
-  ISC_BOOT,
-  ISC_CONN_TOGGLE, // USB/BLE接続切り替え
-  ISC_CONN_USB,    // USB接続モード
-  ISC_CONN_BLE,    // BLE接続モード
-  ISC_BLE_UNPAIR,  // 選択中のBLEスロットのペアリング解除
-  ISC_BLE_SLOT_1,  // BLEスロット1に切り替え
-  ISC_BLE_SLOT_2,  // BLEスロット2に切り替え
-  ISC_BLE_SLOT_3,  // BLEスロット3に切り替え
-  ISC_BLE_SLOT_4,  // BLEスロット4に切り替え
-  IUC_RANGE_MIN = 0x00018000,
-  IUC_RANGE_MAX = 0x0001FFFF,
-  IC_RANGE_MAX = 0xFFFFFFFF,
-} icode_t;
+typedef uint32_t icode_t;
 
-#define ICODE_STANDARD_START IKC_A
-#define ICODE_STANDARD_END (0xFF00 | IKC_KEYPAD_HEXADECIMAL)
-#define ICODE_MODIFIER_START IMKC_LEFT_CONTROL
-#define ICODE_MODIFIER_END IMKC_RIGHT_GUI
-#define ICODE_CONSUMER_START ICC_RECORD
-#define ICODE_CONSUMER_END ICC_VOL_DOWN
-#define ICODE_MOUSE_BUTTON_START IMC_MOUSE_LEFT
-#define ICODE_MOUSE_BUTTON_END IMC_MOUSE_MIDDLE
-#define ICODE_MOUSE_MOVE_START IMC_MOUSE_MOVE_UP
-#define ICODE_MOUSE_MOVE_END IMC_MOUSE_WHEEL_DOWN
-#define ICODE_SPECIAL_START ISC_BOOT
-#define ICODE_SPECIAL_END ISC_BLE_SLOT_4
+/**
+ * @brief 内部キーコードを構成する。
+ * @param opcode アクションの種類
+ * @param mode opcode固有のmodeまたはflags
+ * @param operand opcode固有のoperand
+ * @return パックされた内部キーコード
+ */
+#define ICODE_PACK(opcode, mode, operand)                                      \
+  ((((uint32_t)(opcode) & UINT32_C(0xFF)) << 24) |                             \
+   (((uint32_t)(mode) & UINT32_C(0xFF)) << 16) |                               \
+   ((uint32_t)(operand) & UINT32_C(0xFFFF)))
+
+#define ICODE_OPCODE(code) ((uint8_t)(((uint32_t)(code) >> 24) & 0xFFu))
+#define ICODE_MODE(code) ((uint8_t)(((uint32_t)(code) >> 16) & 0xFFu))
+#define ICODE_OPERAND(code) ((uint16_t)((uint32_t)(code) & 0xFFFFu))
+
+// clang-format off
+
+// 内部キーコードのopcode。
+#define ICODE_OPCODE_NOOP               UINT8_C(0x00)
+#define ICODE_OPCODE_TRANSPARENT        UINT8_C(0x01)
+#define ICODE_OPCODE_KEYBOARD           UINT8_C(0x10)
+#define ICODE_OPCODE_MODIFIER           UINT8_C(0x11)
+#define ICODE_OPCODE_CONSUMER           UINT8_C(0x12)
+#define ICODE_OPCODE_POINTING           UINT8_C(0x13)
+#define ICODE_OPCODE_SYSTEM             UINT8_C(0x14)
+#define ICODE_OPCODE_LAYER              UINT8_C(0x20)
+#define ICODE_OPCODE_MACRO              UINT8_C(0x21)
+#define ICODE_OPCODE_SEQUENCE           UINT8_C(0x22)
+#define ICODE_OPCODE_USER_MIN           UINT8_C(0x80)
+#define ICODE_OPCODE_USER_MAX           UINT8_C(0xBF)
+#define ICODE_OPCODE_INVALID            UINT8_C(0xFF)
+
+#define ICODE_NOOP                      ICODE_PACK(ICODE_OPCODE_NOOP, 0, 0)
+#define ICODE_TRANSPARENT               ICODE_PACK(ICODE_OPCODE_TRANSPARENT, 0, 0)
+
+// ポインティングデバイスopcodeのmodeとoperand。
+#define ICODE_POINTING_BUTTON           UINT8_C(0x01)
+#define ICODE_POINTING_MOVE_X           UINT8_C(0x02)
+#define ICODE_POINTING_MOVE_Y           UINT8_C(0x03)
+#define ICODE_POINTING_WHEEL            UINT8_C(0x04)
+#define ICODE_POINTING_PRED             UINT16_C(0x0001)
+#define ICODE_POINTING_SUCC             UINT16_C(0xFFFF)
+
+// システムopcodeのmodeとoperand。
+#define ICODE_SYSTEM_BOOT               UINT8_C(0x01)
+#define ICODE_SYSTEM_CONNECTION         UINT8_C(0x02)
+#define ICODE_SYSTEM_BLE                UINT8_C(0x03)
+#define ICODE_CONNECTION_TOGGLE         UINT16_C(0x0001)
+#define ICODE_CONNECTION_USB            UINT16_C(0x0002)
+#define ICODE_CONNECTION_BLE            UINT16_C(0x0003)
+#define ICODE_BLE_UNPAIR                UINT16_C(0x0000)
+#define ICODE_BLE_SLOT_1                UINT16_C(0x0001)
+#define ICODE_BLE_SLOT_2                UINT16_C(0x0002)
+#define ICODE_BLE_SLOT_3                UINT16_C(0x0003)
+#define ICODE_BLE_SLOT_4                UINT16_C(0x0004)
+
+// 標準キーボードキー。operandはUSB HID Usage ID、modeは修飾子ビット。
+#define IKC_NOOP                        ICODE_NOOP
+#define IKC_A                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x04)
+#define IKC_B                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x05)
+#define IKC_C                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x06)
+#define IKC_D                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x07)
+#define IKC_E                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x08)
+#define IKC_F                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x09)
+#define IKC_G                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x0A)
+#define IKC_H                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x0B)
+#define IKC_I                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x0C)
+#define IKC_J                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x0D)
+#define IKC_K                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x0E)
+#define IKC_L                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x0F)
+#define IKC_M                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x10)
+#define IKC_N                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x11)
+#define IKC_O                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x12)
+#define IKC_P                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x13)
+#define IKC_Q                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x14)
+#define IKC_R                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x15)
+#define IKC_S                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x16)
+#define IKC_T                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x17)
+#define IKC_U                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x18)
+#define IKC_V                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x19)
+#define IKC_W                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x1A)
+#define IKC_X                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x1B)
+#define IKC_Y                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x1C)
+#define IKC_Z                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x1D)
+#define IKC_1                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x1E)
+#define IKC_2                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x1F)
+#define IKC_3                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x20)
+#define IKC_4                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x21)
+#define IKC_5                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x22)
+#define IKC_6                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x23)
+#define IKC_7                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x24)
+#define IKC_8                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x25)
+#define IKC_9                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x26)
+#define IKC_0                           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x27)
+#define IKC_ENTER                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x28)
+#define IKC_ESCAPE                      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x29)
+#define IKC_BACKSPACE                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x2A)
+#define IKC_TAB                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x2B)
+#define IKC_SPACE                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x2C)
+#define IKC_MINUS                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x2D)
+#define IKC_EQUAL                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x2E)
+#define IKC_LEFT_BRACKET                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x2F)
+#define IKC_RIGHT_BRACKET               ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x30)
+#define IKC_BACKSLASH                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x31)
+#define IKC_NON_US_HASH                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x32)
+#define IKC_SEMICOLON                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x33)
+#define IKC_SINGLE_QUOTE                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x34)
+#define IKC_GRAVE                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x35)
+#define IKC_COMMA                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x36)
+#define IKC_DOT                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x37)
+#define IKC_SLASH                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x38)
+#define IKC_CAPSLOCK                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x39)
+#define IKC_F1                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x3A)
+#define IKC_F2                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x3B)
+#define IKC_F3                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x3C)
+#define IKC_F4                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x3D)
+#define IKC_F5                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x3E)
+#define IKC_F6                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x3F)
+#define IKC_F7                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x40)
+#define IKC_F8                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x41)
+#define IKC_F9                          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x42)
+#define IKC_F10                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x43)
+#define IKC_F11                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x44)
+#define IKC_F12                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x45)
+#define IKC_PRINT_SCREEN                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x46)
+#define IKC_SCROLL_LOCK                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x47)
+#define IKC_PAUSE                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x48)
+#define IKC_INSERT                      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x49)
+#define IKC_HOME                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x4A)
+#define IKC_PAGE_UP                     ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x4B)
+#define IKC_DELETE                      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x4C)
+#define IKC_END                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x4D)
+#define IKC_PAGE_DOWN                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x4E)
+#define IKC_RIGHT_ARROW                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x4F)
+#define IKC_LEFT_ARROW                  ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x50)
+#define IKC_DOWN_ARROW                  ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x51)
+#define IKC_UP_ARROW                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x52)
+#define IKC_NUM_LOCK                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x53)
+#define IKC_KEYPAD_SLASH                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x54)
+#define IKC_KEYPAD_ASTERISK             ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x55)
+#define IKC_KEYPAD_MINUS                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x56)
+#define IKC_KEYPAD_PLUS                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x57)
+#define IKC_KEYPAD_ENTER                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x58)
+#define IKC_KEYPAD_1                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x59)
+#define IKC_KEYPAD_2                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x5A)
+#define IKC_KEYPAD_3                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x5B)
+#define IKC_KEYPAD_4                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x5C)
+#define IKC_KEYPAD_5                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x5D)
+#define IKC_KEYPAD_6                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x5E)
+#define IKC_KEYPAD_7                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x5F)
+#define IKC_KEYPAD_8                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x60)
+#define IKC_KEYPAD_9                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x61)
+#define IKC_KEYPAD_0                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x62)
+#define IKC_KEYPAD_DOT                  ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x63)
+#define IKC_NON_US_BACKSLASH            ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x64)
+#define IKC_APPLICATION                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x65)
+#define IKC_POWER                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x66)
+#define IKC_KEYPAD_EQUAL                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x67)
+#define IKC_F13                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x68)
+#define IKC_F14                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x69)
+#define IKC_F15                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x6A)
+#define IKC_F16                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x6B)
+#define IKC_F17                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x6C)
+#define IKC_F18                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x6D)
+#define IKC_F19                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x6E)
+#define IKC_F20                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x6F)
+#define IKC_F21                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x70)
+#define IKC_F22                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x71)
+#define IKC_F23                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x72)
+#define IKC_F24                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x73)
+#define IKC_EXECUTE                     ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x74)
+#define IKC_HELP                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x75)
+#define IKC_MENU                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x76)
+#define IKC_SELECT                      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x77)
+#define IKC_STOP                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x78)
+#define IKC_AGAIN                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x79)
+#define IKC_UNDO                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x7A)
+#define IKC_CUT                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x7B)
+#define IKC_COPY                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x7C)
+#define IKC_PASTE                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x7D)
+#define IKC_FIND                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x7E)
+#define IKC_MUTE                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x7F)
+#define IKC_VOLUME_UP                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x80)
+#define IKC_VOLUME_DOWN                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x81)
+#define IKC_LOCKING_CAPS                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x82)
+#define IKC_LOCKING_NUM                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x83)
+#define IKC_LOCKING_SCROLL              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x84)
+#define IKC_KEYPAD_COMMA                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x85)
+#define IKC_KEYPAD_EQUAL_UNIX           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x86)
+#define IKC_INTERNATIONAL1              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x87)
+#define IKC_INTERNATIONAL2              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x88)
+#define IKC_INTERNATIONAL3              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x89)
+#define IKC_INTERNATIONAL4              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x8A)
+#define IKC_INTERNATIONAL5              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x8B)
+#define IKC_INTERNATIONAL6              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x8C)
+#define IKC_INTERNATIONAL7              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x8D)
+#define IKC_INTERNATIONAL8              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x8E)
+#define IKC_INTERNATIONAL9              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x8F)
+#define IKC_LANG1                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x90)
+#define IKC_LANG2                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x91)
+#define IKC_LANG3                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x92)
+#define IKC_LANG4                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x93)
+#define IKC_LANG5                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x94)
+#define IKC_LANG6                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x95)
+#define IKC_LANG7                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x96)
+#define IKC_LANG8                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x97)
+#define IKC_LANG9                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x98)
+#define IKC_ALTERNATE_ERASE             ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x99)
+#define IKC_SYSREQ                      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x9A)
+#define IKC_CANCEL                      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x9B)
+#define IKC_CLEAR                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x9C)
+#define IKC_PRIOR                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x9D)
+#define IKC_RETURN2                     ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x9E)
+#define IKC_SEPARATOR                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0x9F)
+#define IKC_OUT                         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xA0)
+#define IKC_OPER                        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xA1)
+#define IKC_CLEAR_AGAIN                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xA2)
+#define IKC_CRSEL                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xA3)
+#define IKC_EXSEL                       ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xA4)
+#define IKC_KEYPAD_00                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB0)
+#define IKC_KEYPAD_000                  ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB1)
+#define IKC_THOUSANDS_SEPARATOR         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB2)
+#define IKC_DECIMAL_SEPARATOR           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB3)
+#define IKC_CURRENCY_UNIT               ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB4)
+#define IKC_CURRENCY_SUB_UNIT           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB5)
+#define IKC_KEYPAD_LEFT_PAREN           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB6)
+#define IKC_KEYPAD_RIGHT_PAREN          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB7)
+#define IKC_KEYPAD_LEFT_BRACE           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB8)
+#define IKC_KEYPAD_RIGHT_BRACE          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xB9)
+#define IKC_KEYPAD_TAB                  ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xBA)
+#define IKC_KEYPAD_BACKSPACE            ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xBB)
+#define IKC_KEYPAD_A                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xBC)
+#define IKC_KEYPAD_B                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xBD)
+#define IKC_KEYPAD_C                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xBE)
+#define IKC_KEYPAD_D                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xBF)
+#define IKC_KEYPAD_E                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC0)
+#define IKC_KEYPAD_F                    ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC1)
+#define IKC_KEYPAD_XOR                  ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC2)
+#define IKC_KEYPAD_CARET                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC3)
+#define IKC_KEYPAD_PERCENT              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC4)
+#define IKC_KEYPAD_LESS                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC5)
+#define IKC_KEYPAD_GREATER              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC6)
+#define IKC_KEYPAD_AMPERSAND            ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC7)
+#define IKC_KEYPAD_DOUBLE_AMPERSAND     ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC8)
+#define IKC_KEYPAD_VERTICAL_BAR         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xC9)
+#define IKC_KEYPAD_DOUBLE_VERTICAL_BAR  ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xCA)
+#define IKC_KEYPAD_COLON                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xCB)
+#define IKC_KEYPAD_HASH                 ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xCC)
+#define IKC_KEYPAD_SPACE                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xCD)
+#define IKC_KEYPAD_AT                   ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xCE)
+#define IKC_KEYPAD_EXCLAMATION          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xCF)
+#define IKC_KEYPAD_MEMORY_STORE         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD0)
+#define IKC_KEYPAD_MEMORY_RECALL        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD1)
+#define IKC_KEYPAD_MEMORY_CLEAR         ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD2)
+#define IKC_KEYPAD_MEMORY_ADD           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD3)
+#define IKC_KEYPAD_MEMORY_SUBTRACT      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD4)
+#define IKC_KEYPAD_MEMORY_MULTIPLY      ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD5)
+#define IKC_KEYPAD_MEMORY_DIVIDE        ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD6)
+#define IKC_KEYPAD_PLUS_MINUS           ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD7)
+#define IKC_KEYPAD_CLEAR                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD8)
+#define IKC_KEYPAD_CLEAR_ENTRY          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xD9)
+#define IKC_KEYPAD_BINARY               ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xDA)
+#define IKC_KEYPAD_OCTAL                ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xDB)
+#define IKC_KEYPAD_DECIMAL              ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xDC)
+#define IKC_KEYPAD_HEXADECIMAL          ICODE_PACK(ICODE_OPCODE_KEYBOARD, 0, 0xDD)
+
+// 単独の修飾キー。modeが修飾子ビット、operandは0。
+#define IMKC_LEFT_CONTROL               ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x01, 0)
+#define IMKC_LEFT_SHIFT                 ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x02, 0)
+#define IMKC_LEFT_ALT                   ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x04, 0)
+#define IMKC_LEFT_GUI                   ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x08, 0)
+#define IMKC_RIGHT_CONTROL              ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x10, 0)
+#define IMKC_RIGHT_SHIFT                ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x20, 0)
+#define IMKC_RIGHT_ALT                  ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x40, 0)
+#define IMKC_RIGHT_GUI                  ICODE_PACK(ICODE_OPCODE_MODIFIER, 0x80, 0)
+
+// コンシューマーキー。operandはコンシューマーHID Usage。
+#define ICC_RECORD                      ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B2)
+#define ICC_FAST_FORWARD                ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B3)
+#define ICC_REWIND                      ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B4)
+#define ICC_NEXT_TRACK                  ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B5)
+#define ICC_PREV_TRACK                  ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B6)
+#define ICC_STOP_TRACK                  ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B7)
+#define ICC_EJECT                       ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B8)
+#define ICC_RANDOM_PLAY                 ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00B9)
+#define ICC_STOP_EJECT                  ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00CC)
+#define ICC_PLAY_PAUSE                  ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00CD)
+#define ICC_VOL_MUTE                    ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00E2)
+#define ICC_VOL_UP                      ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00E9)
+#define ICC_VOL_DOWN                    ICODE_PACK(ICODE_OPCODE_CONSUMER, 0, 0x00EA)
+
+// ポインティングデバイスキー。
+#define IMC_MOUSE_LEFT                  ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_BUTTON, 1)
+#define IMC_MOUSE_RIGHT                 ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_BUTTON, 2)
+#define IMC_MOUSE_MIDDLE                ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_BUTTON, 4)
+#define IMC_MOUSE_MOVE_UP               ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_MOVE_Y, ICODE_POINTING_SUCC)
+#define IMC_MOUSE_MOVE_DOWN             ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_MOVE_Y, ICODE_POINTING_PRED)
+#define IMC_MOUSE_MOVE_LEFT             ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_MOVE_X, ICODE_POINTING_SUCC)
+#define IMC_MOUSE_MOVE_RIGHT            ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_MOVE_X, ICODE_POINTING_PRED)
+#define IMC_MOUSE_WHEEL_UP              ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_WHEEL, ICODE_POINTING_PRED)
+#define IMC_MOUSE_WHEEL_DOWN            ICODE_PACK(ICODE_OPCODE_POINTING, ICODE_POINTING_WHEEL, ICODE_POINTING_SUCC)
+
+// システム操作。
+#define ISC_BOOT                        ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_BOOT, 0)
+#define ISC_CONN_TOGGLE                 ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_CONNECTION, 1)
+#define ISC_CONN_USB                    ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_CONNECTION, 2)
+#define ISC_CONN_BLE                    ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_CONNECTION, 3)
+#define ISC_BLE_UNPAIR                  ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_BLE, 0)
+#define ISC_BLE_SLOT_1                  ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_BLE, 1)
+#define ISC_BLE_SLOT_2                  ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_BLE, 2)
+#define ISC_BLE_SLOT_3                  ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_BLE, 3)
+#define ISC_BLE_SLOT_4                  ICODE_PACK(ICODE_OPCODE_SYSTEM, ICODE_SYSTEM_BLE, 4)
+
+#define IUC_RANGE_MIN                   ICODE_PACK(ICODE_OPCODE_USER_MIN, 0, 0)
+#define IUC_RANGE_MAX                   ICODE_PACK(ICODE_OPCODE_USER_MAX, UINT8_MAX, UINT16_MAX)
+
+// clang-format on
 
 typedef uint8_t code_t;
-typedef uint16_t code_modded_t;
 
 typedef enum {
   KMC_UNDEFINED = 0x00,
@@ -342,20 +373,24 @@ typedef enum {
   MBC_MIDDLE = 0x04,
 } code_mouse_button_t;
 
-code_mod_t code_icode_to_modifier(icode_t ic);
-code_mod_bits_t code_icode_extract_modifier_bits(icode_t ic);
-code_consumer_t code_icodes_to_consumer(icode_t ic);
-code_mouse_button_t code_icodes_to_mouse_button(icode_t ic);
+bool code_icode_is_valid(icode_t icode);
+code_mod_t code_icode_to_modifier(icode_t icode);
+code_mod_bits_t code_icode_extract_modifier_bits(icode_t icode);
+code_consumer_t code_icodes_to_consumer(icode_t icode);
+code_mouse_button_t code_icodes_to_mouse_button(icode_t icode);
 
-#define APPLY_MOD(X, M) ((((uint16_t)M) << 8) | (X))
+#define APPLY_MOD(icode, modifier)                                             \
+  ICODE_PACK(ICODE_OPCODE_KEYBOARD,                                            \
+             ((ICODE_MODE(icode) | (modifier)) & UINT8_C(0xFF)),               \
+             ICODE_OPERAND(icode))
 
-#define LEFT_CTRL(X) APPLY_MOD(X, KMC_LEFT_CONTROL)
-#define LEFT_SHIFT(X) APPLY_MOD(X, KMC_LEFT_SHIFT)
-#define LEFT_ALT(X) APPLY_MOD(X, KMC_LEFT_ALT)
-#define LEFT_GUI(X) APPLY_MOD(X, KMC_LEFT_GUI)
-#define RIGHT_CTRL(X) APPLY_MOD(X, KMC_RIGHT_CONTROL)
-#define RIGHT_SHIFT(X) APPLY_MOD(X, KMC_RIGHT_SHIFT)
-#define RIGHT_ALT(X) APPLY_MOD(X, KMC_RIGHT_ALT)
-#define RIGHT_GUI(X) APPLY_MOD(X, KMC_RIGHT_GUI)
+#define LEFT_CTRL(icode) APPLY_MOD(icode, KMC_LEFT_CONTROL)
+#define LEFT_SHIFT(icode) APPLY_MOD(icode, KMC_LEFT_SHIFT)
+#define LEFT_ALT(icode) APPLY_MOD(icode, KMC_LEFT_ALT)
+#define LEFT_GUI(icode) APPLY_MOD(icode, KMC_LEFT_GUI)
+#define RIGHT_CTRL(icode) APPLY_MOD(icode, KMC_RIGHT_CONTROL)
+#define RIGHT_SHIFT(icode) APPLY_MOD(icode, KMC_RIGHT_SHIFT)
+#define RIGHT_ALT(icode) APPLY_MOD(icode, KMC_RIGHT_ALT)
+#define RIGHT_GUI(icode) APPLY_MOD(icode, KMC_RIGHT_GUI)
 
 #endif // PWMK_CODE_H

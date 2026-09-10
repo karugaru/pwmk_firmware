@@ -1,4 +1,5 @@
 #include "profile/keymap.h"
+#include "keyboard/code.h"
 #include "profile/board.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -110,7 +111,8 @@ icode_t keymap_get(const icode_t *dynamic_keymap, uint8_t layer, uint8_t row,
  */
 bool keymap_set(icode_t *dynamic_keymap, uint8_t layer, uint8_t row,
                 uint8_t col, icode_t keycode) {
-  if (dynamic_keymap == NULL || !keymap_is_valid_position(layer, row, col)) {
+  if (dynamic_keymap == NULL || !keymap_is_valid_position(layer, row, col) ||
+      !keymap_is_valid_keycode(keycode)) {
     return false;
   }
 
@@ -125,20 +127,7 @@ bool keymap_set(icode_t *dynamic_keymap, uint8_t layer, uint8_t row,
  * @return 保存可能な場合はtrue、そうでない場合はfalse
  */
 bool keymap_is_valid_keycode(icode_t keycode) {
-  const uint32_t value = (uint32_t)keycode;
-
-  if (value <= UINT16_MAX) {
-    const uint8_t base = (uint8_t)value;
-    if (base == IKC_NOOP) {
-      return value == IKC_NOOP;
-    }
-    return (base >= IKC_A && base <= IKC_EXSEL) ||
-           (base >= IKC_KEYPAD_00 && base <= IKC_KEYPAD_HEXADECIMAL) ||
-           (base >= IMKC_LEFT_CONTROL && base <= IMKC_RIGHT_GUI);
-  }
-
-  return (value >= ICC_RECORD && value <= ISC_BLE_SLOT_4) ||
-         (value >= IUC_RANGE_MIN && value <= IUC_RANGE_MAX);
+  return code_icode_is_valid(keycode);
 }
 
 /*

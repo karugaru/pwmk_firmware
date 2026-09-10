@@ -19,7 +19,7 @@ typedef enum {
   SETTINGS_ID_KEYMAP, // キーマップ設定
 } settings_id_t;
 
-void settings_init(void);
+bool settings_init(void);
 size_t settings_image_size(void);
 icode_t settings_get_keycode(uint8_t layer, uint8_t row, uint8_t col);
 settings_update_result_t settings_set_keycode(uint8_t layer, uint8_t row,

@@ -5,6 +5,7 @@
 
 #include <pico/unique_id.h>
 
+#include "debug.h"
 #include "keyboard/code_convert.h"
 #include "keyboard/matrix_scan.h"
 #include "profile/board.h"
@@ -20,13 +21,7 @@
 
 #if DEBUG_VIAL
 #define DEBUG_PRINT_PACKET(label, packet)                                      \
-  do {                                                                         \
-    printf("%s: ", label);                                                     \
-    for (uint8_t index = 0; index < VIAL_PACKET_SIZE; index++) {               \
-      printf("0x%02X ", packet[index]);                                        \
-    }                                                                          \
-    printf("\n");                                                              \
-  } while (0)
+  pwmk_debug_hexdump("VIAL", label, packet, VIAL_PACKET_SIZE)
 #else
 #define DEBUG_PRINT_PACKET(...) ((void)(0))
 #endif
@@ -64,7 +59,7 @@ void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
   uint8_t request[VIAL_PACKET_SIZE];
   // 入力を退避してから同じ 32 バイト領域をゼロ初期化した応答として再利用する。
   memcpy(request, packet, sizeof(request));
-  DEBUG_PRINT_PACKET("Vial request", request);
+  DEBUG_PRINT_PACKET("request", request);
   memset(packet, 0, VIAL_PACKET_SIZE);
 
   if (request[0] == VIAL_PREFIX) {
@@ -75,7 +70,7 @@ void vial_handle_packet(uint8_t packet[VIAL_PACKET_SIZE]) {
     _handle_via_command(request, packet);
   }
 
-  DEBUG_PRINT_PACKET("Vial response", packet);
+  DEBUG_PRINT_PACKET("response", packet);
 }
 
 /*
@@ -167,6 +162,7 @@ static uint8_t _vial_update_unlock_state(void) {
     unlocked = true;
     unlock_in_progress = false;
     unlock_combo_held = false;
+    state_set_temporary_state(STATE_TEMP_VIAL_UNLOCKED);
     return 0;
   }
 
@@ -310,8 +306,11 @@ static void _handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x06:
     // Unlock Start
     // 実際のタイマー開始は最初の解除コンボ検出時に行う。
-    unlock_in_progress = true;
-    unlock_combo_held = false;
+    if (!unlocked) {
+      unlock_in_progress = true;
+      unlock_combo_held = false;
+      state_set_temporary_state(STATE_TEMP_VIAL_UNLOCKING);
+    }
     break;
 
   case 0x07: {
@@ -329,6 +328,7 @@ static void _handle_vial_command(const uint8_t request[VIAL_PACKET_SIZE],
     unlocked = false;
     unlock_in_progress = false;
     unlock_combo_held = false;
+    state_clear_temporary_state();
     break;
 
   case 0x09:
@@ -438,6 +438,7 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
     uint16_t vial = _read_u16_be(&request[4]);
     if (!_vial_keycode_write_allowed(vial)) {
+      state_set_temporary_state(STATE_TEMP_VIAL_LOCKED);
       break;
     }
 
@@ -457,8 +458,11 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
 
   case 0x06:
     // Dynamic Keymap Reset
-    if (unlocked &&
-        settings_reset(SETTINGS_ID_KEYMAP) == SETTINGS_UPDATE_PERSISTED) {
+    if (!unlocked) {
+      state_set_temporary_state(STATE_TEMP_VIAL_LOCKED);
+      response[0] = 1;
+    } else if (settings_reset(SETTINGS_ID_KEYMAP) ==
+               SETTINGS_UPDATE_PERSISTED) {
       response[0] = 0;
     } else {
       response[0] = 1;
@@ -475,8 +479,9 @@ static void _handle_via_command(const uint8_t request[VIAL_PACKET_SIZE],
   case 0x0B:
     // Bootloader Jump
     if (unlocked) {
-      state_set_system(STATE_BOOTLOADER);
+      state_request_steady_state(STATE_BOOTLOADER);
     } else {
+      state_set_temporary_state(STATE_TEMP_VIAL_LOCKED);
       response[0] = 1;
     }
     break;
