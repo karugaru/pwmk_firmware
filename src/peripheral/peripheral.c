@@ -35,19 +35,32 @@ typedef struct {
 // clang-format off
 // システム状態に応じたLEDの表示パターンを定義するテーブル
 static const peripheral_led_entry_t peripheral_led_table[STATE_STEADY_COUNT] = {
-  [STATE_BOOTING]               = {255, 127, 0, PERIPHERAL_LED_SOLID, 0},         // オレンジ点灯
-  [STATE_SYS_INIT]              = {255, 255, 0, PERIPHERAL_LED_SOLID, 0},         // 黄色点灯
-  [STATE_BLE_INIT]              = {0, 255, 255, PERIPHERAL_LED_SOLID, 0},         // 水色点灯
-  [STATE_INIT_COMPLETE]         = {255, 255, 255, PERIPHERAL_LED_SOLID, 0},       // 白色点灯
-  [STATE_USB_WAITING]           = {0, 0, 255, PERIPHERAL_LED_BREATHE_SLOW, 0},    // 青色ゆっくり点滅
-  [STATE_BLE_WAITING]           = {0, 255, 255, PERIPHERAL_LED_BREATHE_SLOW, 0},  // 水色ゆっくり点滅
-  [STATE_BLE_CONNECTED]         = {0, 255, 255, PERIPHERAL_LED_OFF, 0},           // 水色消灯
-  [STATE_USB_CONNECTED]         = {0, 0, 255, PERIPHERAL_LED_OFF, 0},             // 青色消灯
-  [STATE_BOOTLOADER]            = {255, 255, 255, PERIPHERAL_LED_SOLID, 0},       // 白色点灯
-  [STATE_DEEP_SLEEP]            = {0, 0, 0, PERIPHERAL_LED_OFF, 0},               // 消灯
-  [STATE_INIT_ERROR_PERIPHERAL] = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 1},     // 赤色1回点滅
-  [STATE_INIT_ERROR_BLE]        = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 2},     // 赤色2回点滅
-  [STATE_INIT_ERROR_SETTINGS]   = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 3},     // 赤色3回点滅
+  [STATE_BOOTING]                  = {255, 127, 0, PERIPHERAL_LED_SOLID, 0},         // オレンジ点灯
+  [STATE_SYS_INIT]                 = {255, 255, 0, PERIPHERAL_LED_SOLID, 0},         // 黄色点灯
+  [STATE_BLE_INIT]                 = {0, 255, 255, PERIPHERAL_LED_SOLID, 0},         // 水色点灯
+  [STATE_INIT_COMPLETE]            = {255, 255, 255, PERIPHERAL_LED_SOLID, 0},       // 白色点灯
+  [STATE_USB_WAITING]              = {0, 0, 255, PERIPHERAL_LED_BREATHE_SLOW, 0},    // 青色ゆっくり点滅
+  [STATE_BLE_WAITING]              = {0, 255, 255, PERIPHERAL_LED_BREATHE_SLOW, 0},  // 水色ゆっくり点滅
+  [STATE_BLE_CONNECTED]            = {0, 255, 255, PERIPHERAL_LED_OFF, 0},           // 水色消灯
+  [STATE_USB_CONNECTED]            = {0, 0, 255, PERIPHERAL_LED_OFF, 0},             // 青色消灯
+  [STATE_BOOTLOADER]               = {255, 255, 255, PERIPHERAL_LED_SOLID, 0},       // 白色点灯
+  [STATE_DEEP_SLEEP]               = {0, 0, 0, PERIPHERAL_LED_OFF, 0},               // 消灯
+  [STATE_INIT_ERROR_PERIPHERAL]    = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 1},     // 赤色1回点滅
+  [STATE_INIT_ERROR_BLE]           = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 2},     // 赤色2回点滅
+  [STATE_INIT_ERROR_SETTINGS]      = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 3},     // 赤色3回点滅
+};
+// 一時状態に応じたLEDの表示パターンを定義するテーブル
+static const peripheral_led_entry_t peripheral_temporary_led_table[STATE_TEMP_BLE_SLOT_CHANGED + 1] = {
+  [STATE_TEMP_NONE]                = {0, 0, 0, PERIPHERAL_LED_OFF, 0},               // 消灯
+  [STATE_TEMP_SETTINGS_SAVING]     = {255, 255, 0, PERIPHERAL_LED_BREATHE_FAST, 0},  // 黄色速く点滅
+  [STATE_TEMP_SETTINGS_PERSISTED]  = {0, 255, 0, PERIPHERAL_LED_BLINK_COUNT, 1},     // 緑色1回点滅
+  [STATE_TEMP_SETTINGS_RAM_ONLY]   = {255, 127, 0, PERIPHERAL_LED_BLINK_COUNT, 2},   // オレンジ色2回点滅
+  [STATE_TEMP_SETTINGS_FAILED]     = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 3},     // 赤色3回点滅
+  [STATE_TEMP_VIAL_UNLOCKING]      = {255, 255, 0, PERIPHERAL_LED_BREATHE_FAST, 0},  // 黄色速く点滅
+  [STATE_TEMP_VIAL_UNLOCKED]       = {0, 255, 0, PERIPHERAL_LED_BLINK_COUNT, 1},     // 緑色1回点滅
+  [STATE_TEMP_VIAL_LOCKED]         = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 1},     // 赤色1回点滅
+  [STATE_TEMP_CONNECTION_SWITCHED] = {0, 0, 255, PERIPHERAL_LED_BLINK_COUNT, 1},     // 青色1回点滅
+  [STATE_TEMP_BLE_SLOT_CHANGED]    = {0, 255, 255, PERIPHERAL_LED_BLINK_COUNT, 1},   // 水色1回点滅
 };
 // clang-format on
 
@@ -72,7 +85,6 @@ static uint32_t temporary_state_started_at_ms;
  * 内部関数宣言
  */
 
-static peripheral_led_entry_t _temporary_entry(state_temporary_t state);
 static uint32_t _temporary_duration_ms(state_temporary_t state);
 static void _render_entry(peripheral_led_entry_t entry, uint32_t elapsed_ms);
 
@@ -124,8 +136,17 @@ void peripheral_process_periodic(void) {
 
   // 一時状態がある場合は表示する
   if (temporary_state != STATE_TEMP_NONE) {
-    _render_entry(_temporary_entry(temporary_state),
-                  now_ms - temporary_state_started_at_ms);
+    peripheral_led_entry_t entry =
+        peripheral_temporary_led_table[temporary_state];
+
+    // 接続切り替えの場合のみ、優先モードに応じてLEDの色を変更する
+    if (temporary_state == STATE_TEMP_CONNECTION_SWITCHED &&
+        state_get_connection_preference() == CONN_PREF_BLE) {
+      entry.g = 255;
+      entry.b = 255;
+    }
+
+    _render_entry(entry, now_ms - temporary_state_started_at_ms);
     return;
   }
 
@@ -188,54 +209,6 @@ void peripheral_process_events(void) {
 /*
  * 内部関数
  */
-
-/**
- * @brief 指定された一時状態に対応するLED表示パターンを取得する。
- * @param state 一時状態
- * @return LED表示パターン
- */
-static peripheral_led_entry_t _temporary_entry(state_temporary_t state) {
-  peripheral_led_entry_t entry = {0, 0, 0, PERIPHERAL_LED_OFF, 0};
-
-  switch (state) {
-  case STATE_TEMP_SETTINGS_SAVING:
-  case STATE_TEMP_VIAL_UNLOCKING:
-    entry =
-        (peripheral_led_entry_t){255, 255, 0, PERIPHERAL_LED_BREATHE_FAST, 0};
-    break;
-  case STATE_TEMP_SETTINGS_PERSISTED:
-  case STATE_TEMP_VIAL_UNLOCKED:
-    entry = (peripheral_led_entry_t){0, 255, 0, PERIPHERAL_LED_BLINK_COUNT, 1};
-    break;
-  case STATE_TEMP_SETTINGS_RAM_ONLY:
-    entry =
-        (peripheral_led_entry_t){255, 127, 0, PERIPHERAL_LED_BLINK_COUNT, 2};
-    break;
-  case STATE_TEMP_SETTINGS_FAILED:
-    entry = (peripheral_led_entry_t){255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 3};
-    break;
-  case STATE_TEMP_VIAL_LOCKED:
-    entry = (peripheral_led_entry_t){255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 1};
-    break;
-  case STATE_TEMP_CONNECTION_SWITCHED:
-    if (state_get_connection_preference() == CONN_PREF_BLE) {
-      entry =
-          (peripheral_led_entry_t){0, 255, 255, PERIPHERAL_LED_BLINK_COUNT, 1};
-    } else {
-      entry =
-          (peripheral_led_entry_t){0, 0, 255, PERIPHERAL_LED_BLINK_COUNT, 1};
-    }
-    break;
-  case STATE_TEMP_BLE_SLOT_CHANGED:
-    entry =
-        (peripheral_led_entry_t){0, 255, 255, PERIPHERAL_LED_BLINK_COUNT, 1};
-    break;
-  case STATE_TEMP_NONE:
-    break;
-  }
-
-  return entry;
-}
 
 /**
  * @brief 指定された一時状態の規定の表示時間を取得する。
