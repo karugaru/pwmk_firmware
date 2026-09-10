@@ -45,9 +45,9 @@ static const peripheral_led_entry_t peripheral_led_table[STATE_STEADY_COUNT] = {
   [STATE_USB_CONNECTED]         = {0, 0, 255, PERIPHERAL_LED_OFF, 0},             // 青色消灯
   [STATE_BOOTLOADER]            = {255, 255, 255, PERIPHERAL_LED_SOLID, 0},       // 白色点灯
   [STATE_DEEP_SLEEP]            = {0, 0, 0, PERIPHERAL_LED_OFF, 0},               // 消灯
-  [STATE_INIT_ERROR_PERIPHERAL] = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 0},     // 赤色点滅回数指定
-  [STATE_INIT_ERROR_BLE]        = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 0},     // 赤色点滅回数指定
-  [STATE_INIT_ERROR_SETTINGS]   = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 0},     // 赤色点滅回数指定
+  [STATE_INIT_ERROR_PERIPHERAL] = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 1},     // 赤色1回点滅
+  [STATE_INIT_ERROR_BLE]        = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 2},     // 赤色2回点滅
+  [STATE_INIT_ERROR_SETTINGS]   = {255, 0, 0, PERIPHERAL_LED_BLINK_COUNT, 3},     // 赤色3回点滅
 };
 // clang-format on
 
@@ -131,10 +131,6 @@ void peripheral_process_periodic(void) {
 
   // 一時状態がない場合は定常状態に応じた表示を行う
   peripheral_led_entry_t entry = peripheral_led_table[steady_state];
-  if (steady_state >= STATE_INIT_ERROR_PERIPHERAL &&
-      steady_state <= STATE_INIT_ERROR_SETTINGS) {
-    entry.count = (uint8_t)(steady_state - STATE_INIT_ERROR_PERIPHERAL + 1);
-  }
   _render_entry(entry, now_ms);
 }
 
