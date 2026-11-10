@@ -23,7 +23,7 @@ static bool _code_is_valid_system_action(uint8_t mode, uint16_t operand);
 /**
  * @brief 内部キーコードが妥当なアクション記述子か判定する。
  * @param icode 判定する内部キーコード
- * @return 変換後の修飾子コード、該当しない場合はKMC_UNDEFINED
+ * @return 妥当な内部キーコードならtrue、そうでなければfalse
  */
 bool code_icode_is_valid(icode_t icode) {
   const uint8_t opcode = ICODE_OPCODE(icode);
